@@ -1,0 +1,19 @@
+{
+  "name": "kbh",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "pm2-runtime start ecosystem.config.js",
+    "dev": "node server.js",
+    "restart": "pm2 restart kbh",
+    "stop": "pm2 stop kbh"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pm2": "^7.0.4",
+    "@supabase/supabase-js": "^2.57.4",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.3"
+  }
+}

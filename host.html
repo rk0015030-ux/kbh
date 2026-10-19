@@ -1,0 +1,1508 @@
+<!DOCTYPE html><html><head>  <meta charset="utf-8" />  <title>Quiz Host - Hazarpati</title>  <style>
+    body { font-family: system-ui, Arial; max-width: 1200px; margin: 10px auto; background: linear-gradient(to top, #11001fff, #811ebbff); color: white; }
+    h1 { text-align: center; color: gold; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+    .top-container { display: flex; gap: 15px; margin-bottom: 12px; align-items: stretch; }
+    .card { 
+        border: 3px solid #fac20bff; 
+        padding: 15px; 
+        border-radius: 20px; 
+        background: rgba(0,0,0,0.3); 
+        flex: 2; 
+    }
+    .lifeline-card { 
+        border: 3px solid #fac20bff; 
+        padding: 15px; 
+        border-radius: 20px; 
+        background: rgba(0,0,0,0.3); 
+        flex: 1; 
+        display: flex;
+        gap: 10px;
+    }
+    .main-layout { display: flex; gap: 15px; align-items: flex-start; }
+    .side-panel { 
+        flex: 1; 
+        height: 550px; 
+        overflow: auto; 
+        background: rgba(0,0,0,0.5); 
+        padding: 15px; 
+        border-radius: 20px; 
+        border: 2px solid gold; 
+    }
+    input, textarea, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; font-size: 16px; color: black; border: 2px solid #ccc; box-sizing: border-box; }
+    button { cursor: pointer; padding: 10px; border-radius: 8px; font-weight: bold; border: none; transition: 0.2s; }
+    button:active { transform: scale(0.95); }
+    .gold-btn { background: gold; color: black; }
+    .player-entry { 
+        background: rgba(255,255,255,0.1); 
+        padding: 12px; 
+        border-radius: 12px; 
+        margin-bottom: 12px; 
+        border-left: 5px solid gold; 
+        animation: fadeIn 0.3s; 
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+  <!-- Enhanced host UI styles + animations -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', system-ui, Arial; max-width:1200px; margin:14px auto; background: linear-gradient(180deg,#060814 0%, #0b1b33 60%); color:#f5f5f5; }
+    .presence-indicator { position:fixed; top:10px; right:12px; z-index:5000; display:flex; gap:10px; padding:6px 9px; border:1px solid rgba(255,255,255,.18); border-radius:7px; background:rgba(4,10,22,.9); font-size:11px; line-height:1; box-shadow:0 3px 12px rgba(0,0,0,.3); }
+    .presence-item { display:flex; align-items:center; gap:4px; white-space:nowrap; color:#d6dbe5; }
+    .presence-item strong { color:#ff8585; font-weight:600; }
+    .presence-item[data-connected="true"] strong { color:#75e39a; }
+    .presence-dot { width:6px; height:6px; border-radius:50%; background:#e95c5c; }
+    .presence-item[data-connected="true"] .presence-dot { background:#45d477; }
+    h1 { text-align:center; color:#ffd54d; font-family:'Playfair Display', serif; font-weight:700; text-shadow: 0 8px 25px rgba(0,0,0,0.6); }
+    .top-container { display:flex; gap:16px; margin-bottom:12px; align-items:stretch; }
+    .card { border-radius:14px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.35)); padding:16px; border:1px solid rgba(255,215,0,0.06); box-shadow: 0 10px 40px rgba(0,0,0,0.6);} 
+    .lifeline-card { border-radius:14px; padding:12px; display:flex; gap:10px; align-items:center; }
+
+    input, textarea, select { width:100%; padding:10px; margin-top:6px; border-radius:8px; font-size:16px; color:#091226; border:2px solid rgba(0,0,0,0.12); box-sizing:border-box; }
+    button { cursor:pointer; padding:10px; border-radius:10px; font-weight:700; border:none; transition: transform .14s ease, box-shadow .14s ease; }
+    .gold-btn { background: linear-gradient(90deg,#ffd54d,#ffcc00); color:#081028; box-shadow: 0 10px 30px rgba(255,200,0,0.08); }
+    .gold-btn:active { transform: translateY(2px); }
+
+    .main-layout { display:flex; gap:16px; align-items:flex-start; }
+    .bottom-layout { display:flex; gap:16px; align-items:flex-start; margin-top:16px; }
+    .bottom-layout .side-panel { height:360px; }
+    .question-upload-row { display:flex; gap:12px; align-items:flex-start; margin-top:10px; }
+    .question-upload-row > div { flex:1; }
+    .question-upload-row input { margin-top:5px; }
+    .side-panel { flex:1; height:560px; overflow:auto; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.35)); padding:14px; border-radius:14px; border:1px solid rgba(255,215,0,0.06); }
+    #hostAnswerSide { height:auto; min-height:calc(100vh - 240px); overflow:visible; }
+    #videoSide, #audioSide { height:auto; min-height:360px; overflow:visible; }
+
+    .player-entry { background: rgba(255,255,255,0.03); padding:12px; border-radius:12px; margin-bottom:12px; border-left:6px solid rgba(255,215,0,0.06); transition: transform .18s cubic-bezier(.2,.9,.2,1), box-shadow .18s; }
+    .player-entry:hover { transform: translateY(-6px); box-shadow: 0 12px 34px rgba(0,0,0,0.6); }
+    .player-entry.answered-correct { border-left-color: #39ff14; box-shadow: 0 8px 26px rgba(57,255,20,0.06); }
+    .player-entry.answered-wrong { border-left-color: #ff6b6b; box-shadow: 0 8px 26px rgba(231,76,60,0.06); }
+
+    .leaderboard-item {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,215,0,0.18);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .leaderboard-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd54d, #ffb300);
+      color: #111;
+      font-weight: 900;
+      margin-right: 8px;
+    }
+    .leaderboard-score {
+      color: gold;
+      font-weight: 700;
+    }
+    .leaderboard-eliminated { color: #ff8c8c; font-size: 12px; font-weight: 700; }
+
+    #events { white-space:pre-wrap; font-size:13px; color:#b0f0a6; font-family: monospace; max-height:460px; overflow:auto; }
+
+    /* Control center improvements */
+    #questionSide { flex:1.5; }
+    #pdfStatus { color:#a8f0a8; }
+    #nextPdfQuestion { transition: transform .18s ease; }
+    #nextPdfQuestion:hover { transform: translateY(-4px); }
+
+    /* Auto 50:50 button animation */
+    #auto5050 { background: linear-gradient(90deg,#67d1ff,#2a9df4); color:#021428; border-radius:12px; padding:14px 18px; font-size:16px; box-shadow: 0 12px 40px rgba(42,157,244,0.08); }
+    #auto5050:disabled { opacity:0.45; transform: none; }
+
+    /* small helpers */
+    label { font-weight:700; color:#ffeaa7; }
+
+    /* subtle entrance for the host UI */
+    .card, .side-panel, .lifeline-card { animation: fadeInUp .6s ease both; }
+    @keyframes fadeInUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+    @media (max-width:880px) { .main-layout, .bottom-layout { flex-direction:column; } .side-panel { height:auto; width:100%; } #hostAnswerSide, #videoSide, #audioSide { min-height:0; } }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    /* Timer Display Styles for Host Live Feed */
+    .timer-panel {
+      max-width: 180px;
+      margin: 10px 0 10px auto;
+      padding: 0;
+    }
+    .timer-display-card {
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,215,0,0.08), rgba(0,0,0,0.35));
+      padding: 8px;
+      border: 2px solid rgba(255,215,0,0.12);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+    .host-timer-display {
+      background: linear-gradient(180deg, #1a2a4a, #0d1620);
+      border: 3px solid rgba(255,215,0,0.2);
+      border-radius: 12px;
+      padding: 8px 16px;
+      min-width: 80px;
+      text-align: center;
+      box-shadow: inset 0 4px 15px rgba(0,0,0,0.6);
+    }
+    .host-timer-text {
+      font-size: 30px;
+      font-weight: 900;
+      color: #ffd54d;
+      font-family: 'Playfair Display', serif;
+      text-shadow: 0 4px 12px rgba(255,215,0,0.2);
+      letter-spacing: 2px;
+    }
+    #nextVideoNotification {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: none;
+      max-width: min(360px, calc(100vw - 32px));
+      padding: 16px 20px;
+      border: 2px solid #ffd54d;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #172a50, #071225);
+      color: #fff;
+      box-shadow: 0 12px 35px rgba(0,0,0,.55);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    #hostVideoEndedNotification {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      z-index: 10001;
+      display: none;
+      max-width: min(360px, calc(100vw - 32px));
+      padding: 16px 20px;
+      border: 2px solid #45e27a;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #123b2b, #071a13);
+      color: #fff;
+      box-shadow: 0 12px 35px rgba(0,0,0,.55);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    #nextAudioNotification, #hostAudioEndedNotification {
+      position: fixed;
+      top: 84px;
+      right: 24px;
+      z-index: 10000;
+      display: none;
+      max-width: min(360px, calc(100vw - 32px));
+      padding: 16px 20px;
+      border: 2px solid #79e0bd;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #123d37, #071b1a);
+      color: #fff;
+      box-shadow: 0 12px 35px rgba(0,0,0,.55);
+      font-size: 16px;
+      font-weight: 700;
+    }
+  </style>
+</head><body><div class="presence-indicator" role="status" aria-live="polite">
+  <span class="presence-item" id="hostPresenceItem" data-connected="false"><span class="presence-dot"></span>Host: <strong id="hostPresence">Not connected</strong></span>
+  <span class="presence-item" id="playerPresenceItem" data-connected="false"><span class="presence-dot"></span>Player: <strong id="playerPresence">Not connected</strong></span>
+</div><h1>Kaun Banega Hazarpata - Host Panel</h1>  <div class="top-container"><div class="card">
+  <div style="display:flex; gap: 20px; align-items: flex-end;">
+    <div style="flex:1;">
+      <label>Room ID:</label>
+      <input id="roomId" value="room1"/>
+    </div>
+    <div style="flex:1;">
+      <label>Host Name:</label>
+      <input id="hostName" value="Host Admin"/>
+    </div>
+    <button id="connectBtn" class="gold-btn" style="padding: 12px 25px;">CONNECT SERVER</button>
+  </div>
+  <div id="connStatus" style="text-align: center; margin-top: 10px; font-weight: bold; color: #00ff00;"></div>
+</div>
+
+<div class="lifeline-card">
+   <button id="auto5050" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">Use 50:50 ✨</button>
+   <button id="callFriendBtn" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">📞 Use Call Lifeline</button>
+   <button onclick="refreshPlayers()" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">🔄 Refresh Players</button>
+</div>
+
+<div id="nextVideoNotification" role="status" aria-live="polite">🎬 Next question is a video question.</div>
+<div id="hostVideoEndedNotification" role="status" aria-live="polite">✅ Video finished.</div>
+<div id="nextAudioNotification" role="status" aria-live="polite">🎧 Next question is an audio question.</div>
+<div id="hostAudioEndedNotification" role="status" aria-live="polite">✅ Audio finished.</div>
+
+<!-- Timer Display Panel -->
+<div id="timerPanel" class="timer-panel" style="display:none; margin-top: 15px;">
+  <div class="timer-display-card">
+    <div style="display: flex; align-items: center; justify-content: center;">
+      <div class="host-timer-display">
+        <div id="hostTimerValue" class="host-timer-text">--</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:7px;">
+      <button id="pauseHostTimerBtn" type="button" style="flex:1; background:#c98917; color:#111; padding:6px;">⏸ Pause</button>
+      <button id="resumeHostTimerBtn" type="button" style="flex:1; background:#2e9b54; color:white; padding:6px;" disabled>▶ Resume</button>
+    </div>
+  </div>
+</div>
+
+  </div>  <div class="main-layout"><div id="playerSide" class="side-panel">
+  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">👥 Active Players</h3>
+  <div id="players"></div>
+</div>
+
+<div id="leaderboardSide" class="side-panel">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom: 2px solid gold; padding-bottom: 5px;">
+    <h3 style="margin:0;">🏆 Saved Leaderboard</h3>
+    <button id="refreshLeaderboardBtn" type="button" class="gold-btn" style="padding:8px 12px; font-size:12px;">Refresh</button>
+  </div>
+  <div id="leaderboardList" style="margin-top: 12px;"></div>
+</div>
+
+<div id="eventSide" class="side-panel">
+  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">📜 Live Logs</h3>
+  <pre id="events" style="white-space: pre-wrap; font-size: 13px; color: #00ff00; font-family: monospace;"></pre>
+</div>
+
+<div id="questionSide" class="side-panel" style="flex: 1.5; height: auto;">
+  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">🚀 Control Center</h3>
+  
+  <label>Question Format:</label>
+  <select id="qFormat">
+    <option value="text">Text Only</option>
+    <option value="image">Image + Text</option>
+  </select>
+
+  <label>Question Text:</label>
+  <textarea id="qText" rows="3" placeholder="Enter your question here..."></textarea>
+
+  <label for="questionVideoId" style="display:block; margin-top:10px;">Video ID (optional):</label>
+  <input id="questionVideoId" type="text" placeholder="Example: video-1" autocomplete="off" />
+  <label for="questionAudioId" style="display:block; margin-top:10px;">Audio ID (optional):</label>
+  <input id="questionAudioId" type="text" placeholder="Example: audio-1" autocomplete="off" />
+
+  <label for="pdfFile">Upload Questions PDF:</label>
+  <input id="pdfFile" type="file" accept="application/pdf,.pdf" />
+  <div id="pdfStatus" style="margin-top: 8px; color: #00ff00;"></div>
+  <button id="nextPdfQuestion" type="button" class="gold-btn" style="display:none; margin-top:8px; width:100%;">NEXT PDF QUESTION</button>
+  
+  <!-- Image Management Section -->
+  <div id="imageManagement" style="background: rgba(255,215,0,0.08); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(255,215,0,0.2);">
+    <label style="color: #ffd54d; font-weight: bold;">📸 Image Library Management</label>
+    
+    <div style="margin-top: 10px;">
+      <label for="imageUploadBatch">Upload Multiple Images:</label>
+      <input id="imageUploadBatch" type="file" accept="image/*" multiple />
+      <button id="uploadImagesBtn" class="gold-btn" style="width:100%; margin-top:8px;">Upload Images to Library</button>
+      <div id="uploadStatus" style="margin-top: 8px; color: #00ff00; font-size: 12px;"></div>
+    </div>
+    
+    <div style="margin-top: 15px;">
+      <button id="toggleImageLibraryBtn" type="button" class="gold-btn" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:10px 12px;">
+        <span>🖼️ Image Library <span id="imageLibraryCount" style="font-size:12px;"></span></span><span id="imageLibraryArrow">▼</span>
+      </button>
+      <div id="imageLibrary" style="display:none; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 8px;">
+        <p style="color: #999; text-align: center;">No images uploaded yet</p>
+      </div>
+      <button id="refreshImagesBtn" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Library</button>
+    </div>
+  </div>
+
+  <!-- Video Management Section -->
+  <div id="videoManagement" style="background:rgba(45,139,255,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(45,139,255,.35);">
+    <label style="color:#8ed0ff; font-weight:bold;">🎬 Video Library</label>
+    <label for="videoUploadBatch" style="display:block; margin-top:10px;">Upload videos:</label>
+    <input id="videoUploadBatch" type="file" accept="video/mp4,video/webm,video/ogg,video/quicktime" multiple />
+    <button id="uploadVideosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">Upload Videos to Library</button>
+    <div id="videoUploadStatus" style="margin-top:8px; color:#a8f0a8; font-size:12px;"></div>
+    <button id="toggleVideoLibraryBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">🎞️ Video Library <span id="videoLibraryCount"></span> <span id="videoLibraryArrow">▼</span></button>
+    <div id="videoLibrary" style="display:none; max-height:200px; overflow-y:auto; background:rgba(0,0,0,.3); padding:10px; border-radius:8px; margin-top:8px;"></div>
+    <button id="refreshVideosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Videos</button>
+    <div id="selectedVideoLabel" style="font-size:12px; color:#b8e8ff; margin-top:10px;"> </div>
+    <button id="playVideoBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; background:#1976d2; color:white;">▶ PLAY VIDEO FOR PLAYERS</button>
+  </div>
+
+  <div id="audioManagement" style="background:rgba(38,170,130,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(38,170,130,.35);">
+    <label style="color:#79e0bd; font-weight:bold;">🎧 Audio Library</label>
+    <label for="audioUploadBatch" style="display:block; margin-top:10px;">Upload audio:</label>
+    <input id="audioUploadBatch" type="file" accept="audio/*" multiple />
+    <button id="uploadAudiosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">Upload Audio to Library</button>
+    <div id="audioUploadStatus" style="margin-top:8px; color:#a8f0a8; font-size:12px;"></div>
+    <button id="toggleAudioLibraryBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">🎧 Audio Library <span id="audioLibraryCount"></span> <span id="audioLibraryArrow">▼</span></button>
+    <div id="audioLibrary" style="display:none; max-height:200px; overflow-y:auto; background:rgba(0,0,0,.3); padding:10px; border-radius:8px; margin-top:8px;"></div>
+    <button id="refreshAudiosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Audio</button>
+    <div id="selectedAudioLabel" style="font-size:12px; color:#b8e8ff; margin-top:10px;"> </div>
+    <button id="playAudioBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; background:#168b6b; color:white;">▶ PLAY AUDIO FOR PLAYERS</button>
+  </div>
+
+  <!-- Image Preview for PDF Questions -->
+
+  <img id="imagePreview" style="display:none; max-width: 100%; max-height: 300px; margin-top: 10px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.2);" alt="Question Image"/>
+  
+  <div id="imageFileField">
+    <label></label>
+    <div id="selectedImageLabel" style="font-size:12px; color:#b8e8ff; margin-top:5px;"></div>
+   
+  </div>
+  
+  <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-top: 10px; border: 1px solid rgba(255,215,0,0.3);">
+    <label>Set Options & Correct Answer:</label>
+    <div style="display: flex; gap: 8px; margin-top: 5px;">
+      <input id="optA" value="A"> 
+      <input id="optB" value="B">
+      <input id="optC" value="C"> 
+      <input id="optD" value="D">
+    </div>
+    <div style="margin-top: 10px;">
+      Correct Option: 
+      <select id="correctAns" style="width:120px; display: inline-block; margin-left: 10px;">
+        <option>A</option><option>B</option><option>C</option><option>D</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="hostAnswerControls" style="background:rgba(255,215,0,.10); padding:15px; border-radius:10px; margin-top:12px; border:2px solid rgba(255,215,0,.45);">
+    <label>🎙️ Host Answer Control</label>
+    <p style="font-size:13px; margin:6px 0; color:#d7e6ff;">Listen to the player’s verbal answer, select it here, then lock it.</p>
+    <label for="activePlayer">Player:</label>
+    <select id="activePlayer" style="margin:5px 0 10px;"><option value="">Select a connected player</option></select>
+    <div id="hostAnswerChoices" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+      <button type="button" class="host-answer-btn" data-answer="A">A</button>
+      <button type="button" class="host-answer-btn" data-answer="B">B</button>
+      <button type="button" class="host-answer-btn" data-answer="C">C</button>
+      <button type="button" class="host-answer-btn" data-answer="D">D</button>
+    </div>
+    <button id="lockAnswerBtn" type="button" class="gold-btn" style="width:100%; margin-top:10px; font-size:17px;" disabled>🔒 LOCK ANSWER</button>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+      <button id="markCorrectBtn" type="button" style="background:#28a745; color:white; font-size:17px;" disabled>✅ CORRECT</button>
+      <button id="markWrongBtn" type="button" style="background:#c93b4a; color:white; font-size:17px;" disabled>❌ WRONG</button>
+    </div>
+    <div id="hostAnswerStatus" style="margin-top:10px; text-align:center; font-weight:bold; color:#ffeaa7;">Send a question to begin.</div>
+  </div>
+  
+  <label for="timeLimit">Time Limit:</label>
+  <select id="timeLimit">
+    <option value="30">30 Seconds</option>
+    <option value="60">60 Seconds</option>
+    <option value="120">120 Seconds</option>
+  </select>
+  
+  <button id="sendQ" type="button" class="gold-btn" style="width: 100%; font-size: 20px; margin-top: 15px; border: 2px solid #000;">
+    SEND QUESTION TO ALL 
+  </button>
+</div>
+  </div><script>
+  let ws;
+  let presenceState = { host: false, player: false };
+  let reconnectTimer = null;
+  let timerInterval; 
+  let timeLeft;      
+  let hostSelectedAnswer = null;
+  let hostAnswerLocked = false;
+  let pdfQuestions = [];
+  let pdfQuestionIndex = -1;
+  let currentCorrectAnswer = null;
+  let currentPdfQuestion = null;
+  let hostTimerInterval; 
+  let hostTimerLeft;
+  let hostTimerTotal;
+  let hostTimerPaused = false;
+  let imageLibrary = []; // Store image library
+  let selectedImageId = null; // Currently selected image for question
+  let videoLibrary = [];
+  let audioLibrary = [];
+  let selectedVideoId = null;
+  let selectedAudioId = null;
+  let currentQuestionVideoId = '';
+  let currentQuestionAudioId = '';
+  let activeVideoPlaybackId = '';
+  let activeAudioPlaybackId = '';
+  let videoReadyForQuestion = false;
+  let audioReadyForQuestion = false;
+  let nextVideoNotificationTimer;
+  let nextVideoNotificationHideTimer;
+  let hostVideoEndedNotificationTimer;
+  let nextAudioNotificationTimer;
+  let nextAudioNotificationHideTimer;
+  let hostAudioEndedNotificationTimer;
+  let hostAudioEndedNotificationHideTimer;
+
+  function updatePresenceIndicator(status = {}) {
+    presenceState = { ...presenceState, ...status };
+    ['host', 'player'].forEach(role => {
+      const connected = Boolean(presenceState[role]);
+      document.getElementById(`${role}Presence`).textContent = connected ? 'Connected' : 'Not connected';
+      document.getElementById(`${role}PresenceItem`).dataset.connected = String(connected);
+    });
+  }
+
+  // Arrange the host dashboard into live-quiz control zones without changing existing IDs or handlers.
+  (() => {
+    const mainLayout = document.querySelector('.main-layout');
+    const eventSide = document.getElementById('eventSide');
+    const questionSide = document.getElementById('questionSide');
+    const answerControls = document.getElementById('hostAnswerControls');
+    const imageManagement = document.getElementById('imageManagement');
+    const videoManagement = document.getElementById('videoManagement');
+    const audioManagement = document.getElementById('audioManagement');
+    const sendQuestionButton = document.getElementById('sendQ');
+    const playVideoButton = document.getElementById('playVideoBtn');
+    const playAudioButton = document.getElementById('playAudioBtn');
+    if (!mainLayout || !eventSide || !questionSide || !answerControls || !imageManagement || !videoManagement || !audioManagement || !sendQuestionButton || !playVideoButton || !playAudioButton) return;
+
+    const answerSide = document.createElement('div');
+    answerSide.id = 'hostAnswerSide';
+    answerSide.className = 'side-panel';
+    answerSide.innerHTML = '<h3 style="border-bottom:2px solid gold; padding-bottom:5px;">🎙️ Host Answer Control</h3>';
+    answerControls.querySelector('label').style.display = 'none';
+    answerSide.appendChild(answerControls);
+    answerSide.appendChild(sendQuestionButton);
+    answerSide.appendChild(playVideoButton);
+    answerSide.appendChild(playAudioButton);
+    mainLayout.insertBefore(answerSide, eventSide);
+
+    const imageSide = document.createElement('div');
+    imageSide.id = 'imageSide';
+    imageSide.className = 'side-panel';
+    imageSide.innerHTML = '<h3 style="border-bottom:2px solid gold; padding-bottom:5px;">📸 Image Management</h3>';
+    imageManagement.querySelector('label').style.display = 'none';
+    imageSide.appendChild(imageManagement);
+
+    const videoSide = document.createElement('div');
+    videoSide.id = 'videoSide';
+    videoSide.className = 'side-panel';
+    videoSide.innerHTML = '<h3 style="border-bottom:2px solid #8ed0ff; padding-bottom:5px;">🎬 Video Management</h3>';
+    videoManagement.querySelector('label').style.display = 'none';
+    videoSide.appendChild(videoManagement);
+
+    const audioSide = document.createElement('div');
+    audioSide.id = 'audioSide';
+    audioSide.className = 'side-panel';
+    audioSide.innerHTML = '<h3 style="border-bottom:2px solid #79e0bd; padding-bottom:5px;">🎧 Audio Management</h3>';
+    audioManagement.querySelector('label').style.display = 'none';
+    audioSide.appendChild(audioManagement);
+
+    const bottomLayout = document.createElement('div');
+    bottomLayout.className = 'bottom-layout';
+    bottomLayout.appendChild(imageSide);
+    bottomLayout.appendChild(videoSide);
+    bottomLayout.appendChild(audioSide);
+    bottomLayout.appendChild(eventSide);
+    mainLayout.insertAdjacentElement('afterend', bottomLayout);
+
+    const pdfLabel = document.querySelector('label[for="pdfFile"]');
+    const pdfFile = document.getElementById('pdfFile');
+    const imageFileField = document.getElementById('imageFileField');
+    if (pdfLabel && pdfFile && imageFileField) {
+      const uploadRow = document.createElement('div');
+      uploadRow.className = 'question-upload-row';
+      const pdfGroup = document.createElement('div');
+      pdfLabel.insertAdjacentElement('beforebegin', uploadRow);
+      pdfGroup.appendChild(pdfLabel);
+      pdfGroup.appendChild(pdfFile);
+      uploadRow.appendChild(pdfGroup);
+      uploadRow.appendChild(imageFileField);
+    }
+  })();
+
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+    
+  const log = (t) => { 
+    const el = document.getElementById('events'); 
+    el.textContent = `[${new Date().toLocaleTimeString()}] ${t}\n` + el.textContent; 
+  };
+
+  function updateHostTimerDisplay(timeLeft, totalTime) {
+    const timerDisplay = document.getElementById('hostTimerValue');
+    if (timerDisplay) {
+      timerDisplay.textContent = timeLeft;
+    }
+  }
+
+  function startHostTimer(totalTime) {
+    clearInterval(hostTimerInterval);
+    hostTimerTotal = totalTime;
+    hostTimerLeft = totalTime;
+    hostTimerPaused = false;
+    document.getElementById('timerPanel').style.display = 'block';
+    updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
+    updateHostTimerButtons();
+    runHostTimerCountdown();
+  }
+
+  function runHostTimerCountdown() {
+    clearInterval(hostTimerInterval);
+    hostTimerInterval = setInterval(() => {
+      if (hostTimerPaused) return;
+      hostTimerLeft--;
+      if (hostTimerLeft <= 0) {
+        clearInterval(hostTimerInterval);
+        updateHostTimerDisplay(0, hostTimerTotal);
+        log('⏰ HOST TIMER: Time is UP!');
+        setTimeout(() => {
+          document.getElementById('timerPanel').style.display = 'none';
+        }, 2000);
+        return;
+      }
+      updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
+    }, 1000);
+  }
+
+  function updateHostTimerButtons() {
+    document.getElementById('pauseHostTimerBtn').disabled = hostTimerPaused;
+    document.getElementById('resumeHostTimerBtn').disabled = !hostTimerPaused;
+  }
+
+  function controlHostTimer(action, sync = true) {
+    if (action === 'pause') {
+      hostTimerPaused = true;
+      clearInterval(hostTimerInterval);
+    } else if (action === 'resume' && hostTimerPaused) {
+      hostTimerPaused = false;
+      runHostTimerCountdown();
+    }
+    updateHostTimerButtons();
+    if (sync && ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'host_timer_control', payload: { action } }));
+  }
+
+  document.getElementById('pauseHostTimerBtn').onclick = () => controlHostTimer('pause');
+  document.getElementById('resumeHostTimerBtn').onclick = () => controlHostTimer('resume');
+    
+  function scheduleHostReconnect() {
+    if (reconnectTimer !== null) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectToServer();
+    }, 1500);
+  }
+
+  function connectToServer() {
+    if (ws && ws.readyState !== WebSocket.CLOSED) return ws;
+    const hostAddr = location.host || "localhost:8080";
+    document.getElementById('connStatus').textContent = 'Connecting to server...';
+    try {
+      ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + hostAddr);
+    } catch (error) {
+      document.getElementById('connStatus').textContent = 'Server unavailable. Reconnecting...';
+      scheduleHostReconnect();
+      return null;
+    }
+    const socket = ws;
+    
+    socket.onopen = () => {
+      if (ws !== socket) return;
+      socket.send(JSON.stringify({ 
+        type:'join', 
+        payload: { role:'host', roomId: document.getElementById('roomId').value, name: document.getElementById('hostName').value } 
+      }));
+      document.getElementById('connStatus').textContent = '✔ SERVER CONNECTED';
+      log('Connected as Host. Waiting for players...');
+      fetchLeaderboard();
+      socket.send(JSON.stringify({ type: 'list_players' }));
+    };
+    
+    socket.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'connection_status') updatePresenceIndicator(msg.payload || {});
+      if (msg.type === 'scoreboard') {
+        renderPlayers(msg.payload);
+      }
+      if (msg.type === 'question') {
+        const timeLimit = String(msg.payload.timeLimitSec);
+        document.getElementById('timeLimit').value = timeLimit;
+        startHostTimer(Number(timeLimit));
+      }
+      if (msg.type === 'question_sent') {
+        log(`✅ Question sent successfully (format: ${msg.payload.format}, videoId: ${msg.payload.videoId || 'none'}, audioId: ${msg.payload.audioId || 'none'}).`);
+      }
+      if (msg.type === 'player_joined' || msg.type === 'player_left' || msg.type === 'joined' || msg.type === 'players') {
+        if (msg.type === 'players') renderPlayers(msg.payload);
+        else ws.send(JSON.stringify({ type: 'list_players' }));
+      }
+      if (msg.type === 'timer_started') {
+        const totalTime = msg.payload.totalTime;
+        if (totalTime !== 'infinite') {
+          startHostTimer(totalTime);
+          log(`⏱️ TIMER STARTED: ${totalTime} seconds`);
+        } else {
+          log(`⏳ INFINITE TIME ENABLED`);
+        }
+      }
+      if (msg.type === 'timer_update') {
+        if (msg.payload.status === 'running') {
+          updateHostTimerDisplay(msg.payload.timeLeft, msg.payload.totalTime);
+        } else if (msg.payload.status === 'ended') {
+          log(`⏰ TIMER ENDED`);
+        }
+      }
+      if (msg.type === 'host_answer_selected') {
+        hostSelectedAnswer = msg.payload.answer;
+        updateHostAnswerControls();
+        log(`🎙️ Host selected answer ${hostSelectedAnswer}.`);
+      }
+      if (msg.type === 'timer_control') {
+        controlHostTimer(msg.payload.action, false);
+      }
+      if (msg.type === 'video_ended') {
+        const endedVideoId = msg.payload?.videoId || '';
+        if (!activeVideoPlaybackId || !endedVideoId || endedVideoId === activeVideoPlaybackId) {
+          videoReadyForQuestion = true;
+          syncVideoQuestionControls();
+          showHostVideoEndedNotification();
+          log('✅ Video finished. You can now send the question.');
+        }
+      }
+      if (msg.type === 'audio_ended') {
+        const endedAudioId = msg.payload?.audioId || '';
+        if (!activeAudioPlaybackId || !endedAudioId || endedAudioId === activeAudioPlaybackId) {
+          audioReadyForQuestion = true;
+          syncVideoQuestionControls();
+          showHostAudioEndedNotification();
+          log('✅ Audio finished. You can now send the question.');
+        }
+      }
+      if (msg.type === 'answer_locked') {
+        hostSelectedAnswer = msg.payload.answer;
+        hostAnswerLocked = true;
+        updateHostAnswerControls();
+        log(`🔒 Answer ${hostSelectedAnswer} locked for ${msg.payload.playerName}.`);
+      }
+      if (msg.type === 'answer_result') {
+        document.getElementById('hostAnswerStatus').textContent = msg.payload.result === 'correct' ? '✅ Correct result sent.' : '❌ Wrong result sent.';
+        document.getElementById('markCorrectBtn').disabled = true;
+        document.getElementById('markWrongBtn').disabled = true;
+        if (msg.payload.result === 'wrong') fetchLeaderboard();
+        if (msg.payload.result === 'correct' && pdfQuestions.length) loadNextPdfQuestion();
+        if (msg.payload.result === 'correct' && getQuestionVideoId()) {
+          showNextVideoNotification();
+        }
+        if (msg.payload.result === 'correct' && getQuestionAudioId()) {
+          showNextAudioNotification();
+        }
+        log(`Result marked: ${msg.payload.result.toUpperCase()}.`);
+      }
+    };
+    socket.onclose = () => {
+      if (ws !== socket) return;
+      ws = null;
+      updatePresenceIndicator({ host: false });
+      document.getElementById('connStatus').textContent = 'Connection lost. Reconnecting...';
+      scheduleHostReconnect();
+    };
+    socket.onerror = () => socket.close();
+    return socket;
+  }
+
+  function waitForHostConnection(timeoutMs = 10000) {
+    if (ws?.readyState === WebSocket.OPEN) return Promise.resolve(true);
+    connectToServer();
+    return new Promise(resolve => {
+      const startedAt = Date.now();
+      const checkConnection = () => {
+        if (ws?.readyState === WebSocket.OPEN) return resolve(true);
+        if (Date.now() - startedAt >= timeoutMs) return resolve(false);
+        setTimeout(checkConnection, 100);
+      };
+      checkConnection();
+    });
+  }
+
+  document.getElementById('connectBtn').onclick = connectToServer;
+    
+  document.getElementById('qFormat').onchange = () => {
+    const isImage = document.getElementById('qFormat').value === 'image';
+    document.getElementById('imageFileField').style.display = isImage ? 'block' : 'none';
+  };
+
+  function updateHostAnswerControls() {
+    document.querySelectorAll('.host-answer-btn').forEach(button => {
+      const selected = button.dataset.answer === hostSelectedAnswer;
+      button.style.background = selected ? '#ffd54d' : '#24385d';
+      button.style.color = selected ? '#111' : '#fff';
+      button.disabled = hostAnswerLocked;
+    });
+    const lockButton = document.getElementById('lockAnswerBtn');
+    lockButton.disabled = !hostSelectedAnswer || hostAnswerLocked;
+    lockButton.textContent = hostAnswerLocked ? '🔒 ANSWER LOCKED' : '🔒 LOCK ANSWER';
+    document.getElementById('activePlayer').disabled = hostAnswerLocked;
+    document.getElementById('markCorrectBtn').disabled = !hostAnswerLocked;
+    document.getElementById('markWrongBtn').disabled = !hostAnswerLocked;
+    const expectedResult = hostSelectedAnswer === currentCorrectAnswer ? 'correct' : 'wrong';
+    document.getElementById('markCorrectBtn').style.display = hostAnswerLocked && expectedResult === 'correct' ? 'block' : 'none';
+    document.getElementById('markWrongBtn').style.display = hostAnswerLocked && expectedResult === 'wrong' ? 'block' : 'none';
+    const status = document.getElementById('hostAnswerStatus');
+    if (hostAnswerLocked) status.textContent = `🔒 Answer ${hostSelectedAnswer} is locked. Mark the result.`;
+    else if (hostSelectedAnswer) status.textContent = `Selected: ${hostSelectedAnswer}. Click Lock Answer.`;
+  }
+
+  function syncVideoQuestionControls() {
+    const videoId = getQuestionVideoId();
+    const audioId = getQuestionAudioId();
+    document.getElementById('sendQ').disabled = (Boolean(videoId) && !videoReadyForQuestion) || (Boolean(audioId) && !audioReadyForQuestion);
+  }
+
+  function showNextVideoNotification() {
+    const notification = document.getElementById('nextVideoNotification');
+    clearTimeout(nextVideoNotificationTimer);
+    clearTimeout(nextVideoNotificationHideTimer);
+    nextVideoNotificationTimer = setTimeout(() => {
+      notification.style.display = 'block';
+      nextVideoNotificationHideTimer = setTimeout(() => {
+        notification.style.display = 'none';
+      }, 4000);
+    }, 2000);
+  }
+
+  function showHostVideoEndedNotification() {
+    const notification = document.getElementById('hostVideoEndedNotification');
+    if (!notification) return;
+    clearTimeout(hostVideoEndedNotificationTimer);
+    notification.style.display = 'block';
+    hostVideoEndedNotificationTimer = setTimeout(() => {
+      notification.style.display = 'none';
+    }, 4000);
+  }
+
+  function getQuestionVideoId() {
+    const fieldValue = document.getElementById('questionVideoId').value.trim();
+    return extractVideoId(fieldValue) || currentQuestionVideoId;
+  }
+
+  function getQuestionAudioId() {
+    const fieldValue = document.getElementById('questionAudioId').value.trim();
+    return extractAudioId(fieldValue) || currentQuestionAudioId;
+  }
+
+  function extractAudioId(value) {
+    const text = String(value || '');
+    const labelledMatch = text.match(/audio\s*id\s*[:=\-]?\s*(audio\s*[-_]?\s*\d+)/i);
+    const directMatch = text.match(/\baudio\s*[-_]\s*\d+\b/i);
+    const rawId = labelledMatch?.[1] || directMatch?.[0] || '';
+    return rawId.toLowerCase().replace(/\s+/g, '').replace('_', '-');
+  }
+
+  function showHostAudioEndedNotification() {
+    const notification = document.getElementById('hostAudioEndedNotification');
+    if (!notification) return;
+    clearTimeout(hostAudioEndedNotificationTimer);
+    clearTimeout(hostAudioEndedNotificationHideTimer);
+    notification.style.display = 'block';
+    hostAudioEndedNotificationTimer = setTimeout(() => {
+      notification.style.display = 'none';
+    }, 4000);
+  }
+
+  function showNextAudioNotification() {
+    const notification = document.getElementById('nextAudioNotification');
+    if (!notification) return;
+    clearTimeout(nextAudioNotificationTimer);
+    clearTimeout(nextAudioNotificationHideTimer);
+    nextAudioNotificationTimer = setTimeout(() => {
+      notification.style.display = 'block';
+      nextAudioNotificationHideTimer = setTimeout(() => {
+        notification.style.display = 'none';
+      }, 4000);
+    }, 2000);
+  }
+
+  function extractVideoId(value) {
+    const text = String(value || '');
+    const labelledMatch = text.match(/video\s*id\s*[:=\-]?\s*(video\s*[-_]?\s*\d+)/i);
+    const directMatch = text.match(/\bvideo\s*[-_]\s*\d+\b/i);
+    const rawId = labelledMatch?.[1] || directMatch?.[0] || '';
+    return rawId.toLowerCase().replace(/\s+/g, '').replace('_', '-');
+  }
+
+  function getQuestionTextWithoutVideoId() {
+    return document.getElementById('qText').value;
+  }
+
+  const updateVideoQuestionState = () => {
+    currentQuestionVideoId = '';
+    videoReadyForQuestion = false;
+    activeVideoPlaybackId = '';
+    syncVideoQuestionControls();
+  };
+  document.getElementById('questionVideoId').addEventListener('input', updateVideoQuestionState);
+  document.getElementById('questionAudioId').addEventListener('input', () => {
+    currentQuestionAudioId = '';
+    audioReadyForQuestion = false;
+    activeAudioPlaybackId = '';
+    syncVideoQuestionControls();
+  });
+  document.getElementById('qText').addEventListener('input', () => {
+    if (!document.getElementById('questionVideoId').value.trim()) currentQuestionVideoId = '';
+  });
+
+  document.querySelectorAll('.host-answer-btn').forEach(button => {
+    button.onclick = () => {
+      if (hostAnswerLocked) return;
+      hostSelectedAnswer = button.dataset.answer;
+      updateHostAnswerControls();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        document.getElementById('hostAnswerStatus').textContent = 'Connect the server before locking an answer.';
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'host_select_answer', payload: { answer: hostSelectedAnswer } }));
+    };
+  });
+
+  document.getElementById('lockAnswerBtn').onclick = () => {
+    if (!ws || !hostSelectedAnswer) return;
+    const playerId = document.getElementById('activePlayer').value;
+    hostAnswerLocked = true;
+    clearInterval(hostTimerInterval);
+    updateHostAnswerControls();
+    ws.send(JSON.stringify({ type: 'host_lock_answer', payload: { playerId, answer: hostSelectedAnswer } }));
+  };
+
+  function markHostResult(result) {
+    if (!ws || !hostAnswerLocked) return;
+    ws.send(JSON.stringify({ type: 'host_mark_result', payload: { result } }));
+  }
+  document.getElementById('markCorrectBtn').onclick = () => markHostResult('correct');
+  document.getElementById('markWrongBtn').onclick = () => markHostResult('wrong');
+
+  function escapeHtml(value) {
+    const element = document.createElement('div');
+    element.textContent = value;
+    return element.innerHTML;
+  }
+
+  async function refreshImageLibrary() {
+    const library = document.getElementById('imageLibrary');
+    library.innerHTML = '<p style="color:#999; text-align:center;">Loading images…</p>';
+    try {
+      const response = await fetch('/api/images/list');
+      if (!response.ok) throw new Error('Could not load image library');
+      const data = await response.json();
+      imageLibrary = data.images || [];
+      document.getElementById('imageLibraryCount').textContent = `(${imageLibrary.length})`;
+      if (!imageLibrary.length) {
+        library.innerHTML = '<p style="color:#999; text-align:center;">No images uploaded yet</p>';
+        return;
+      }
+      library.innerHTML = imageLibrary.map(image => `
+        <div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);">
+          <img src="${image.url}" alt="" style="width:42px; height:32px; object-fit:cover; border-radius:4px;">
+          <button type="button" data-image-id="${image.imageId}" style="flex:1; text-align:left; background:${selectedImageId === image.imageId ? '#ffd54d' : '#24385d'}; color:${selectedImageId === image.imageId ? '#111' : 'white'}; padding:6px;">${escapeHtml(image.name)}<br><small>${image.imageId}</small></button>
+          <button type="button" data-delete-image-id="${image.imageId}" style="background:#9d2636; color:white; padding:6px;" title="Delete image">×</button>
+        </div>`).join('');
+      library.querySelectorAll('[data-image-id]').forEach(button => { button.onclick = () => selectLibraryImage(button.dataset.imageId); });
+      library.querySelectorAll('[data-delete-image-id]').forEach(button => { button.onclick = () => deleteLibraryImage(button.dataset.deleteImageId); });
+    } catch (error) {
+      library.innerHTML = `<p style="color:#ff8a8a; text-align:center;">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function selectLibraryImage(imageId) {
+    const image = imageLibrary.find(item => item.imageId === imageId);
+    if (!image) return;
+    selectedImageId = imageId;
+    currentPdfQuestion = null;
+    document.getElementById('qFormat').value = 'image';
+    document.getElementById('qFormat').dispatchEvent(new Event('change'));
+    document.getElementById('imageFile').value = '';
+    document.getElementById('selectedImageLabel').textContent = `Selected: ${image.name} (ID: ${image.imageId})`;
+    const preview = document.getElementById('imagePreview');
+    preview.src = image.url;
+    preview.style.display = 'block';
+    refreshImageLibrary();
+  }
+
+  async function deleteLibraryImage(imageId) {
+    if (!confirm('Delete this image from the library?')) return;
+    try {
+      const response = await fetch(`/api/images/${encodeURIComponent(imageId)}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error((await response.json()).error || 'Could not delete image');
+      if (selectedImageId === imageId) {
+        selectedImageId = null;
+        document.getElementById('selectedImageLabel').textContent = 'Choose an image from the library above, or upload a one-off image.';
+      }
+      await refreshImageLibrary();
+    } catch (error) { alert(error.message); }
+  }
+
+  document.getElementById('uploadImagesBtn').onclick = async () => {
+    const input = document.getElementById('imageUploadBatch');
+    const status = document.getElementById('uploadStatus');
+    if (!input.files.length) return alert('Choose one or more image files first.');
+    const formData = new FormData();
+    Array.from(input.files).forEach(file => formData.append('images', file));
+    status.style.color = '#00ff00';
+    status.textContent = 'Uploading…';
+    try {
+      const response = await fetch('/api/images/upload', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      input.value = '';
+      status.textContent = data.message;
+      await refreshImageLibrary();
+    } catch (error) { status.textContent = error.message; status.style.color = '#ff8a8a'; }
+  };
+
+  document.getElementById('refreshImagesBtn').onclick = refreshImageLibrary;
+  document.getElementById('toggleImageLibraryBtn').onclick = () => {
+    const library = document.getElementById('imageLibrary');
+    const isOpen = library.style.display !== 'none';
+    library.style.display = isOpen ? 'none' : 'block';
+    document.getElementById('imageLibraryArrow').textContent = isOpen ? '▼' : '▲';
+  };
+  refreshImageLibrary();
+
+  async function refreshVideoLibrary() {
+    const library = document.getElementById('videoLibrary');
+    try {
+      const response = await fetch('/api/videos/list');
+      if (!response.ok) throw new Error('Could not load video library');
+      const data = await response.json();
+      videoLibrary = data.videos || [];
+      document.getElementById('videoLibraryCount').textContent = `(${videoLibrary.length})`;
+      library.innerHTML = videoLibrary.length ? videoLibrary.map(video => `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);"><button type="button" data-video-id="${video.videoId}" style="flex:1; text-align:left; background:${selectedVideoId === video.videoId ? '#52b7ff' : '#24385d'}; color:white; padding:6px;">${escapeHtml(video.name)}<br><small>${video.videoId}</small></button><button type="button" data-delete-video-id="${video.videoId}" style="background:#9d2636; color:white; padding:6px;">×</button></div>`).join('') : '<p style="color:#999; text-align:center;">No videos uploaded yet</p>';
+      library.querySelectorAll('[data-video-id]').forEach(button => button.onclick = () => selectLibraryVideo(button.dataset.videoId));
+      library.querySelectorAll('[data-delete-video-id]').forEach(button => button.onclick = () => deleteLibraryVideo(button.dataset.deleteVideoId));
+    } catch (error) { library.innerHTML = `<p style="color:#ff8a8a;">${escapeHtml(error.message)}</p>`; }
+  }
+
+  function selectLibraryVideo(videoId) {
+    const video = videoLibrary.find(item => item.videoId === videoId);
+    if (!video) return;
+    selectedVideoId = videoId;
+    document.getElementById('selectedVideoLabel').textContent = `Selected: ${video.name}`;
+    refreshVideoLibrary();
+  }
+
+  async function deleteLibraryVideo(videoId) {
+    if (!confirm('Delete this video from the library?')) return;
+    const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+    if (!response.ok) return alert('Could not delete video.');
+    if (selectedVideoId === videoId) selectedVideoId = null;
+    refreshVideoLibrary();
+  }
+
+  document.getElementById('uploadVideosBtn').onclick = async () => {
+    const input = document.getElementById('videoUploadBatch');
+    const status = document.getElementById('videoUploadStatus');
+    if (!input.files.length) return alert('Choose one or more videos first.');
+    const formData = new FormData();
+    Array.from(input.files).forEach(file => formData.append('videos', file));
+    status.textContent = 'Uploading…';
+    try {
+      const response = await fetch('/api/videos/upload', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      input.value = '';
+      status.textContent = data.message;
+      refreshVideoLibrary();
+    } catch (error) { status.textContent = error.message; }
+  };
+
+  document.getElementById('toggleVideoLibraryBtn').onclick = () => {
+    const library = document.getElementById('videoLibrary');
+    const open = library.style.display !== 'none';
+    library.style.display = open ? 'none' : 'block';
+    document.getElementById('videoLibraryArrow').textContent = open ? '▼' : '▲';
+  };
+  document.getElementById('refreshVideosBtn').onclick = refreshVideoLibrary;
+  document.getElementById('playVideoBtn').onclick = () => {
+    const videoId = getQuestionVideoId() || currentQuestionVideoId;
+    if (!videoId) return alert('This question has no Video ID.');
+    const video = videoLibrary.find(item => item.videoId === videoId);
+    if (!video) return alert(`Video ID not found: ${videoId}`);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Connect to Server first!');
+    currentQuestionVideoId = videoId;
+    activeVideoPlaybackId = videoId;
+    videoReadyForQuestion = false;
+    syncVideoQuestionControls();
+    ws.send(JSON.stringify({ type: 'video_preview', payload: { url: video.url, name: video.name, videoId } }));
+    log(`🎬 Playing video for players: ${video.name}`);
+  };
+  refreshVideoLibrary();
+
+  async function refreshAudioLibrary() {
+    const library = document.getElementById('audioLibrary');
+    try {
+      const response = await fetch('/api/audio/list');
+      if (!response.ok) throw new Error('Could not load audio library');
+      const data = await response.json();
+      audioLibrary = data.audios || [];
+      document.getElementById('audioLibraryCount').textContent = `(${audioLibrary.length})`;
+      library.innerHTML = audioLibrary.length ? audioLibrary.map(audio => `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);"><button type="button" data-audio-id="${audio.audioId}" style="flex:1; text-align:left; background:${selectedAudioId === audio.audioId ? '#168b6b' : '#24385d'}; color:white; padding:6px;">${escapeHtml(audio.name)}<br><small>${audio.audioId}</small></button><button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px;">×</button></div>`).join('') : '<p style="color:#999; text-align:center;">No audio uploaded yet</p>';
+      library.querySelectorAll('[data-audio-id]').forEach(button => button.onclick = () => selectLibraryAudio(button.dataset.audioId));
+      library.querySelectorAll('[data-delete-audio-id]').forEach(button => button.onclick = () => deleteLibraryAudio(button.dataset.deleteAudioId));
+    } catch (error) { library.innerHTML = `<p style="color:#ff8a8a;">${escapeHtml(error.message)}</p>`; }
+  }
+
+  function selectLibraryAudio(audioId) {
+    const audio = audioLibrary.find(item => item.audioId === audioId);
+    if (!audio) return;
+    selectedAudioId = audioId;
+    document.getElementById('questionAudioId').value = audioId;
+    currentQuestionAudioId = audioId;
+    audioReadyForQuestion = false;
+    activeAudioPlaybackId = '';
+    document.getElementById('selectedAudioLabel').textContent = `Selected: ${audio.name}`;
+    syncVideoQuestionControls();
+    refreshAudioLibrary();
+  }
+
+  async function deleteLibraryAudio(audioId) {
+    if (!confirm('Delete this audio from the library?')) return;
+    const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
+    if (!response.ok) return alert('Could not delete audio.');
+    if (selectedAudioId === audioId) selectedAudioId = null;
+    if (currentQuestionAudioId === audioId) {
+      currentQuestionAudioId = '';
+      document.getElementById('questionAudioId').value = '';
+      audioReadyForQuestion = false;
+      syncVideoQuestionControls();
+    }
+    refreshAudioLibrary();
+  }
+
+  document.getElementById('uploadAudiosBtn').onclick = async () => {
+    const input = document.getElementById('audioUploadBatch');
+    const status = document.getElementById('audioUploadStatus');
+    if (!input.files.length) return alert('Choose one or more audio files first.');
+    const formData = new FormData();
+    Array.from(input.files).forEach(file => formData.append('audios', file));
+    status.textContent = 'Uploading…';
+    try {
+      const response = await fetch('/api/audio/upload', { method: 'POST', body: formData });
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Upload server returned an invalid response (HTTP ${response.status}).`);
+      }
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      input.value = '';
+      status.textContent = data.message;
+      refreshAudioLibrary();
+    } catch (error) { status.textContent = error.message; }
+  };
+
+  document.getElementById('toggleAudioLibraryBtn').onclick = () => {
+    const library = document.getElementById('audioLibrary');
+    const open = library.style.display !== 'none';
+    library.style.display = open ? 'none' : 'block';
+    document.getElementById('audioLibraryArrow').textContent = open ? '▼' : '▲';
+  };
+  document.getElementById('refreshAudiosBtn').onclick = refreshAudioLibrary;
+  document.getElementById('playAudioBtn').onclick = () => {
+    const audioId = getQuestionAudioId() || currentQuestionAudioId;
+    if (!audioId) return alert('This question has no Audio ID.');
+    const audio = audioLibrary.find(item => item.audioId === audioId);
+    if (!audio) return alert(`Audio ID not found: ${audioId}`);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Connect to Server first!');
+    currentQuestionAudioId = audioId;
+    activeAudioPlaybackId = audioId;
+    audioReadyForQuestion = false;
+    syncVideoQuestionControls();
+    ws.send(JSON.stringify({ type: 'audio_preview', payload: { url: audio.url, name: audio.name, audioId } }));
+    log(`🎧 Playing audio for players: ${audio.name}`);
+  };
+  refreshAudioLibrary();
+
+  document.getElementById('pdfFile').onchange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!window.pdfjsLib) {
+      return alert('PDF reader could not load. Check your internet connection and reload the host page.');
+    }
+
+    const status = document.getElementById('pdfStatus');
+    status.textContent = 'Reading PDF...';
+    try {
+      pdfQuestions = await extractPdfQuestions(file);
+      pdfQuestionIndex = -1;
+      if (!pdfQuestions.length) {
+        status.textContent = 'No questions found. Use Q1/Q2 or 1./2. question headings.';
+        document.getElementById('nextPdfQuestion').style.display = 'none';
+        return;
+      }
+      status.textContent = `${pdfQuestions.length} questions loaded.`;
+      document.getElementById('nextPdfQuestion').style.display = 'block';
+      loadNextPdfQuestion();
+    } catch (error) {
+      status.textContent = '';
+      alert(`Could not read PDF: ${error.message}`);
+    }
+  };
+
+  document.getElementById('nextPdfQuestion').onclick = loadNextPdfQuestion;
+
+  async function extractPdfQuestions(file) {
+    const bytes = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    let text = '';
+    const images = [];
+    
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const lines = [];
+      content.items.forEach(item => {
+        const y = item.transform[5];
+        let line = lines.find(entry => Math.abs(entry.y - y) < 3);
+        if (!line) {
+          line = { y, parts: [] };
+          lines.push(line);
+        }
+        line.parts.push(item.str);
+      });
+      text += lines.sort((a, b) => b.y - a.y).map(line => line.parts.join(' ')).join('\n') + '\n';
+      
+      // Extract images from page
+      try {
+        const operatorList = await page.getOperatorList();
+        const fnArray = operatorList.fnArray;
+        const argsArray = operatorList.argsArray;
+        
+        for (let i = 0; i < fnArray.length; i++) {
+          if (fnArray[i] === pdfjsLib.OPS.paintImageXObject || fnArray[i] === pdfjsLib.OPS.paintInlineImageXObject) {
+            try {
+              const image = await page.objs.get(argsArray[i][0]);
+              if (image) {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.createImageData(image.width, image.height);
+                
+                if (image.data) {
+                  const data = image.data;
+                  for (let j = 0; j < data.length; j++) {
+                    imageData.data[j] = data[j];
+                  }
+                  ctx.putImageData(imageData, 0, 0);
+                  const dataUrl = canvas.toDataURL('image/png', 0.9);
+                  images.push(dataUrl);
+                }
+              }
+            } catch (e) {
+              console.log('Could not extract image:', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Error processing page images:', e);
+      }
+    }
+    
+    return parsePdfQuestions(text, images);
+  }
+
+  function parsePdfQuestions(text, images = []) {
+    const normalizedText = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
+    const questionMatches = [...normalizedText.matchAll(/(?:^|\n)\s*(?:(?:Q(?:uestion)?\s*)?\d+\s*[.)]|Q(?:uestion)?\s*\d*\s*[:.)-])\s*/gi)];
+    const questions = [];
+    let imageIndex = 0;
+    
+    questionMatches.forEach((match, index) => {
+      const start = match.index + match[0].length;
+      const end = index + 1 < questionMatches.length ? questionMatches[index + 1].index : normalizedText.length;
+      const block = normalizedText.slice(start, end).trim();
+      const optionMatches = [...block.matchAll(/(?:^|\n)\s*([ABCD])\s*[.)\-:]\s*(.*?)(?=\n\s*[ABCD]\s*[.)\-:]|\n\s*(?:Answer|Ans|Correct)\s*[:.)-]|$)/gis)];
+      const answerMatch = block.match(/(?:Answer|Ans|Correct)\s*[:.)-]?\s*([ABCD])/i);
+      const firstOptionIndex = optionMatches.length ? optionMatches[0].index : block.length;
+      const rawQuestionText = block.slice(0, firstOptionIndex).trim();
+      const imageIdMatch = rawQuestionText.match(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*((?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/i);
+      const videoIdMatch = rawQuestionText.match(/\bvideo\s*id\s*[:#=-]?\s*(video\s*[-_]\s*\d+)\b/i);
+      const audioIdMatch = rawQuestionText.match(/\baudio\s*id\s*[:#=-]?\s*(audio\s*[-_]\s*\d+)\b/i);
+      const questionText = rawQuestionText.replace(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*(?:(?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/ig, '').trim();
+      const cleanQuestionText = questionText.replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '').replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '').replace(/\n\s*\n/g, '\n').trim();
+      const libraryImage = imageIdMatch && imageLibrary.find(image => image.imageId === imageIdMatch[1]);
+      const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
+      const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
+      const options = optionMatches.map(option => option[2].replace(/\s+/g, ' ').trim());
+      
+      if (cleanQuestionText && options.length >= 4) {
+        const questionObj = { 
+          text: cleanQuestionText,
+          videoId,
+          audioId,
+          options: options.slice(0, 4), 
+          correct: answerMatch ? answerMatch[1].toUpperCase() : 'A',
+          image: libraryImage ? libraryImage.url : (imageIndex < images.length ? images[imageIndex] : null),
+          imageId: libraryImage ? libraryImage.imageId : null
+        };
+        questions.push(questionObj);
+        if (imageIndex < images.length) imageIndex++;
+      }
+    });
+    return questions;
+  }
+
+  function loadNextPdfQuestion() {
+    if (!pdfQuestions.length) return;
+    pdfQuestionIndex = (pdfQuestionIndex + 1) % pdfQuestions.length;
+    const question = pdfQuestions[pdfQuestionIndex];
+    currentPdfQuestion = question;
+    selectedImageId = question.imageId || null;
+    
+    // If question has an image, set to image format
+    if (question.image) {
+      document.getElementById('qFormat').value = 'image';
+      document.getElementById('qFormat').dispatchEvent(new Event('change'));
+    } else {
+      document.getElementById('qFormat').value = 'text';
+      document.getElementById('qFormat').dispatchEvent(new Event('change'));
+    }
+    
+    document.getElementById('qText').value = question.text;
+    document.getElementById('questionVideoId').value = question.videoId || '';
+    document.getElementById('questionAudioId').value = question.audioId || '';
+    currentQuestionVideoId = question.videoId || '';
+    currentQuestionAudioId = question.audioId || '';
+    videoReadyForQuestion = false;
+    audioReadyForQuestion = false;
+    syncVideoQuestionControls();
+    ['A', 'B', 'C', 'D'].forEach((letter, index) => {
+      document.getElementById(`opt${letter}`).value = question.options[index];
+    });
+    document.getElementById('correctAns').value = question.correct;
+    
+    // Display image preview if available
+    if (question.image) {
+      const preview = document.getElementById('imagePreview');
+      if (preview) {
+        preview.src = question.image;
+        preview.style.display = 'block';
+      }
+    } else {
+      const preview = document.getElementById('imagePreview');
+      if (preview) {
+        preview.style.display = 'none';
+      }
+    }
+    
+    document.getElementById('pdfStatus').textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length} ready. ${question.image ? '(with image)' : '(text only)'}`;
+  }
+
+  document.getElementById('sendQ').onclick = async () => {
+    if (!(await waitForHostConnection())) return alert('Could not connect to the server. Check that it is running and try again.');
+    const format = document.getElementById('qFormat').value;
+    const videoId = getQuestionVideoId();
+    const audioId = getQuestionAudioId();
+    let dataUrl = '';
+
+    if (videoId && !videoReadyForQuestion) {
+      return alert('Play the video and wait until it finishes before sending the question.');
+    }
+
+    if (videoId && !videoLibrary.some(video => video.videoId === videoId)) {
+      return alert(`Video ID not found: ${videoId}`);
+    }
+
+    if (audioId && !audioReadyForQuestion) {
+      return alert('Play the audio and wait until it finishes before sending the question.');
+    }
+
+    if (audioId && !audioLibrary.some(audio => audio.audioId === audioId)) {
+      return alert(`Audio ID not found: ${audioId}`);
+    }
+
+    if (format === 'image') {
+        // Check if current PDF question has an image
+        if (currentPdfQuestion && currentPdfQuestion.image) {
+            dataUrl = currentPdfQuestion.image;
+        } else if (selectedImageId) {
+            const image = imageLibrary.find(item => item.imageId === selectedImageId);
+            if (!image) return alert('The selected library image is no longer available.');
+            dataUrl = image.url;
+        } else {
+            // Otherwise, use uploaded image file
+            const imageFile = document.getElementById('imageFile').files[0];
+            if (!imageFile) return alert("Choose an image file first!");
+            try {
+              dataUrl = await readFileAsDataUrl(imageFile);
+            } catch (error) {
+              return alert(error.message);
+            }
+        }
+    }
+
+    const payload = {
+        format,
+        text: getQuestionTextWithoutVideoId(),
+        dataUrl,
+        videoId,
+        audioId,
+        timeLimitSec: document.getElementById('timeLimit').value,
+        metadata: { 
+            options: [
+                document.getElementById('optA').value || "Option A", 
+                document.getElementById('optB').value || "Option B", 
+                document.getElementById('optC').value || "Option C", 
+                document.getElementById('optD').value || "Option D"
+            ],
+            correct: document.getElementById('correctAns').value 
+        }
+    };
+      if (!(await waitForHostConnection())) return alert('Connection lost. The question was not sent. Please try again.');
+      currentQuestionVideoId = payload.videoId;
+      currentQuestionAudioId = payload.audioId;
+      activeVideoPlaybackId = '';
+      activeAudioPlaybackId = '';
+      currentCorrectAnswer = payload.metadata.correct;
+      hostSelectedAnswer = null;
+      hostAnswerLocked = false;
+      document.getElementById('hostAnswerStatus').textContent = 'Choose the verbal answer when the player tells you.';
+      updateHostAnswerControls();
+    log(`📤 Sending question (format: ${payload.format}, videoId: ${payload.videoId || 'none'}, audioId: ${payload.audioId || 'none'}).`);
+    try {
+      ws.send(JSON.stringify({ type:'send_question', payload }));
+    } catch (error) {
+      return alert('Connection lost. The question was not sent. Please try again.');
+    }
+    
+    log('🚀 Question broadcasted.');
+  };
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Could not read image file.'));
+      reader.readAsDataURL(file);
+    });
+  }
+    
+  document.getElementById('auto5050').onclick = () => {
+    const correct = document.getElementById('correctAns').value;
+    const allOptions = ['A', 'B', 'C', 'D'];
+    const wrongOptions = allOptions.filter(opt => opt !== correct);
+    const toRemove = wrongOptions.sort(() => 0.5 - Math.random()).slice(0, 2);
+    
+    if(ws) {
+        ws.send(JSON.stringify({ 
+            type: 'lifeline_5050', 
+            payload: { remove: toRemove } 
+        }));
+        log(`✨ Lifeline: Removing options ${toRemove.join(' & ')}`);
+        document.getElementById('auto5050').disabled = true;
+        document.getElementById('auto5050').style.opacity = "0.5";
+    }
+  };
+
+  document.getElementById('callFriendBtn').onclick = () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Connect to Server first!');
+    ws.send(JSON.stringify({ type: 'lifeline_call' }));
+    document.getElementById('callFriendBtn').disabled = true;
+    document.getElementById('callFriendBtn').style.opacity = '0.5';
+    log('📞 Call Lifeline used.');
+  };
+
+  fetchLeaderboard();
+    
+  function renderPlayers(players) {
+    const el = document.getElementById('players'); 
+    el.innerHTML = '';
+    if(players.length === 0) el.innerHTML = '<p style="color:gray; text-align:center;">No players connected.</p>';
+    
+    const activePlayer = document.getElementById('activePlayer');
+    const selectedPlayerId = activePlayer.value;
+    activePlayer.innerHTML = '<option value="">Select a connected player</option>' + players.map(player => `<option value="${player.playerId}">${player.name}${player.eliminated ? ' (Eliminated)' : ''}</option>`).join('');
+    if (players.some(player => player.playerId === selectedPlayerId)) activePlayer.value = selectedPlayerId;
+    else if (players.length === 1) activePlayer.value = players[0].playerId;
+    players.forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'player-entry';
+      d.dataset.playerId = p.playerId;
+      d.innerHTML = `
+        <div style="font-size: 17px;">👤 <b>${p.name}</b>${p.eliminated ? ' <span class="leaderboard-eliminated">(Eliminated)</span>' : ''} — Cash: <span style="color:gold">₹${(p.cash ?? p.score ?? 0).toLocaleString('en-IN')}</span></div>
+        <div style="font-size: 14px; color: #b8e8ff; margin-top: 4px;">Answers are controlled by the host.</div>
+      `;
+      el.appendChild(d);
+    });
+  }
+
+  async function fetchLeaderboard() {
+    const leaderboardList = document.getElementById('leaderboardList');
+    if (!leaderboardList) return;
+    leaderboardList.innerHTML = '<p style="color:#b8e8ff; text-align:center;">Loading leaderboard...</p>';
+
+    try {
+      const response = await fetch('/api/scores?limit=10');
+      const data = await response.json();
+      const scores = Array.isArray(data.scores) ? data.scores : [];
+
+      if (!scores.length) {
+        leaderboardList.innerHTML = '<p style="color:gray; text-align:center;">No saved scores yet.</p>';
+        return;
+      }
+
+      leaderboardList.innerHTML = scores.map((entry, index) => `
+        <div class="leaderboard-item">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div>
+              <span class="leaderboard-rank">${index + 1}</span>
+              <strong>${entry.name || 'Player'}</strong>${entry.eliminated ? ' <span class="leaderboard-eliminated">(Eliminated)</span>' : ''}
+            </div>
+            <div class="leaderboard-score">₹${Number(entry.score || 0).toLocaleString('en-IN')}</div>
+          </div>
+          <div style="margin-top:6px; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#b8e8ff;">
+            <span>Room: ${entry.roomId || '—'} • Level ${entry.clearedLevel || 0}</span>
+            <button type="button" class="remove-score-btn" data-player-id="${entry.playerId || ''}" style="padding:6px 10px; border-radius:8px; background:#c93b4a; color:#fff; font-size:12px; font-weight:700;">Remove</button>
+          </div>
+        </div>
+      `).join('');
+
+      leaderboardList.querySelectorAll('.remove-score-btn').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const playerId = button.dataset.playerId;
+          if (!playerId) return;
+          try {
+            const response = await fetch(`/api/scores/${encodeURIComponent(playerId)}`, { method: 'DELETE' });
+            if (response.ok) {
+              fetchLeaderboard();
+              log(`🗑️ Removed player ${playerId} from the saved leaderboard.`);
+            } else {
+              const error = await response.json().catch(() => ({}));
+              alert(error.error || 'Could not remove player from leaderboard');
+            }
+          } catch (error) {
+            console.error('Remove score failed:', error);
+            alert('Could not remove player from leaderboard');
+          }
+        });
+      });
+    } catch (error) {
+      leaderboardList.innerHTML = '<p style="color:#ffb4b4; text-align:center;">Could not load leaderboard.</p>';
+      console.error('Leaderboard fetch failed:', error);
+    }
+  }
+
+  document.getElementById('refreshLeaderboardBtn').addEventListener('click', fetchLeaderboard);
+  setInterval(fetchLeaderboard, 15000);
+
+  function refreshPlayers() {
+    if(!ws || ws.readyState !== WebSocket.OPEN) {
+        alert("Server not connected!");
+        return;
+    }
+    ws.send(JSON.stringify({
+        type: "refresh_players"
+    }));
+    currentCorrectAnswer = null;
+    hostSelectedAnswer = null;
+    hostAnswerLocked = false;
+    document.getElementById('hostAnswerStatus').textContent = 'Send a question to begin.';
+    updateHostAnswerControls();
+    ws.send(JSON.stringify({ type: 'list_players' }));
+    document.getElementById('auto5050').disabled = false;
+    document.getElementById('auto5050').style.opacity = "1";
+    document.getElementById('callFriendBtn').disabled = false;
+    document.getElementById('callFriendBtn').style.opacity = "1";
+  }
+
+  connectToServer();
+</script></body></html>
