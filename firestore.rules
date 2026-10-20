@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidScore(data) {
+      return data.keys().hasAll(['playerId', 'name', 'roomId', 'score']) &&
+             data.playerId is string && data.playerId.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.roomId is string && data.roomId.size() <= 100 &&
+             data.score is number;
+    }
+
+    function isValidMedia(data) {
+      return data.keys().hasAll(['id', 'name', 'url', 'type']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 255 &&
+             data.url is string && data.url.size() <= 1024 &&
+             data.type in ['image', 'video', 'audio'];
+    }
+
+    // Public read for scores so host and player leaderboards can display
+    match /scores/{scoreId} {
+      allow read: if isValidId(scoreId);
+      allow create: if isValidId(scoreId) && isValidScore(request.resource.data);
+      allow update: if isValidId(scoreId) && isValidScore(request.resource.data);
+      allow delete: if isValidId(scoreId);
+    }
+
+    // Media index items
+    match /media/{mediaId} {
+      allow read: if isValidId(mediaId);
+      allow create: if isValidId(mediaId) && isValidMedia(request.resource.data);
+      allow update: if isValidId(mediaId) && isValidMedia(request.resource.data);
+      allow delete: if isValidId(mediaId);
+    }
+  }
+}

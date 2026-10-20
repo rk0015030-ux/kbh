@@ -7,14 +7,33 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const multer = require('multer');
-const { createClient } = require('@supabase/supabase-js');
+const { initializeApp } = require('firebase/app');
+const {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  collection,
+  deleteDoc,
+  getDocFromServer
+} = require('firebase/firestore');
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 50 * 1024 * 1024 });
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const PRIZE_LADDER = [100, 200, 300, 400, 500, 700, 900, 1100, 1500, 2000];
 
 function getQuestionTimeLimit(level) {
@@ -36,67 +55,83 @@ const audioDatabase = new Map();
 const scoreDataDir = path.join(__dirname, 'data');
 const scoreDatabasePath = path.join(scoreDataDir, 'scores.json');
 const scoreDatabase = [];
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = supabaseUrl && supabaseServiceRoleKey
-  ? createClient(supabaseUrl, supabaseServiceRoleKey)
-  : null;
-const mediaStorageEnabled = Boolean(supabase);
-const mediaBuckets = { images: 'images', videos: 'videos', audio: 'audio' };
-
-async function uploadMedia(bucket, filename, file) {
-  const { error } = await supabase.storage.from(bucket).upload(filename, file.buffer, {
-    contentType: file.mimetype || 'application/octet-stream',
-    upsert: true
-  });
-  if (error) throw error;
-  const { data } = supabase.storage.from(bucket).getPublicUrl(filename);
-  return data.publicUrl;
-}
-
-async function deleteMedia(bucket, filename) {
-  const { error } = await supabase.storage.from(bucket).remove([filename]);
-  if (error) throw error;
-}
-
-async function saveRemoteIndex(bucket, database) {
-  const body = Buffer.from(JSON.stringify(Object.fromEntries(database), null, 2));
-  const { error } = await supabase.storage.from(bucket).upload('_index.json', body, {
-    contentType: 'application/json',
-    upsert: true
-  });
-  if (error) throw error;
-}
-
-async function loadRemoteIndex(bucket, database) {
-  const { data, error } = await supabase.storage.from(bucket).download('_index.json');
-  if (error) {
-    if (!/not found/i.test(error.message || '')) console.warn(`Could not load ${bucket} index:`, error.message);
-    return;
+let firebaseApp = null;
+let firestoreDb = null;
+try {
+  const firebaseConfig = require('./firebase-applet-config.json');
+  if (firebaseConfig && firebaseConfig.projectId) {
+    firebaseApp = initializeApp(firebaseConfig);
+    firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+    console.log('[Firebase] Initialized Firestore successfully');
   }
-  const entries = JSON.parse(Buffer.from(await data.arrayBuffer()).toString('utf8'));
-  Object.entries(entries).forEach(([id, media]) => database.set(id, media));
+} catch (err) {
+  console.warn('[Firebase] Config load error:', err.message);
+}
+
+async function testFirebaseConnection() {
+  if (!firestoreDb) return;
+  try {
+    await getDocFromServer(doc(firestoreDb, 'test', 'connection'));
+    console.log('[Firebase] Connection to Firestore verified.');
+  } catch (error) {
+    if (error && error.message && error.message.includes('the client is offline')) {
+      console.warn('Firebase Firestore client is offline.');
+    }
+  }
+}
+
+async function saveRemoteMedia(mediaId, item) {
+  if (!firestoreDb) return;
+  try {
+    await setDoc(doc(firestoreDb, 'media', mediaId), {
+      id: mediaId,
+      name: item.name || '',
+      url: item.url || '',
+      filename: item.filename || '',
+      type: item.type || 'image',
+      uploadedAt: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
+      size: Number(item.size) || 0
+    });
+  } catch (error) {
+    console.warn(`[Firebase] Could not save media ${mediaId} to Firestore:`, error.message);
+  }
+}
+
+async function deleteRemoteMedia(mediaId) {
+  if (!firestoreDb) return;
+  try {
+    await deleteDoc(doc(firestoreDb, 'media', mediaId));
+  } catch (error) {
+    console.warn(`[Firebase] Could not delete media ${mediaId} from Firestore:`, error.message);
+  }
 }
 
 async function loadRemoteIndexes() {
-  if (!mediaStorageEnabled) return;
-  await Promise.all([
-    loadRemoteIndex(mediaBuckets.images, imageDatabase),
-    loadRemoteIndex(mediaBuckets.videos, videoDatabase),
-    loadRemoteIndex(mediaBuckets.audio, audioDatabase)
-  ]);
+  await testFirebaseConnection();
+  if (!firestoreDb) return;
+  try {
+    const snap = await getDocs(collection(firestoreDb, 'media'));
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data && data.id && data.filename) {
+        if (data.type === 'video') videoDatabase.set(data.id, data);
+        else if (data.type === 'audio') audioDatabase.set(data.id, data);
+        else imageDatabase.set(data.id, data);
+      }
+    });
+    console.log(`[Firebase] Loaded ${snap.size} media records from Firestore`);
+  } catch (error) {
+    console.warn('[Firebase] Could not load media indexes:', error.message);
+  }
 }
 
-// Ensure images directory exists
-if (!fs.existsSync(imagesDir)) {
-  fs.mkdirSync(imagesDir, { recursive: true });
-}
+// Ensure local directories exist
+if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 if (!fs.existsSync(videosDir)) fs.mkdirSync(videosDir, { recursive: true });
 if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
 if (!fs.existsSync(scoreDataDir)) fs.mkdirSync(scoreDataDir, { recursive: true });
 
 function saveImageIndex() {
-  if (mediaStorageEnabled) return saveRemoteIndex(mediaBuckets.images, imageDatabase);
   fs.writeFileSync(imageIndexPath, JSON.stringify(Object.fromEntries(imageDatabase), null, 2));
 }
 
@@ -114,7 +149,6 @@ function loadImageIndex() {
 loadImageIndex();
 
 function saveVideoIndex() {
-  if (mediaStorageEnabled) return saveRemoteIndex(mediaBuckets.videos, videoDatabase);
   fs.writeFileSync(videoIndexPath, JSON.stringify(Object.fromEntries(videoDatabase), null, 2));
 }
 
@@ -127,12 +161,38 @@ function loadVideoIndex() {
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load video index:', error.message);
   }
+  try {
+    if (fs.existsSync(videosDir)) {
+      const diskFiles = fs.readdirSync(videosDir);
+      const existingFilenames = new Set(Array.from(videoDatabase.values()).map(v => v.filename));
+      diskFiles.forEach(file => {
+        if (file === 'index.json' || existingFilenames.has(file)) return;
+        const filePath = path.join(videosDir, file);
+        const stats = fs.statSync(filePath);
+        if (!stats.isFile()) return;
+        const videoId = createVideoId();
+        const item = {
+          id: videoId,
+          name: file,
+          url: `/videos/${encodeURIComponent(file)}`,
+          filename: file,
+          type: 'video',
+          uploadedAt: stats.mtime.toISOString(),
+          size: stats.size
+        };
+        videoDatabase.set(videoId, item);
+        existingFilenames.add(file);
+      });
+      saveVideoIndex();
+    }
+  } catch (err) {
+    console.warn('Could not scan videosDir:', err.message);
+  }
 }
 
 loadVideoIndex();
 
 function saveAudioIndex() {
-  if (mediaStorageEnabled) return saveRemoteIndex(mediaBuckets.audio, audioDatabase);
   fs.writeFileSync(audioIndexPath, JSON.stringify(Object.fromEntries(audioDatabase), null, 2));
 }
 
@@ -144,6 +204,33 @@ function loadAudioIndex() {
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load audio index:', error.message);
+  }
+  try {
+    if (fs.existsSync(audioDir)) {
+      const diskFiles = fs.readdirSync(audioDir);
+      const existingFilenames = new Set(Array.from(audioDatabase.values()).map(a => a.filename));
+      diskFiles.forEach(file => {
+        if (file === 'index.json' || existingFilenames.has(file)) return;
+        const filePath = path.join(audioDir, file);
+        const stats = fs.statSync(filePath);
+        if (!stats.isFile()) return;
+        const audioId = createAudioId();
+        const item = {
+          id: audioId,
+          name: file,
+          url: `/audio/${encodeURIComponent(file)}`,
+          filename: file,
+          type: 'audio',
+          uploadedAt: stats.mtime.toISOString(),
+          size: stats.size
+        };
+        audioDatabase.set(audioId, item);
+        existingFilenames.add(file);
+      });
+      saveAudioIndex();
+    }
+  } catch (err) {
+    console.warn('Could not scan audioDir:', err.message);
   }
 }
 
@@ -163,6 +250,27 @@ function loadScoreDatabase() {
     }
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load score database:', error.message);
+  }
+}
+
+async function loadRemoteScores() {
+  if (!firestoreDb) return;
+  try {
+    const snap = await getDocs(collection(firestoreDb, 'scores'));
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data && data.playerId) {
+        const existingIdx = scoreDatabase.findIndex((e) => e.playerId === data.playerId && e.roomId === data.roomId);
+        if (existingIdx >= 0) {
+          scoreDatabase[existingIdx] = { ...scoreDatabase[existingIdx], ...data };
+        } else {
+          scoreDatabase.push(data);
+        }
+      }
+    });
+    scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
+  } catch (error) {
+    console.warn('[Firebase] Could not load scores from Firestore:', error.message);
   }
 }
 
@@ -191,6 +299,13 @@ function persistScoreSnapshot({ playerId, name, roomId, score, cash, clearedLeve
 
   scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
   saveScoreDatabase();
+
+  if (firestoreDb) {
+    setDoc(doc(firestoreDb, 'scores', playerId), snapshot).catch((err) => {
+      console.warn(`[Firebase] Could not persist score for ${playerId}:`, err.message);
+    });
+  }
+
   return snapshot;
 }
 
@@ -208,6 +323,13 @@ function removeScoreSnapshot(playerId) {
   scoreDatabase.length = 0;
   filtered.forEach((entry) => scoreDatabase.push(entry));
   saveScoreDatabase();
+
+  if (firestoreDb) {
+    deleteDoc(doc(firestoreDb, 'scores', playerId)).catch((err) => {
+      console.warn(`[Firebase] Could not delete score for ${playerId}:`, err.message);
+    });
+  }
+
   return true;
 }
 
@@ -221,21 +343,14 @@ function createImageId() {
   return `image-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
 }
 
-// Multer configuration for image uploads
-const storage = mediaStorageEnabled ? multer.memoryStorage() : multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, imagesDir);
-  },
-  filename: (req, file, cb) => {
-    const imageId = uuidv4();
-    const ext = path.extname(file.originalname);
-    const filename = imageId + ext;
-    cb(null, filename);
-  }
+// Multer configuration for media uploads
+const imageStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, imagesDir),
+  filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
 });
 
 const upload = multer({
-  storage,
+  storage: imageStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per image
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -247,41 +362,44 @@ const upload = multer({
   }
 });
 
-const videoStorage = mediaStorageEnabled ? multer.memoryStorage() : multer.diskStorage({
+const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, videosDir),
   filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
 });
 const uploadVideos = multer({
   storage: videoStorage,
-  limits: { fileSize: 200 * 1024 * 1024 },
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB per video
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
-    if (allowedTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Invalid file type. Only MP4, WEBM, OGG, MOV allowed.'));
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedExts = ['.mp4', '.webm', '.ogg', '.ogv', '.mov', '.qt', '.mkv', '.avi', '.m4v', '.3gp', '.flv', '.wmv'];
+    if ((file.mimetype && file.mimetype.startsWith('video/')) || allowedExts.includes(ext) || file.mimetype === 'application/octet-stream') {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only video files (MP4, WEBM, OGG, MOV, MKV, AVI, etc.) are allowed.'));
+    }
   }
 });
-const audioStorage = mediaStorageEnabled ? multer.memoryStorage() : multer.diskStorage({
+const audioStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, audioDir),
   filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
 });
 const uploadAudios = multer({
   storage: audioStorage,
-  limits: { fileSize: 100 * 1024 * 1024 },
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB per audio
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/aac', 'audio/webm'];
-    const allowedExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.webm'];
-    if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(path.extname(file.originalname).toLowerCase())) cb(null, true);
-    else cb(new Error('Invalid file type. Only MP3, WAV, OGG, M4A, AAC, and WEBM audio allowed.'));
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedExts = ['.mp3', '.wav', '.ogg', '.oga', '.m4a', '.aac', '.webm', '.flac', '.opus', '.wma', '.alac', '.aiff'];
+    if ((file.mimetype && file.mimetype.startsWith('audio/')) || allowedExts.includes(ext) || file.mimetype === 'application/octet-stream') {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only audio files (MP3, WAV, OGG, M4A, AAC, WEBM, FLAC, etc.) are allowed.'));
+    }
   }
 });
 
-async function storeUploadedMedia(bucket, routePrefix, file) {
-  const filename = mediaStorageEnabled
-    ? `${uuidv4()}${path.extname(file.originalname).toLowerCase()}`
-    : file.filename;
-  const url = mediaStorageEnabled
-    ? await uploadMedia(bucket, filename, file)
-    : `${routePrefix}/${encodeURIComponent(filename)}`;
+function storeUploadedMedia(routePrefix, file) {
+  const filename = file.filename;
+  const url = `${routePrefix}/${encodeURIComponent(filename)}`;
   return { filename, url };
 }
 
@@ -296,23 +414,27 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
   try {
     const uploadedImages = [];
     for (const file of req.files) {
-    const imageId = createImageId();
-    const stored = await storeUploadedMedia(mediaBuckets.images, '/images', file);
-    imageDatabase.set(imageId, {
-      name: file.originalname,
-      url: stored.url,
-      filename: stored.filename,
-      uploadedAt: new Date(),
-      size: file.size
-    });
-    uploadedImages.push({
-      imageId,
-      url: stored.url,
-      name: file.originalname
-    });
+      const imageId = createImageId();
+      const stored = storeUploadedMedia('/images', file);
+      const mediaItem = {
+        id: imageId,
+        name: file.originalname,
+        url: stored.url,
+        filename: stored.filename,
+        type: 'image',
+        uploadedAt: new Date().toISOString(),
+        size: file.size
+      };
+      imageDatabase.set(imageId, mediaItem);
+      await saveRemoteMedia(imageId, mediaItem);
+      uploadedImages.push({
+        imageId,
+        url: stored.url,
+        name: file.originalname
+      });
     }
 
-    await saveImageIndex();
+    saveImageIndex();
 
     res.json({
       success: true,
@@ -360,16 +482,13 @@ app.delete('/api/images/:imageId', async (req, res) => {
   }
 
   try {
-    if (mediaStorageEnabled) {
-      await deleteMedia(mediaBuckets.images, imageData.filename);
-    } else {
-      const filePath = path.join(imagesDir, imageData.filename);
-      await fs.promises.unlink(filePath).catch(error => {
-        if (error.code !== 'ENOENT') throw error;
-      });
-    }
+    const filePath = path.join(imagesDir, imageData.filename);
+    await fs.promises.unlink(filePath).catch(error => {
+      if (error.code !== 'ENOENT') throw error;
+    });
     imageDatabase.delete(imageId);
-    await saveImageIndex();
+    await deleteRemoteMedia(imageId);
+    saveImageIndex();
     res.json({ success: true, message: 'Image deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete image file' });
@@ -382,34 +501,51 @@ function createVideoId() {
   return `video-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
 }
 
-app.post('/api/videos/upload', uploadVideos.array('videos', 50), async (req, res) => {
+app.post('/api/videos/upload', (req, res, next) => {
+  uploadVideos.array('videos', 50)(req, res, error => {
+    if (!error) return next();
+    const isBadRequest = error instanceof multer.MulterError || (error.message && error.message.startsWith('Invalid file type'));
+    res.status(isBadRequest ? 400 : 500).json({
+      error: isBadRequest ? error.message : 'Could not process video upload'
+    });
+  });
+}, async (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No videos uploaded' });
   try {
     const videos = [];
     for (const file of req.files) {
       const videoId = createVideoId();
-      const stored = await storeUploadedMedia(mediaBuckets.videos, '/videos', file);
-      const video = {
+      const stored = storeUploadedMedia('/videos', file);
+      const mediaItem = {
+        id: videoId,
         name: file.originalname,
         url: stored.url,
         filename: stored.filename,
-        uploadedAt: new Date(),
+        type: 'video',
+        uploadedAt: new Date().toISOString(),
         size: file.size
       };
-      videoDatabase.set(videoId, video);
-      videos.push({ videoId, name: video.name, url: video.url });
+      videoDatabase.set(videoId, mediaItem);
+      await saveRemoteMedia(videoId, mediaItem);
+      videos.push({ videoId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
-    await saveVideoIndex();
-    res.json({ success: true, message: `${videos.length} videos uploaded successfully`, videos });
+    saveVideoIndex();
+    res.json({ success: true, message: `${videos.length} video(s) uploaded successfully`, videos });
   } catch (error) {
     res.status(500).json({ error: 'Could not upload video files' });
   }
 });
 
 app.get('/api/videos/list', (req, res) => {
-  res.json({ videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => ({
-    videoId, name: data.name, url: data.url, uploadedAt: data.uploadedAt, size: data.size
-  })) });
+  res.json({
+    videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => ({
+      videoId,
+      name: data.name,
+      url: data.url,
+      uploadedAt: data.uploadedAt,
+      size: data.size
+    }))
+  });
 });
 
 app.get('/api/scores', (req, res) => {
@@ -450,15 +586,12 @@ app.delete('/api/videos/:videoId', async (req, res) => {
   const video = videoDatabase.get(req.params.videoId);
   if (!video) return res.status(404).json({ error: 'Video not found' });
   try {
-    if (mediaStorageEnabled) {
-      await deleteMedia(mediaBuckets.videos, video.filename);
-    } else {
-      await fs.promises.unlink(path.join(videosDir, video.filename)).catch(error => {
-        if (error.code !== 'ENOENT') throw error;
-      });
-    }
+    await fs.promises.unlink(path.join(videosDir, video.filename)).catch(error => {
+      if (error.code !== 'ENOENT') throw error;
+    });
     videoDatabase.delete(req.params.videoId);
-    await saveVideoIndex();
+    await deleteRemoteMedia(req.params.videoId);
+    saveVideoIndex();
     res.json({ success: true, message: 'Video deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete video file' });
@@ -485,18 +618,21 @@ app.post('/api/audio/upload', (req, res, next) => {
     const audios = [];
     for (const file of req.files) {
       const audioId = createAudioId();
-      const stored = await storeUploadedMedia(mediaBuckets.audio, '/audio', file);
-      const audio = {
+      const stored = storeUploadedMedia('/audio', file);
+      const mediaItem = {
+        id: audioId,
         name: file.originalname,
         url: stored.url,
         filename: stored.filename,
-        uploadedAt: new Date(),
+        type: 'audio',
+        uploadedAt: new Date().toISOString(),
         size: file.size
       };
-      audioDatabase.set(audioId, audio);
-      audios.push({ audioId, name: audio.name, url: audio.url });
+      audioDatabase.set(audioId, mediaItem);
+      await saveRemoteMedia(audioId, mediaItem);
+      audios.push({ audioId, name: mediaItem.name, url: mediaItem.url });
     }
-    await saveAudioIndex();
+    saveAudioIndex();
     res.json({ success: true, message: `${audios.length} audio files uploaded successfully`, audios });
   } catch (error) {
     res.status(500).json({ error: 'Could not upload audio files' });
@@ -504,61 +640,31 @@ app.post('/api/audio/upload', (req, res, next) => {
 });
 
 app.get('/api/audio/list', (req, res) => {
-  res.json({ audios: Array.from(audioDatabase.entries()).map(([audioId, data]) => ({
-    audioId, name: data.name, url: data.url, uploadedAt: data.uploadedAt, size: data.size
-  })) });
+  res.json({
+    audios: Array.from(audioDatabase.entries()).map(([audioId, data]) => ({
+      audioId,
+      name: data.name,
+      url: data.url,
+      uploadedAt: data.uploadedAt,
+      size: data.size
+    }))
+  });
 });
 
 app.delete('/api/audio/:audioId', async (req, res) => {
   const audio = audioDatabase.get(req.params.audioId);
   if (!audio) return res.status(404).json({ error: 'Audio not found' });
   try {
-    if (mediaStorageEnabled) {
-      await deleteMedia(mediaBuckets.audio, audio.filename);
-    } else {
-      await fs.promises.unlink(path.join(audioDir, audio.filename)).catch(error => {
-        if (error.code !== 'ENOENT') throw error;
-      });
-    }
+    await fs.promises.unlink(path.join(audioDir, audio.filename)).catch(error => {
+      if (error.code !== 'ENOENT') throw error;
+    });
     audioDatabase.delete(req.params.audioId);
-    await saveAudioIndex();
+    await deleteRemoteMedia(req.params.audioId);
+    saveAudioIndex();
     res.json({ success: true, message: 'Audio deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete audio file' });
   }
-});
-
-// 2. Default Routes
-function createVideoId() {
-  const usedNumbers = Array.from(videoDatabase.keys()).map(id => /^video-(\d+)$/i.exec(id)).filter(Boolean).map(match => Number(match[1]));
-  return `video-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
-}
-
-app.post('/api/videos/upload', uploadVideos.array('videos', 50), (req, res) => {
-  if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No videos uploaded' });
-  const videos = req.files.map(file => {
-    const videoId = createVideoId();
-    const video = { name: file.originalname, url: `/videos/${encodeURIComponent(file.filename)}`, filename: file.filename, uploadedAt: new Date(), size: file.size };
-    videoDatabase.set(videoId, video);
-    return { videoId, name: video.name, url: video.url };
-  });
-  saveVideoIndex();
-  res.json({ success: true, message: `${videos.length} videos uploaded successfully`, videos });
-});
-
-app.get('/api/videos/list', (req, res) => {
-  res.json({ videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => ({ videoId, name: data.name, url: data.url, uploadedAt: data.uploadedAt, size: data.size })) });
-});
-
-app.delete('/api/videos/:videoId', (req, res) => {
-  const video = videoDatabase.get(req.params.videoId);
-  if (!video) return res.status(404).json({ error: 'Video not found' });
-  fs.unlink(path.join(videosDir, video.filename), error => {
-    if (error && error.code !== 'ENOENT') return res.status(500).json({ error: 'Could not delete video file' });
-    videoDatabase.delete(req.params.videoId);
-    saveVideoIndex();
-    res.json({ success: true, message: 'Video deleted' });
-  });
 });
 
 app.get('/', (req, res) => {
@@ -930,10 +1036,10 @@ function printServerUrls(message = 'Server running at') {
 }
 
 server.listen(PORT, '0.0.0.0', () => {
-  loadRemoteIndexes()
+  Promise.all([loadRemoteIndexes(), loadRemoteScores()])
     .then(() => printServerUrls())
     .catch(error => {
-      console.error('Could not load Supabase media indexes:', error.message);
+      console.error('Could not load Firebase indexes/scores:', error.message);
       printServerUrls();
     });
 });

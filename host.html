@@ -45,9 +45,9 @@
   <!-- Enhanced host UI styles + animations -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;900&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Roboto', system-ui, Arial; max-width:1200px; margin:14px auto; background: linear-gradient(180deg,#060814 0%, #0b1b33 60%); color:#f5f5f5; }
+    body { font-family: 'Poppins', 'Noto Sans Devanagari', 'Roboto', system-ui, Arial, sans-serif; max-width:1200px; margin:14px auto; background: linear-gradient(180deg,#060814 0%, #0b1b33 60%); color:#f5f5f5; }
     .presence-indicator { position:fixed; top:10px; right:12px; z-index:5000; display:flex; gap:10px; padding:6px 9px; border:1px solid rgba(255,255,255,.18); border-radius:7px; background:rgba(4,10,22,.9); font-size:11px; line-height:1; box-shadow:0 3px 12px rgba(0,0,0,.3); }
     .presence-item { display:flex; align-items:center; gap:4px; white-space:nowrap; color:#d6dbe5; }
     .presence-item strong { color:#ff8585; font-weight:600; }
@@ -59,8 +59,8 @@
     .card { border-radius:14px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.35)); padding:16px; border:1px solid rgba(255,215,0,0.06); box-shadow: 0 10px 40px rgba(0,0,0,0.6);} 
     .lifeline-card { border-radius:14px; padding:12px; display:flex; gap:10px; align-items:center; }
 
-    input, textarea, select { width:100%; padding:10px; margin-top:6px; border-radius:8px; font-size:16px; color:#091226; border:2px solid rgba(0,0,0,0.12); box-sizing:border-box; }
-    button { cursor:pointer; padding:10px; border-radius:10px; font-weight:700; border:none; transition: transform .14s ease, box-shadow .14s ease; }
+    input, textarea, select { width:100%; padding:10px; margin-top:6px; border-radius:8px; font-size:16px; font-family:inherit; color:#091226; border:2px solid rgba(0,0,0,0.12); box-sizing:border-box; }
+    button { cursor:pointer; padding:10px; border-radius:10px; font-weight:700; font-family:inherit; border:none; transition: transform .14s ease, box-shadow .14s ease; }
     .gold-btn { background: linear-gradient(90deg,#ffd54d,#ffcc00); color:#081028; box-shadow: 0 10px 30px rgba(255,200,0,0.08); }
     .gold-btn:active { transform: translateY(2px); }
 
@@ -222,6 +222,13 @@
     <button id="connectBtn" class="gold-btn" style="padding: 12px 25px;">CONNECT SERVER</button>
   </div>
   <div id="connStatus" style="text-align: center; margin-top: 10px; font-weight: bold; color: #00ff00;"></div>
+  <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,215,0,0.2); padding: 8px 12px; border-radius: 8px; font-size: 13px;">
+    <span>🎮 <b>Player URL:</b> <span id="playerUrlDisplay" style="color: #ffd54d; word-break: break-all;">/player</span></span>
+    <div style="display:flex; gap:6px; flex-shrink: 0;">
+      <button type="button" id="copyPlayerUrlBtn" style="padding: 5px 10px; font-size: 12px; background: #ffd54d; color: #111;">📋 Copy Link</button>
+      <a id="openPlayerUrlLink" href="/player" target="_blank" style="padding: 5px 10px; font-size: 12px; background: #1976d2; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block;">↗ Open</a>
+    </div>
+  </div>
 </div>
 
 <div class="lifeline-card">
@@ -314,29 +321,86 @@
 
   <!-- Video Management Section -->
   <div id="videoManagement" style="background:rgba(45,139,255,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(45,139,255,.35);">
-    <label style="color:#8ed0ff; font-weight:bold;">🎬 Video Library</label>
-    <label for="videoUploadBatch" style="display:block; margin-top:10px;">Upload videos:</label>
-    <input id="videoUploadBatch" type="file" accept="video/mp4,video/webm,video/ogg,video/quicktime" multiple />
-    <button id="uploadVideosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">Upload Videos to Library</button>
-    <div id="videoUploadStatus" style="margin-top:8px; color:#a8f0a8; font-size:12px;"></div>
-    <button id="toggleVideoLibraryBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">🎞️ Video Library <span id="videoLibraryCount"></span> <span id="videoLibraryArrow">▼</span></button>
-    <div id="videoLibrary" style="display:none; max-height:200px; overflow-y:auto; background:rgba(0,0,0,.3); padding:10px; border-radius:8px; margin-top:8px;"></div>
-    <button id="refreshVideosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Videos</button>
-    <div id="selectedVideoLabel" style="font-size:12px; color:#b8e8ff; margin-top:10px;"> </div>
-    <button id="playVideoBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; background:#1976d2; color:white;">▶ PLAY VIDEO FOR PLAYERS</button>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <label style="color:#8ed0ff; font-weight:bold; font-size:16px;">🎬 Video Library & Host Preview</label>
+      <span id="videoLibraryCount" style="font-size:12px; background:rgba(82,183,255,0.25); color:#8ed0ff; padding:2px 8px; border-radius:12px;">(0)</span>
+    </div>
+    
+    <label for="videoUploadBatch" style="display:block; margin-top:10px; font-size:13px; color:#cbe5ff;">Select video to upload (MP4, WebM, MOV, etc.):</label>
+    <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
+      <input id="videoUploadBatch" type="file" accept="video/*,.mp4,.webm,.ogg,.mov,.mkv,.avi,.m4v" multiple style="flex:1; min-width:180px;" />
+      <button id="uploadVideosBtn" type="button" class="gold-btn" style="padding:8px 14px; font-size:13px;">⬆ Upload Video</button>
+    </div>
+    <div id="videoUploadStatus" style="margin-top:6px; color:#a8f0a8; font-size:12px; font-weight:600;"></div>
+    
+    <!-- Video Player Preview on Host -->
+    <div id="hostVideoPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(82,183,255,0.45);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostVideoPreviewTitle">🎬 Host Video Player</span>
+        <span id="hostVideoPlaybackBadge" style="font-size:11px; background:#1976d2; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+      </div>
+      <video id="hostVideoPlayer" controls playsinline style="width:100%; max-height:240px; border-radius:6px; background:#000; outline:none; display:block;"></video>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+        <button id="playVideoBtn" type="button" class="gold-btn" style="background:#1976d2; color:white; font-size:13px; padding:8px 10px;">▶ Broadcast to Players</button>
+        <button id="markVideoReadyBtn" type="button" class="gold-btn" style="background:#28a745; color:white; font-size:13px; padding:8px 10px;">✅ Mark Video Finished</button>
+      </div>
+      <div id="videoReadyNotice" style="display:none; margin-top:6px; font-size:12px; color:#45e27a; text-align:center; font-weight:bold;">✅ Video finished! Question is unlocked and ready to send.</div>
+    </div>
+
+    <!-- Video Library List -->
+    <div style="margin-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:13px; color:#8ed0ff; font-weight:600;">Uploaded Videos in Library:</span>
+        <button id="refreshVideosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄 Refresh</button>
+      </div>
+      <div id="videoLibrary" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,.35); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="color:#999; text-align:center; margin:10px 0;">No videos uploaded yet</p>
+      </div>
+    </div>
+    
+    <div id="selectedVideoLabel" style="font-size:12px; color:#b8e8ff; margin-top:8px;"></div>
   </div>
 
+  <!-- Audio Management Section -->
   <div id="audioManagement" style="background:rgba(38,170,130,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(38,170,130,.35);">
-    <label style="color:#79e0bd; font-weight:bold;">🎧 Audio Library</label>
-    <label for="audioUploadBatch" style="display:block; margin-top:10px;">Upload audio:</label>
-    <input id="audioUploadBatch" type="file" accept="audio/*" multiple />
-    <button id="uploadAudiosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">Upload Audio to Library</button>
-    <div id="audioUploadStatus" style="margin-top:8px; color:#a8f0a8; font-size:12px;"></div>
-    <button id="toggleAudioLibraryBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px;">🎧 Audio Library <span id="audioLibraryCount"></span> <span id="audioLibraryArrow">▼</span></button>
-    <div id="audioLibrary" style="display:none; max-height:200px; overflow-y:auto; background:rgba(0,0,0,.3); padding:10px; border-radius:8px; margin-top:8px;"></div>
-    <button id="refreshAudiosBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Audio</button>
-    <div id="selectedAudioLabel" style="font-size:12px; color:#b8e8ff; margin-top:10px;"> </div>
-    <button id="playAudioBtn" type="button" class="gold-btn" style="width:100%; margin-top:8px; background:#168b6b; color:white;">▶ PLAY AUDIO FOR PLAYERS</button>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <label style="color:#79e0bd; font-weight:bold; font-size:16px;">🎧 Audio Library & Host Preview</label>
+      <span id="audioLibraryCount" style="font-size:12px; background:rgba(38,170,130,0.25); color:#79e0bd; padding:2px 8px; border-radius:12px;">(0)</span>
+    </div>
+
+    <label for="audioUploadBatch" style="display:block; margin-top:10px; font-size:13px; color:#c4f3e3;">Select audio to upload (MP3, WAV, M4A, etc.):</label>
+    <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
+      <input id="audioUploadBatch" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm,.flac" multiple style="flex:1; min-width:180px;" />
+      <button id="uploadAudiosBtn" type="button" class="gold-btn" style="padding:8px 14px; font-size:13px;">⬆ Upload Audio</button>
+    </div>
+    <div id="audioUploadStatus" style="margin-top:6px; color:#a8f0a8; font-size:12px; font-weight:600;"></div>
+
+    <!-- Audio Player Preview on Host -->
+    <div id="hostAudioPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(38,170,130,0.45);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostAudioPreviewTitle">🎧 Host Audio Player</span>
+        <span id="hostAudioPlaybackBadge" style="font-size:11px; background:#168b6b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+      </div>
+      <audio id="hostAudioPlayer" controls style="width:100%; display:block;"></audio>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+        <button id="playAudioBtn" type="button" class="gold-btn" style="background:#168b6b; color:white; font-size:13px; padding:8px 10px;">▶ Broadcast to Players</button>
+        <button id="markAudioReadyBtn" type="button" class="gold-btn" style="background:#28a745; color:white; font-size:13px; padding:8px 10px;">✅ Mark Audio Finished</button>
+      </div>
+      <div id="audioReadyNotice" style="display:none; margin-top:6px; font-size:12px; color:#45e27a; text-align:center; font-weight:bold;">✅ Audio finished! Question is unlocked and ready to send.</div>
+    </div>
+
+    <!-- Audio Library List -->
+    <div style="margin-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:13px; color:#79e0bd; font-weight:600;">Uploaded Audio in Library:</span>
+        <button id="refreshAudiosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄 Refresh</button>
+      </div>
+      <div id="audioLibrary" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,.35); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="color:#999; text-align:center; margin:10px 0;">No audio uploaded yet</p>
+      </div>
+    </div>
+
+    <div id="selectedAudioLabel" style="font-size:12px; color:#b8e8ff; margin-top:8px;"></div>
   </div>
 
   <!-- Image Preview for PDF Questions -->
@@ -513,6 +577,27 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
     
+  function showNotification(message, isError = true) {
+    let toast = document.getElementById('appNotificationToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'appNotificationToast';
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:700;z-index:99999;transition:opacity 0.3s ease;box-shadow:0 8px 30px rgba(0,0,0,0.5);font-size:14px;max-width:90vw;text-align:center;pointer-events:none;';
+      document.body.appendChild(toast);
+    }
+    toast.style.background = isError ? 'linear-gradient(135deg, #e74c3c, #c0392b)' : 'linear-gradient(135deg, #27ae60, #2ecc71)';
+    toast.style.color = '#fff';
+    toast.textContent = message;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 4000);
+  }
+  window.alert = function(msg) { showNotification(msg); };
+    
   const log = (t) => { 
     const el = document.getElementById('events'); 
     el.textContent = `[${new Date().toLocaleTimeString()}] ${t}\n` + el.textContent; 
@@ -584,7 +669,7 @@
 
   function connectToServer() {
     if (ws && ws.readyState !== WebSocket.CLOSED) return ws;
-    const hostAddr = location.host || "localhost:8080";
+    const hostAddr = location.host || "localhost:3000";
     document.getElementById('connStatus').textContent = 'Connecting to server...';
     try {
       ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + hostAddr);
@@ -956,6 +1041,28 @@
   };
   refreshImageLibrary();
 
+  function formatFileSize(bytes) {
+    if (!bytes || isNaN(bytes)) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  // --- Video Library & Host Preview Logic ---
+  const hostVideoPlayer = document.getElementById('hostVideoPlayer');
+  if (hostVideoPlayer) {
+    hostVideoPlayer.onended = () => {
+      videoReadyForQuestion = true;
+      syncVideoQuestionControls();
+      showHostVideoEndedNotification();
+      const notice = document.getElementById('videoReadyNotice');
+      if (notice) notice.style.display = 'block';
+      const badge = document.getElementById('hostVideoPlaybackBadge');
+      if (badge) badge.textContent = '✅ Finished';
+      log('✅ Video finished playing. Question is now unlocked to send.');
+    };
+  }
+
   async function refreshVideoLibrary() {
     const library = document.getElementById('videoLibrary');
     try {
@@ -964,66 +1071,187 @@
       const data = await response.json();
       videoLibrary = data.videos || [];
       document.getElementById('videoLibraryCount').textContent = `(${videoLibrary.length})`;
-      library.innerHTML = videoLibrary.length ? videoLibrary.map(video => `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);"><button type="button" data-video-id="${video.videoId}" style="flex:1; text-align:left; background:${selectedVideoId === video.videoId ? '#52b7ff' : '#24385d'}; color:white; padding:6px;">${escapeHtml(video.name)}<br><small>${video.videoId}</small></button><button type="button" data-delete-video-id="${video.videoId}" style="background:#9d2636; color:white; padding:6px;">×</button></div>`).join('') : '<p style="color:#999; text-align:center;">No videos uploaded yet</p>';
-      library.querySelectorAll('[data-video-id]').forEach(button => button.onclick = () => selectLibraryVideo(button.dataset.videoId));
-      library.querySelectorAll('[data-delete-video-id]').forEach(button => button.onclick = () => deleteLibraryVideo(button.dataset.deleteVideoId));
-    } catch (error) { library.innerHTML = `<p style="color:#ff8a8a;">${escapeHtml(error.message)}</p>`; }
+      if (!videoLibrary.length) {
+        library.innerHTML = '<p style="color:#999; text-align:center; padding:10px 0;">No videos uploaded yet. Choose a video above to upload.</p>';
+        return;
+      }
+      library.innerHTML = videoLibrary.map(video => {
+        const isSelected = selectedVideoId === video.videoId;
+        return `
+          <div style="display:flex; gap:8px; align-items:center; padding:8px; margin-bottom:6px; border-radius:6px; background:${isSelected ? 'rgba(82,183,255,0.22)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${isSelected ? '#52b7ff' : 'rgba(255,255,255,0.1)'};">
+            <div style="font-size:22px; flex-shrink:0;">🎬</div>
+            <div style="flex:1; min-width:0; overflow:hidden;">
+              <div style="font-weight:bold; color:#fff; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(video.name)}</div>
+              <div style="font-size:11px; color:#8ed0ff; margin-top:2px;">
+                <span style="background:rgba(25,118,210,0.5); padding:1px 6px; border-radius:4px; font-weight:bold;">${video.videoId}</span>
+                ${video.size ? `<span style="color:#9ec5e8; margin-left:6px;">${formatFileSize(video.size)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button type="button" data-video-id="${video.videoId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#1976d2'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px;">${isSelected ? '✓ Loaded' : '▶ Preview & Use'}</button>
+              <button type="button" data-delete-video-id="${video.videoId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px;" title="Delete video">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      library.querySelectorAll('[data-video-id]').forEach(button => {
+        button.onclick = () => selectLibraryVideo(button.dataset.videoId);
+      });
+      library.querySelectorAll('[data-delete-video-id]').forEach(button => {
+        button.onclick = () => deleteLibraryVideo(button.dataset.deleteVideoId);
+      });
+    } catch (error) {
+      library.innerHTML = `<p style="color:#ff8a8a; text-align:center;">${escapeHtml(error.message)}</p>`;
+    }
   }
 
-  function selectLibraryVideo(videoId) {
+  function selectLibraryVideo(videoId, autoPlay = false) {
     const video = videoLibrary.find(item => item.videoId === videoId);
     if (!video) return;
     selectedVideoId = videoId;
-    document.getElementById('selectedVideoLabel').textContent = `Selected: ${video.name}`;
+    document.getElementById('questionVideoId').value = videoId;
+    currentQuestionVideoId = videoId;
+    videoReadyForQuestion = false;
+    activeVideoPlaybackId = '';
+
+    const previewContainer = document.getElementById('hostVideoPreviewContainer');
+    const player = document.getElementById('hostVideoPlayer');
+    const title = document.getElementById('hostVideoPreviewTitle');
+    const badge = document.getElementById('hostVideoPlaybackBadge');
+    const notice = document.getElementById('videoReadyNotice');
+
+    if (previewContainer) previewContainer.style.display = 'block';
+    if (title) title.textContent = `🎬 ${video.name} (${video.videoId})`;
+    if (badge) badge.textContent = 'Loaded & Ready';
+    if (notice) notice.style.display = 'none';
+
+    if (player) {
+      player.src = video.url;
+      player.load();
+      if (autoPlay) {
+        player.play().catch(() => {});
+      }
+    }
+
+    document.getElementById('selectedVideoLabel').innerHTML = `<b>Selected Video:</b> <span style="color:#ffd54d;">${escapeHtml(video.name)}</span> (ID: <code style="color:#8ed0ff;">${video.videoId}</code>)`;
+    syncVideoQuestionControls();
     refreshVideoLibrary();
   }
 
   async function deleteLibraryVideo(videoId) {
-    if (!confirm('Delete this video from the library?')) return;
-    const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
-    if (!response.ok) return alert('Could not delete video.');
-    if (selectedVideoId === videoId) selectedVideoId = null;
-    refreshVideoLibrary();
+    if (!confirm(`Delete video ${videoId} from the library?`)) return;
+    try {
+      const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Could not delete video.');
+      if (selectedVideoId === videoId) {
+        selectedVideoId = null;
+        if (currentQuestionVideoId === videoId) {
+          currentQuestionVideoId = '';
+          document.getElementById('questionVideoId').value = '';
+          videoReadyForQuestion = false;
+          syncVideoQuestionControls();
+        }
+        const previewContainer = document.getElementById('hostVideoPreviewContainer');
+        if (previewContainer) previewContainer.style.display = 'none';
+        const player = document.getElementById('hostVideoPlayer');
+        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
+        document.getElementById('selectedVideoLabel').textContent = '';
+      }
+      refreshVideoLibrary();
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
-  document.getElementById('uploadVideosBtn').onclick = async () => {
+  async function uploadSelectedVideos() {
     const input = document.getElementById('videoUploadBatch');
     const status = document.getElementById('videoUploadStatus');
-    if (!input.files.length) return alert('Choose one or more videos first.');
+    if (!input.files || !input.files.length) return alert('Choose one or more video files first.');
     const formData = new FormData();
     Array.from(input.files).forEach(file => formData.append('videos', file));
-    status.textContent = 'Uploading…';
+    status.style.color = '#8ed0ff';
+    status.textContent = `Uploading ${input.files.length} video(s)… please wait.`;
     try {
       const response = await fetch('/api/videos/upload', { method: 'POST', body: formData });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Upload failed (HTTP ${response.status})`);
       input.value = '';
-      status.textContent = data.message;
-      refreshVideoLibrary();
-    } catch (error) { status.textContent = error.message; }
-  };
+      status.style.color = '#45e27a';
+      status.textContent = data.message || 'Videos uploaded successfully!';
+      await refreshVideoLibrary();
+      if (data.videos && data.videos.length) {
+        selectLibraryVideo(data.videos[0].videoId);
+      }
+    } catch (error) {
+      status.style.color = '#ff8a8a';
+      status.textContent = 'Upload failed: ' + error.message;
+    }
+  }
 
-  document.getElementById('toggleVideoLibraryBtn').onclick = () => {
-    const library = document.getElementById('videoLibrary');
-    const open = library.style.display !== 'none';
-    library.style.display = open ? 'none' : 'block';
-    document.getElementById('videoLibraryArrow').textContent = open ? '▼' : '▲';
+  document.getElementById('uploadVideosBtn').onclick = uploadSelectedVideos;
+  document.getElementById('videoUploadBatch').onchange = () => {
+    if (document.getElementById('videoUploadBatch').files.length) uploadSelectedVideos();
   };
   document.getElementById('refreshVideosBtn').onclick = refreshVideoLibrary;
+
+  const markVideoReadyBtn = document.getElementById('markVideoReadyBtn');
+  if (markVideoReadyBtn) {
+    markVideoReadyBtn.onclick = () => {
+      videoReadyForQuestion = true;
+      syncVideoQuestionControls();
+      const notice = document.getElementById('videoReadyNotice');
+      if (notice) notice.style.display = 'block';
+      const badge = document.getElementById('hostVideoPlaybackBadge');
+      if (badge) badge.textContent = '✅ Marked Ready';
+      showHostVideoEndedNotification();
+      log('✅ Video marked as finished manually. Question is ready to send.');
+    };
+  }
+
   document.getElementById('playVideoBtn').onclick = () => {
-    const videoId = getQuestionVideoId() || currentQuestionVideoId;
-    if (!videoId) return alert('This question has no Video ID.');
+    const videoId = getQuestionVideoId() || currentQuestionVideoId || selectedVideoId;
+    if (!videoId) return alert('No video selected. Choose a video from the library first.');
     const video = videoLibrary.find(item => item.videoId === videoId);
     if (!video) return alert(`Video ID not found: ${videoId}`);
-    if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Connect to Server first!');
+
     currentQuestionVideoId = videoId;
     activeVideoPlaybackId = videoId;
     videoReadyForQuestion = false;
     syncVideoQuestionControls();
-    ws.send(JSON.stringify({ type: 'video_preview', payload: { url: video.url, name: video.name, videoId } }));
-    log(`🎬 Playing video for players: ${video.name}`);
+
+    const player = document.getElementById('hostVideoPlayer');
+    const badge = document.getElementById('hostVideoPlaybackBadge');
+    if (player) {
+      if (!player.src || !player.src.includes(video.url)) {
+        player.src = video.url;
+      }
+      player.play().catch(e => console.warn('Host video autoplay note:', e));
+    }
+    if (badge) badge.textContent = '▶ Broadcasting to Players';
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'video_preview', payload: { url: video.url, name: video.name, videoId } }));
+      log(`🎬 Broadcasting video for players: ${video.name}`);
+    } else {
+      log(`🎬 Playing video on host: ${video.name} (connect to server to broadcast to players).`);
+    }
   };
   refreshVideoLibrary();
+
+  // --- Audio Library & Host Preview Logic ---
+  const hostAudioPlayer = document.getElementById('hostAudioPlayer');
+  if (hostAudioPlayer) {
+    hostAudioPlayer.onended = () => {
+      audioReadyForQuestion = true;
+      syncVideoQuestionControls();
+      showHostAudioEndedNotification();
+      const notice = document.getElementById('audioReadyNotice');
+      if (notice) notice.style.display = 'block';
+      const badge = document.getElementById('hostAudioPlaybackBadge');
+      if (badge) badge.textContent = '✅ Finished';
+      log('✅ Audio finished playing. Question is now unlocked to send.');
+    };
+  }
 
   async function refreshAudioLibrary() {
     const library = document.getElementById('audioLibrary');
@@ -1033,13 +1261,41 @@
       const data = await response.json();
       audioLibrary = data.audios || [];
       document.getElementById('audioLibraryCount').textContent = `(${audioLibrary.length})`;
-      library.innerHTML = audioLibrary.length ? audioLibrary.map(audio => `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);"><button type="button" data-audio-id="${audio.audioId}" style="flex:1; text-align:left; background:${selectedAudioId === audio.audioId ? '#168b6b' : '#24385d'}; color:white; padding:6px;">${escapeHtml(audio.name)}<br><small>${audio.audioId}</small></button><button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px;">×</button></div>`).join('') : '<p style="color:#999; text-align:center;">No audio uploaded yet</p>';
-      library.querySelectorAll('[data-audio-id]').forEach(button => button.onclick = () => selectLibraryAudio(button.dataset.audioId));
-      library.querySelectorAll('[data-delete-audio-id]').forEach(button => button.onclick = () => deleteLibraryAudio(button.dataset.deleteAudioId));
-    } catch (error) { library.innerHTML = `<p style="color:#ff8a8a;">${escapeHtml(error.message)}</p>`; }
+      if (!audioLibrary.length) {
+        library.innerHTML = '<p style="color:#999; text-align:center; padding:10px 0;">No audio uploaded yet. Choose an audio file above to upload.</p>';
+        return;
+      }
+      library.innerHTML = audioLibrary.map(audio => {
+        const isSelected = selectedAudioId === audio.audioId;
+        return `
+          <div style="display:flex; gap:8px; align-items:center; padding:8px; margin-bottom:6px; border-radius:6px; background:${isSelected ? 'rgba(38,170,130,0.22)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${isSelected ? '#79e0bd' : 'rgba(255,255,255,0.1)'};">
+            <div style="font-size:22px; flex-shrink:0;">🎧</div>
+            <div style="flex:1; min-width:0; overflow:hidden;">
+              <div style="font-weight:bold; color:#fff; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(audio.name)}</div>
+              <div style="font-size:11px; color:#79e0bd; margin-top:2px;">
+                <span style="background:rgba(22,139,107,0.5); padding:1px 6px; border-radius:4px; font-weight:bold;">${audio.audioId}</span>
+                ${audio.size ? `<span style="color:#a8e7d4; margin-left:6px;">${formatFileSize(audio.size)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button type="button" data-audio-id="${audio.audioId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#168b6b'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px;">${isSelected ? '✓ Loaded' : '▶ Preview & Use'}</button>
+              <button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px;" title="Delete audio">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      library.querySelectorAll('[data-audio-id]').forEach(button => {
+        button.onclick = () => selectLibraryAudio(button.dataset.audioId);
+      });
+      library.querySelectorAll('[data-delete-audio-id]').forEach(button => {
+        button.onclick = () => deleteLibraryAudio(button.dataset.deleteAudioId);
+      });
+    } catch (error) {
+      library.innerHTML = `<p style="color:#ff8a8a; text-align:center;">${escapeHtml(error.message)}</p>`;
+    }
   }
 
-  function selectLibraryAudio(audioId) {
+  function selectLibraryAudio(audioId, autoPlay = false) {
     const audio = audioLibrary.find(item => item.audioId === audioId);
     if (!audio) return;
     selectedAudioId = audioId;
@@ -1047,67 +1303,128 @@
     currentQuestionAudioId = audioId;
     audioReadyForQuestion = false;
     activeAudioPlaybackId = '';
-    document.getElementById('selectedAudioLabel').textContent = `Selected: ${audio.name}`;
+
+    const previewContainer = document.getElementById('hostAudioPreviewContainer');
+    const player = document.getElementById('hostAudioPlayer');
+    const title = document.getElementById('hostAudioPreviewTitle');
+    const badge = document.getElementById('hostAudioPlaybackBadge');
+    const notice = document.getElementById('audioReadyNotice');
+
+    if (previewContainer) previewContainer.style.display = 'block';
+    if (title) title.textContent = `🎧 ${audio.name} (${audio.audioId})`;
+    if (badge) badge.textContent = 'Loaded & Ready';
+    if (notice) notice.style.display = 'none';
+
+    if (player) {
+      player.src = audio.url;
+      player.load();
+      if (autoPlay) {
+        player.play().catch(() => {});
+      }
+    }
+
+    document.getElementById('selectedAudioLabel').innerHTML = `<b>Selected Audio:</b> <span style="color:#ffd54d;">${escapeHtml(audio.name)}</span> (ID: <code style="color:#79e0bd;">${audio.audioId}</code>)`;
     syncVideoQuestionControls();
     refreshAudioLibrary();
   }
 
   async function deleteLibraryAudio(audioId) {
-    if (!confirm('Delete this audio from the library?')) return;
-    const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
-    if (!response.ok) return alert('Could not delete audio.');
-    if (selectedAudioId === audioId) selectedAudioId = null;
-    if (currentQuestionAudioId === audioId) {
-      currentQuestionAudioId = '';
-      document.getElementById('questionAudioId').value = '';
-      audioReadyForQuestion = false;
-      syncVideoQuestionControls();
+    if (!confirm(`Delete audio ${audioId} from the library?`)) return;
+    try {
+      const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Could not delete audio.');
+      if (selectedAudioId === audioId) {
+        selectedAudioId = null;
+        if (currentQuestionAudioId === audioId) {
+          currentQuestionAudioId = '';
+          document.getElementById('questionAudioId').value = '';
+          audioReadyForQuestion = false;
+          syncVideoQuestionControls();
+        }
+        const previewContainer = document.getElementById('hostAudioPreviewContainer');
+        if (previewContainer) previewContainer.style.display = 'none';
+        const player = document.getElementById('hostAudioPlayer');
+        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
+        document.getElementById('selectedAudioLabel').textContent = '';
+      }
+      refreshAudioLibrary();
+    } catch (error) {
+      alert(error.message);
     }
-    refreshAudioLibrary();
   }
 
-  document.getElementById('uploadAudiosBtn').onclick = async () => {
+  async function uploadSelectedAudios() {
     const input = document.getElementById('audioUploadBatch');
     const status = document.getElementById('audioUploadStatus');
-    if (!input.files.length) return alert('Choose one or more audio files first.');
+    if (!input.files || !input.files.length) return alert('Choose one or more audio files first.');
     const formData = new FormData();
     Array.from(input.files).forEach(file => formData.append('audios', file));
-    status.textContent = 'Uploading…';
+    status.style.color = '#79e0bd';
+    status.textContent = `Uploading ${input.files.length} audio file(s)… please wait.`;
     try {
       const response = await fetch('/api/audio/upload', { method: 'POST', body: formData });
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        throw new Error(`Upload server returned an invalid response (HTTP ${response.status}).`);
-      }
-      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Upload failed (HTTP ${response.status})`);
       input.value = '';
-      status.textContent = data.message;
-      refreshAudioLibrary();
-    } catch (error) { status.textContent = error.message; }
-  };
+      status.style.color = '#45e27a';
+      status.textContent = data.message || 'Audio uploaded successfully!';
+      await refreshAudioLibrary();
+      if (data.audios && data.audios.length) {
+        selectLibraryAudio(data.audios[0].audioId);
+      }
+    } catch (error) {
+      status.style.color = '#ff8a8a';
+      status.textContent = 'Upload failed: ' + error.message;
+    }
+  }
 
-  document.getElementById('toggleAudioLibraryBtn').onclick = () => {
-    const library = document.getElementById('audioLibrary');
-    const open = library.style.display !== 'none';
-    library.style.display = open ? 'none' : 'block';
-    document.getElementById('audioLibraryArrow').textContent = open ? '▼' : '▲';
+  document.getElementById('uploadAudiosBtn').onclick = uploadSelectedAudios;
+  document.getElementById('audioUploadBatch').onchange = () => {
+    if (document.getElementById('audioUploadBatch').files.length) uploadSelectedAudios();
   };
   document.getElementById('refreshAudiosBtn').onclick = refreshAudioLibrary;
+
+  const markAudioReadyBtn = document.getElementById('markAudioReadyBtn');
+  if (markAudioReadyBtn) {
+    markAudioReadyBtn.onclick = () => {
+      audioReadyForQuestion = true;
+      syncVideoQuestionControls();
+      const notice = document.getElementById('audioReadyNotice');
+      if (notice) notice.style.display = 'block';
+      const badge = document.getElementById('hostAudioPlaybackBadge');
+      if (badge) badge.textContent = '✅ Marked Ready';
+      showHostAudioEndedNotification();
+      log('✅ Audio marked as finished manually. Question is ready to send.');
+    };
+  }
+
   document.getElementById('playAudioBtn').onclick = () => {
-    const audioId = getQuestionAudioId() || currentQuestionAudioId;
-    if (!audioId) return alert('This question has no Audio ID.');
+    const audioId = getQuestionAudioId() || currentQuestionAudioId || selectedAudioId;
+    if (!audioId) return alert('No audio selected. Choose an audio file from the library first.');
     const audio = audioLibrary.find(item => item.audioId === audioId);
     if (!audio) return alert(`Audio ID not found: ${audioId}`);
-    if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Connect to Server first!');
+
     currentQuestionAudioId = audioId;
     activeAudioPlaybackId = audioId;
     audioReadyForQuestion = false;
     syncVideoQuestionControls();
-    ws.send(JSON.stringify({ type: 'audio_preview', payload: { url: audio.url, name: audio.name, audioId } }));
-    log(`🎧 Playing audio for players: ${audio.name}`);
+
+    const player = document.getElementById('hostAudioPlayer');
+    const badge = document.getElementById('hostAudioPlaybackBadge');
+    if (player) {
+      if (!player.src || !player.src.includes(audio.url)) {
+        player.src = audio.url;
+      }
+      player.play().catch(e => console.warn('Host audio autoplay note:', e));
+    }
+    if (badge) badge.textContent = '▶ Broadcasting to Players';
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'audio_preview', payload: { url: audio.url, name: audio.name, audioId } }));
+      log(`🎧 Broadcasting audio for players: ${audio.name}`);
+    } else {
+      log(`🎧 Playing audio on host: ${audio.name} (connect to server to broadcast to players).`);
+    }
   };
   refreshAudioLibrary();
 
@@ -1139,9 +1456,42 @@
 
   document.getElementById('nextPdfQuestion').onclick = loadNextPdfQuestion;
 
+  function fixDevanagariMatras(text) {
+    if (!text) return '';
+    let s = text.normalize('NFC');
+    const baseChar = '[\\u0904-\\u0939\\u0958-\\u0961]';
+    const combiningMark = '[\\u0901-\\u0903\\u093A-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+    const halant = '\\u094D';
+
+    // 1. Remove artificial spaces between consonants and following matras/combining marks
+    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + combiningMark + ')', 'g'), '$1$2');
+
+    // 2. Remove artificial spaces between half-consonants (with halant) and next consonant
+    s = s.replace(new RegExp('(' + baseChar + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+
+    // 3. Remove spaces between vowel signs and anusvara/visarga/candrabindu
+    s = s.replace(new RegExp('([\\u093E-\\u094C])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
+
+    // 4. Pre-base matra reordering: "ि" (\u093F) appearing before consonant
+    s = s.replace(new RegExp('\\u093F(' + baseChar + '(?:' + halant + baseChar + ')*)', 'g'), '$1\u093F');
+
+    // 5. Clean up any lingering zero-width spaces or non-breaking spaces
+    s = s.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+
+    // 6. Normalize multiple horizontal spaces
+    s = s.replace(/[ \t]+/g, ' ');
+    return s;
+  }
+
   async function extractPdfQuestions(file) {
     const bytes = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const pdf = await pdfjsLib.getDocument({
+      data: bytes,
+      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/'
+    }).promise;
+    
     let text = '';
     const images = [];
     
@@ -1149,16 +1499,52 @@
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
       const lines = [];
+
       content.items.forEach(item => {
+        if (!item || !item.str) return;
+        const x = item.transform[4];
         const y = item.transform[5];
-        let line = lines.find(entry => Math.abs(entry.y - y) < 3);
+        const width = item.width || 0;
+        const height = Math.abs(item.transform[0]) || Math.abs(item.transform[3]) || 12;
+
+        let line = lines.find(entry => Math.abs(entry.y - y) <= 4);
         if (!line) {
-          line = { y, parts: [] };
+          line = { y, items: [] };
           lines.push(line);
         }
-        line.parts.push(item.str);
+        line.items.push({ str: item.str, x, y, width, height });
       });
-      text += lines.sort((a, b) => b.y - a.y).map(line => line.parts.join(' ')).join('\n') + '\n';
+
+      // Sort lines top to bottom
+      lines.sort((a, b) => b.y - a.y);
+
+      let pageText = '';
+      lines.forEach(line => {
+        // Sort items inside each line left to right
+        line.items.sort((a, b) => a.x - b.x);
+
+        let lineStr = '';
+        for (let i = 0; i < line.items.length; i++) {
+          const cur = line.items[i];
+          if (i > 0) {
+            const prev = line.items[i - 1];
+            const gap = cur.x - (prev.x + prev.width);
+            const isMatra = /^[\u0901-\u0903\u093A-\u094F\u0951-\u0957\u0962-\u0963]/.test(cur.str);
+            const prevIsHalant = /[\u094D]$/.test(prev.str);
+            const charHeight = Math.max(prev.height, cur.height, 10);
+            const spaceThreshold = Math.max(charHeight * 0.22, 2.8);
+
+            if (!isMatra && !prevIsHalant && gap > spaceThreshold) {
+              lineStr += ' ';
+            }
+          }
+          lineStr += cur.str;
+        }
+
+        pageText += lineStr + '\n';
+      });
+
+      text += fixDevanagariMatras(pageText) + '\n';
       
       // Extract images from page
       try {
@@ -1201,36 +1587,82 @@
   }
 
   function parsePdfQuestions(text, images = []) {
-    const normalizedText = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
-    const questionMatches = [...normalizedText.matchAll(/(?:^|\n)\s*(?:(?:Q(?:uestion)?\s*)?\d+\s*[.)]|Q(?:uestion)?\s*\d*\s*[:.)-])\s*/gi)];
+    const normalizedText = fixDevanagariMatras(text.replace(/\r/g, '').replace(/[ \t]+/g, ' ')).trim();
+
+    // Supports: Q1, Q.1, Question 1, प्रश्न 1, प्र. 1, प्र० 1, 1., 1), (1), etc.
+    const questionRegex = /(?:^|\n)\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)\s*[:.)-]?\s*\d+\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)\s*[:.)-]|(?:\(?\d+\s*[\).]\s*))/gi;
+    const questionMatches = [...normalizedText.matchAll(questionRegex)];
     const questions = [];
     let imageIndex = 0;
+
+    const blocks = [];
+    if (questionMatches.length > 0) {
+      questionMatches.forEach((match, index) => {
+        const start = match.index + match[0].length;
+        const end = index + 1 < questionMatches.length ? questionMatches[index + 1].index : normalizedText.length;
+        blocks.push({ content: normalizedText.slice(start, end).trim() });
+      });
+    } else {
+      normalizedText.split(/\n\s*\n/).forEach(chunk => {
+        if (chunk.trim()) blocks.push({ content: chunk.trim() });
+      });
+    }
+
+    // Mapping for English and Hindi / Devanagari options
+    const optionCharMap = {
+      'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D',
+      'क': 'A', 'ख': 'B', 'ग': 'C', 'घ': 'D',
+      'अ': 'A', 'ब': 'B', 'स': 'C', 'द': 'D',
+      '1': 'A', '2': 'B', '3': 'C', '4': 'D',
+      '१': 'A', '२': 'B', '३': 'C', '४': 'D'
+    };
+
+    // Matches options in: (A), A), A., A:, (क), क), क., (अ), अ), (1), 1), etc.
+    const optionRegex = /(?:^|\n)\s*(?:\(?([ABCDकखगघअबसद1234१२३४])\s*[\).\-:]|\(?([ABCDकखगघअबसद1234१२३४])\)?)\s+(.*?)(?=(?:\n\s*(?:\(?[ABCDकखगघअबसद1234१२३४]\s*[\).\-:]|\(?[ABCDकखगघअबसद1234१२३४]\)?)\s+)|\n\s*(?:Answer|Ans|Correct|उत्तर|सही उत्तर|उ[.]?)\s*[:.)\-]|$)/gis;
     
-    questionMatches.forEach((match, index) => {
-      const start = match.index + match[0].length;
-      const end = index + 1 < questionMatches.length ? questionMatches[index + 1].index : normalizedText.length;
-      const block = normalizedText.slice(start, end).trim();
-      const optionMatches = [...block.matchAll(/(?:^|\n)\s*([ABCD])\s*[.)\-:]\s*(.*?)(?=\n\s*[ABCD]\s*[.)\-:]|\n\s*(?:Answer|Ans|Correct)\s*[:.)-]|$)/gis)];
-      const answerMatch = block.match(/(?:Answer|Ans|Correct)\s*[:.)-]?\s*([ABCD])/i);
+    // Matches correct answer indicators in English and Hindi
+    const answerRegex = /(?:Answer|Ans|Correct|उत्तर|सही उत्तर|उ[.]?)\s*[:.)\-]?\s*\(?([ABCDकखगघअबसद1234१२३४])\)?/i;
+
+    blocks.forEach(b => {
+      const block = b.content;
+      const optionMatches = [...block.matchAll(optionRegex)];
+      const answerMatch = block.match(answerRegex);
+
       const firstOptionIndex = optionMatches.length ? optionMatches[0].index : block.length;
       const rawQuestionText = block.slice(0, firstOptionIndex).trim();
+
       const imageIdMatch = rawQuestionText.match(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*((?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/i);
       const videoIdMatch = rawQuestionText.match(/\bvideo\s*id\s*[:#=-]?\s*(video\s*[-_]\s*\d+)\b/i);
       const audioIdMatch = rawQuestionText.match(/\baudio\s*id\s*[:#=-]?\s*(audio\s*[-_]\s*\d+)\b/i);
-      const questionText = rawQuestionText.replace(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*(?:(?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/ig, '').trim();
-      const cleanQuestionText = questionText.replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '').replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '').replace(/\n\s*\n/g, '\n').trim();
+
+      let cleanQuestionText = rawQuestionText
+        .replace(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*(?:(?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/ig, '')
+        .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
+        .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '')
+        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)\s*[:.)-]?\s*\d*\s*[:.)-]?|\d+\s*[:.)-])\s*/i, '')
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
+
       const libraryImage = imageIdMatch && imageLibrary.find(image => image.imageId === imageIdMatch[1]);
       const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
       const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
-      const options = optionMatches.map(option => option[2].replace(/\s+/g, ' ').trim());
       
-      if (cleanQuestionText && options.length >= 4) {
+      const options = optionMatches.map(m => (m[3] || '').replace(/\s+/g, ' ').trim());
+
+      let correct = 'A';
+      if (answerMatch) {
+        const rawAns = answerMatch[1].trim();
+        correct = optionCharMap[rawAns] || optionCharMap[rawAns.toUpperCase()] || 'A';
+      }
+
+      if (cleanQuestionText && options.length >= 2) {
+        while (options.length < 4) options.push('-');
         const questionObj = { 
           text: cleanQuestionText,
           videoId,
           audioId,
           options: options.slice(0, 4), 
-          correct: answerMatch ? answerMatch[1].toUpperCase() : 'A',
+          correct,
           image: libraryImage ? libraryImage.url : (imageIndex < images.length ? images[imageIndex] : null),
           imageId: libraryImage ? libraryImage.imageId : null
         };
@@ -1238,6 +1670,7 @@
         if (imageIndex < images.length) imageIndex++;
       }
     });
+
     return questions;
   }
 
@@ -1264,6 +1697,29 @@
     currentQuestionAudioId = question.audioId || '';
     videoReadyForQuestion = false;
     audioReadyForQuestion = false;
+
+    if (question.videoId) {
+      selectLibraryVideo(question.videoId);
+    } else {
+      const vContainer = document.getElementById('hostVideoPreviewContainer');
+      if (vContainer) vContainer.style.display = 'none';
+      const vPlayer = document.getElementById('hostVideoPlayer');
+      if (vPlayer) { vPlayer.pause(); vPlayer.removeAttribute('src'); vPlayer.load(); }
+      document.getElementById('selectedVideoLabel').textContent = '';
+      selectedVideoId = null;
+    }
+
+    if (question.audioId) {
+      selectLibraryAudio(question.audioId);
+    } else {
+      const aContainer = document.getElementById('hostAudioPreviewContainer');
+      if (aContainer) aContainer.style.display = 'none';
+      const aPlayer = document.getElementById('hostAudioPlayer');
+      if (aPlayer) { aPlayer.pause(); aPlayer.removeAttribute('src'); aPlayer.load(); }
+      document.getElementById('selectedAudioLabel').textContent = '';
+      selectedAudioId = null;
+    }
+
     syncVideoQuestionControls();
     ['A', 'B', 'C', 'D'].forEach((letter, index) => {
       document.getElementById(`opt${letter}`).value = question.options[index];
@@ -1401,7 +1857,11 @@
     log('📞 Call Lifeline used.');
   };
 
-  fetchLeaderboard();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => fetchLeaderboard());
+  } else {
+    setTimeout(fetchLeaderboard, 100);
+  }
     
   function renderPlayers(players) {
     const el = document.getElementById('players'); 
@@ -1425,13 +1885,21 @@
     });
   }
 
+  let leaderboardFetchInFlight = false;
   async function fetchLeaderboard() {
+    if (leaderboardFetchInFlight) return;
     const leaderboardList = document.getElementById('leaderboardList');
     if (!leaderboardList) return;
-    leaderboardList.innerHTML = '<p style="color:#b8e8ff; text-align:center;">Loading leaderboard...</p>';
 
+    leaderboardFetchInFlight = true;
     try {
-      const response = await fetch('/api/scores?limit=10');
+      const response = await fetch('/api/scores?limit=10', {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       const scores = Array.isArray(data.scores) ? data.scores : [];
 
@@ -1461,23 +1929,25 @@
           const playerId = button.dataset.playerId;
           if (!playerId) return;
           try {
-            const response = await fetch(`/api/scores/${encodeURIComponent(playerId)}`, { method: 'DELETE' });
-            if (response.ok) {
+            const res = await fetch(`/api/scores/${encodeURIComponent(playerId)}`, { method: 'DELETE' });
+            if (res.ok) {
               fetchLeaderboard();
               log(`🗑️ Removed player ${playerId} from the saved leaderboard.`);
             } else {
-              const error = await response.json().catch(() => ({}));
-              alert(error.error || 'Could not remove player from leaderboard');
+              const err = await res.json().catch(() => ({}));
+              showNotification(err.error || 'Could not remove player from leaderboard');
             }
           } catch (error) {
-            console.error('Remove score failed:', error);
-            alert('Could not remove player from leaderboard');
+            console.warn('Remove score failed:', error.message);
+            showNotification('Could not remove player from leaderboard');
           }
         });
       });
     } catch (error) {
       leaderboardList.innerHTML = '<p style="color:#ffb4b4; text-align:center;">Could not load leaderboard.</p>';
-      console.error('Leaderboard fetch failed:', error);
+      console.warn('Leaderboard fetch note:', error && error.message ? error.message : error);
+    } finally {
+      leaderboardFetchInFlight = false;
     }
   }
 
@@ -1503,6 +1973,25 @@
     document.getElementById('callFriendBtn').disabled = false;
     document.getElementById('callFriendBtn').style.opacity = "1";
   }
+
+  function updatePlayerUrlDisplay() {
+    const playerUrl = window.location.origin + '/player';
+    const display = document.getElementById('playerUrlDisplay');
+    const copyBtn = document.getElementById('copyPlayerUrlBtn');
+    const link = document.getElementById('openPlayerUrlLink');
+    if (display) display.textContent = playerUrl;
+    if (link) link.href = playerUrl;
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(playerUrl).then(() => {
+          showNotification('Player URL copied to clipboard!', false);
+        }).catch(() => {
+          showNotification('Player URL: ' + playerUrl, false);
+        });
+      };
+    }
+  }
+  updatePlayerUrlDisplay();
 
   connectToServer();
 </script></body></html>

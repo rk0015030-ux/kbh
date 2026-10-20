@@ -1,8 +1,13 @@
-<!doctype html><html><head>  <meta charset="utf-8" />  <title>Player </title>  <style>
-    body { font-family: 'Helvetica', Arial;  background: linear-gradient(135deg, #6a11cb, #0f3c8a); color: white; text-align: center; margin: 0; padding: 0; 
+<!doctype html><html><head>  <meta charset="utf-8" />  <title>Player </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', 'Noto Sans Devanagari', -apple-system, system-ui, Arial, sans-serif; background: linear-gradient(135deg, #6a11cb, #0f3c8a); color: white; text-align: center; margin: 0; padding: 0; 
             height:100vh;
               overflow:hidden;
   }
+  button, input, select { font-family: inherit; }
     .presence-indicator { position:fixed; top:10px; right:12px; z-index:6000; display:flex; gap:10px; padding:6px 9px; border:1px solid rgba(255,255,255,.2); border-radius:7px; background:rgba(8,12,28,.9); font-size:11px; line-height:1; box-shadow:0 3px 12px rgba(0,0,0,.3); }
     .presence-item { display:flex; align-items:center; gap:4px; white-space:nowrap; color:#e2e5ee; }
     .presence-item strong { color:#ff8585; font-weight:600; }
@@ -491,6 +496,27 @@
     });
   }
     
+  function showNotification(message, isError = true) {
+    let toast = document.getElementById('appPlayerNotificationToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'appPlayerNotificationToast';
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:700;z-index:99999;transition:opacity 0.3s ease;box-shadow:0 8px 30px rgba(0,0,0,0.5);font-size:14px;max-width:90vw;text-align:center;pointer-events:none;';
+      document.body.appendChild(toast);
+    }
+    toast.style.background = isError ? 'linear-gradient(135deg, #e74c3c, #c0392b)' : 'linear-gradient(135deg, #27ae60, #2ecc71)';
+    toast.style.color = '#fff';
+    toast.textContent = message;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 4000);
+  }
+  window.alert = function(msg) { showNotification(msg); };
+
   const sndCorrect = new Audio('dragon-studio-correct-472358.mp3');
   const sndWrong = new Audio('wrong buzzer.mp3');
   const sndTick = new Audio('Infinite timer.mp3');
@@ -636,7 +662,7 @@
         s.play().then(()=>s.pause()).catch(()=>{}) 
     });
     
-    const hostAddr = location.host || "localhost:8080";
+    const hostAddr = location.host || "localhost:3000";
     ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + hostAddr);
     
     ws.onopen = () => {

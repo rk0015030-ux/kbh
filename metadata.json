@@ -1,0 +1,7 @@
+{
+  "name": "Quiz Host - Hazarpati (KBH)",
+  "description": "Interactive multiplayer quiz show applet with real-time host and player controls, audio/video questions, and lifelines.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

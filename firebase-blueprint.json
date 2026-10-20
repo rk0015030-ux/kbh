@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "Score": {
+      "title": "Score",
+      "description": "Leaderboard score record for a player in a game room",
+      "type": "object",
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "description": "Unique identifier of the player"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the player",
+          "maxLength": 100
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Room identifier",
+          "maxLength": 100
+        },
+        "score": {
+          "type": "number",
+          "description": "Player total accumulated score"
+        },
+        "cash": {
+          "type": "number",
+          "description": "Player current cash prize amount"
+        },
+        "clearedLevel": {
+          "type": "number",
+          "description": "Highest level cleared by player"
+        },
+        "eliminated": {
+          "type": "boolean",
+          "description": "Whether player is eliminated"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp string of last update"
+        }
+      },
+      "required": [
+        "playerId",
+        "name",
+        "roomId",
+        "score"
+      ]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "Metadata for uploaded audio, video, or image media",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifier of the media"
+        },
+        "name": {
+          "type": "string",
+          "description": "Original file name",
+          "maxLength": 255
+        },
+        "url": {
+          "type": "string",
+          "description": "Accessible URL of the media"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Storage file name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "image",
+            "video",
+            "audio"
+          ],
+          "description": "Type of media"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp of upload"
+        },
+        "size": {
+          "type": "number",
+          "description": "File size in bytes"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "url",
+        "type"
+      ]
+    }
+  },
+  "firestore": {
+    "/scores/{scoreId}": {
+      "schema": "Score",
+      "description": "Leaderboard and room score records"
+    },
+    "/media/{mediaId}": {
+      "schema": "MediaItem",
+      "description": "Uploaded media metadata index"
+    }
+  }
+}
