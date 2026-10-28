@@ -28,7 +28,7 @@ service cloud.firestore {
 
     // Public read for scores so host and player leaderboards can display
     match /scores/{scoreId} {
-      allow read: if isValidId(scoreId);
+      allow read: if true;
       allow create: if isValidId(scoreId) && isValidScore(request.resource.data);
       allow update: if isValidId(scoreId) && isValidScore(request.resource.data);
       allow delete: if isValidId(scoreId);
@@ -36,10 +36,35 @@ service cloud.firestore {
 
     // Media index items
     match /media/{mediaId} {
-      allow read: if isValidId(mediaId);
-      allow create: if isValidId(mediaId) && isValidMedia(request.resource.data);
-      allow update: if isValidId(mediaId) && isValidMedia(request.resource.data);
+      allow read: if true;
+      allow create, update: if isValidId(mediaId);
       allow delete: if isValidId(mediaId);
+
+      // Binary chunks for persistent storage across app restarts
+      match /chunks/{chunkId} {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+
+    // Direct media collections if created manually or via Firebase Console
+    match /images/{id} {
+      allow read, write: if true;
+    }
+    match /videos/{id} {
+      allow read, write: if true;
+    }
+    match /audio/{id} {
+      allow read, write: if true;
+    }
+    match /audios/{id} {
+      allow read, write: if true;
+    }
+    match /files/{id} {
+      allow read, write: if true;
+    }
+    match /uploads/{id} {
+      allow read, write: if true;
     }
   }
 }

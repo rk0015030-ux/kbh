@@ -85,6 +85,10 @@
         "size": {
           "type": "number",
           "description": "File size in bytes"
+        },
+        "hasChunks": {
+          "type": "boolean",
+          "description": "Whether file binary data is persisted in chunks subcollection"
         }
       },
       "required": [
@@ -92,6 +96,30 @@
         "name",
         "url",
         "type"
+      ]
+    },
+    "MediaChunk": {
+      "title": "MediaChunk",
+      "description": "Binary chunk of uploaded file stored as base64",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "number",
+          "description": "Zero-based chunk sequence index"
+        },
+        "total": {
+          "type": "number",
+          "description": "Total number of chunks"
+        },
+        "data": {
+          "type": "string",
+          "description": "Base64 encoded chunk data"
+        }
+      },
+      "required": [
+        "index",
+        "total",
+        "data"
       ]
     }
   },
@@ -103,6 +131,10 @@
     "/media/{mediaId}": {
       "schema": "MediaItem",
       "description": "Uploaded media metadata index"
+    },
+    "/media/{mediaId}/chunks/{chunkId}": {
+      "schema": "MediaChunk",
+      "description": "Persisted binary chunks for media files"
     }
   }
 }

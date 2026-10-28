@@ -58,7 +58,29 @@ const scoreDatabase = [];
 let firebaseApp = null;
 let firestoreDb = null;
 try {
-  const firebaseConfig = require('./firebase-applet-config.json');
+  let firebaseConfig = null;
+  if (process.env.FIREBASE_CONFIG) {
+    try {
+      firebaseConfig = typeof process.env.FIREBASE_CONFIG === 'string' 
+        ? JSON.parse(process.env.FIREBASE_CONFIG) 
+        : process.env.FIREBASE_CONFIG;
+    } catch (e) {
+      console.warn('[Firebase] Could not parse process.env.FIREBASE_CONFIG JSON');
+    }
+  } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_API_KEY) {
+    firebaseConfig = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN || `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`,
+      firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || '(default)',
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
+      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
+      appId: process.env.FIREBASE_APP_ID || ''
+    };
+  } else if (fs.existsSync(path.join(__dirname, 'firebase-applet-config.json'))) {
+    firebaseConfig = require('./firebase-applet-config.json');
+  }
+
   if (firebaseConfig && firebaseConfig.projectId) {
     firebaseApp = initializeApp(firebaseConfig);
     firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
@@ -80,9 +102,40 @@ async function testFirebaseConnection() {
   }
 }
 
-async function saveRemoteMedia(mediaId, item) {
+let remoteIndexesLoaded = false;
+let remoteIndexesPromise = null;
+let remoteScoresLoaded = false;
+let remoteScoresPromise = null;
+
+async function saveRemoteMedia(mediaId, item, localFilePath = null) {
   if (!firestoreDb) return;
   try {
+    let hasChunks = false;
+    let totalChunks = 0;
+    if (localFilePath && fs.existsSync(localFilePath)) {
+      try {
+        const stats = fs.statSync(localFilePath);
+        // Persist files up to 25MB in Firestore chunks (650KB base64 chunk size)
+        if (stats.size > 0 && stats.size <= 25 * 1024 * 1024) {
+          const fileBuf = fs.readFileSync(localFilePath);
+          const base64Str = fileBuf.toString('base64');
+          const CHUNK_SIZE = 650 * 1024;
+          totalChunks = Math.ceil(base64Str.length / CHUNK_SIZE);
+          for (let i = 0; i < totalChunks; i++) {
+            const chunkData = base64Str.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            await setDoc(doc(firestoreDb, 'media', mediaId, 'chunks', String(i)), {
+              index: i,
+              total: totalChunks,
+              data: chunkData
+            });
+          }
+          hasChunks = true;
+        }
+      } catch (chunkErr) {
+        console.warn(`[Firebase] Could not save chunks for ${mediaId}:`, chunkErr.message);
+      }
+    }
+
     await setDoc(doc(firestoreDb, 'media', mediaId), {
       id: mediaId,
       name: item.name || '',
@@ -90,7 +143,9 @@ async function saveRemoteMedia(mediaId, item) {
       filename: item.filename || '',
       type: item.type || 'image',
       uploadedAt: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
-      size: Number(item.size) || 0
+      size: Number(item.size) || 0,
+      hasChunks: hasChunks,
+      totalChunks: totalChunks
     });
   } catch (error) {
     console.warn(`[Firebase] Could not save media ${mediaId} to Firestore:`, error.message);
@@ -100,29 +155,175 @@ async function saveRemoteMedia(mediaId, item) {
 async function deleteRemoteMedia(mediaId) {
   if (!firestoreDb) return;
   try {
+    try {
+      const chunksSnap = await getDocs(collection(firestoreDb, 'media', mediaId, 'chunks'));
+      for (const chunkDoc of chunksSnap.docs) {
+        await deleteDoc(chunkDoc.ref);
+      }
+    } catch (e) {
+      // Ignore if no chunks
+    }
     await deleteDoc(doc(firestoreDb, 'media', mediaId));
   } catch (error) {
     console.warn(`[Firebase] Could not delete media ${mediaId} from Firestore:`, error.message);
   }
 }
 
-async function loadRemoteIndexes() {
-  await testFirebaseConnection();
-  if (!firestoreDb) return;
+async function rehydrateMediaFile(type, filename) {
+  if (!firestoreDb || !filename) return false;
   try {
-    const snap = await getDocs(collection(firestoreDb, 'media'));
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data && data.id && data.filename) {
-        if (data.type === 'video') videoDatabase.set(data.id, data);
-        else if (data.type === 'audio') audioDatabase.set(data.id, data);
-        else imageDatabase.set(data.id, data);
+    let targetDir = imagesDir;
+    let dbMap = imageDatabase;
+    if (type === 'video') { targetDir = videosDir; dbMap = videoDatabase; }
+    else if (type === 'audio') { targetDir = audioDir; dbMap = audioDatabase; }
+
+    const targetPath = path.join(targetDir, filename);
+    if (fs.existsSync(targetPath)) return true;
+
+    const item = Array.from(dbMap.values()).find(m => m.filename === filename);
+    if (!item || !item.id) return false;
+
+    const chunksSnap = await getDocs(collection(firestoreDb, 'media', item.id, 'chunks'));
+    if (chunksSnap.empty) return false;
+
+    const chunks = [];
+    chunksSnap.forEach(snap => chunks.push(snap.data()));
+    chunks.sort((a, b) => a.index - b.index);
+
+    const fullBase64 = chunks.map(c => c.data).join('');
+    const buffer = Buffer.from(fullBase64, 'base64');
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(targetPath, buffer);
+    console.log(`[Firebase] Successfully rehydrated ${type} "${item.name}" (${filename}) to disk`);
+    return true;
+  } catch (err) {
+    console.warn(`[Firebase] Could not rehydrate ${filename}:`, err.message);
+    return false;
+  }
+}
+
+let lastRemoteIndexesFetchTime = 0;
+
+function inferMediaType(name, filename, url) {
+  const target = String(name || filename || url || '').toLowerCase().split('?')[0];
+  const ext = path.extname(target);
+  if (['.mp4', '.webm', '.ogg', '.ogv', '.mov', '.qt', '.mkv', '.avi', '.m4v', '.3gp', '.flv', '.wmv'].includes(ext)) {
+    return 'video';
+  }
+  if (['.mp3', '.wav', '.oga', '.m4a', '.aac', '.flac', '.opus', '.wma', '.alac', '.aiff'].includes(ext)) {
+    return 'audio';
+  }
+  return 'image';
+}
+
+async function loadRemoteIndexes(force = false) {
+  await testFirebaseConnection();
+  if (!firestoreDb) {
+    remoteIndexesLoaded = true;
+    return;
+  }
+  try {
+    const collectionsToCheck = ['media', 'images', 'videos', 'audio', 'audios', 'files', 'uploads'];
+    let totalDocsLoaded = 0;
+
+    for (const colName of collectionsToCheck) {
+      try {
+        const snap = await getDocs(collection(firestoreDb, colName));
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const docId = docSnap.id;
+          const id = String(data.id || data.mediaId || data.videoId || data.imageId || data.audioId || docId);
+          
+          let type = String(data.type || data.fileType || data.mediaType || '').toLowerCase();
+          if (!['image', 'video', 'audio'].includes(type)) {
+            if (colName === 'videos' || colName === 'video') type = 'video';
+            else if (['audio', 'audios', 'sound', 'sounds', 'music'].includes(colName)) type = 'audio';
+            else if (['images', 'image'].includes(colName)) type = 'image';
+            else type = inferMediaType(data.name, data.filename, data.url);
+          }
+
+          const name = String(data.name || data.fileName || data.filename || data.title || data.originalName || id);
+          
+          let filename = data.filename || data.fileName;
+          if (!filename) {
+            const raw = data.url ? path.basename(String(data.url).split('?')[0]) : name;
+            filename = raw && raw.includes('.') ? raw : `${id}.${type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'}`;
+          }
+
+          let url = data.url || data.downloadUrl || data.downloadURL || data.src || data.link;
+          if (!url) {
+            const prefix = type === 'video' ? '/videos' : type === 'audio' ? '/audio' : '/images';
+            url = `${prefix}/${encodeURIComponent(filename)}`;
+          }
+
+          const item = {
+            id,
+            name,
+            url,
+            filename,
+            type,
+            uploadedAt: data.uploadedAt ? (data.uploadedAt.toDate ? data.uploadedAt.toDate().toISOString() : String(data.uploadedAt)) : new Date().toISOString(),
+            size: Number(data.size) || 0,
+            hasChunks: Boolean(data.hasChunks),
+            totalChunks: Number(data.totalChunks) || 0
+          };
+
+          // If document has inline base64 data, write to disk if missing
+          const inlineBase64 = data.base64 || data.data || data.dataUrl || data.content;
+          if (inlineBase64 && typeof inlineBase64 === 'string') {
+            try {
+              let cleanBase64 = inlineBase64;
+              if (cleanBase64.includes(';base64,')) {
+                cleanBase64 = cleanBase64.split(';base64,')[1];
+              }
+              const targetDir = type === 'video' ? videosDir : type === 'audio' ? audioDir : imagesDir;
+              const targetPath = path.join(targetDir, filename);
+              if (!fs.existsSync(targetPath)) {
+                fs.writeFileSync(targetPath, Buffer.from(cleanBase64, 'base64'));
+              }
+            } catch (inlineErr) {
+              console.warn('[Firebase] Could not write inline base64 for', id, inlineErr.message);
+            }
+          }
+
+          if (type === 'video') {
+            videoDatabase.set(id, item);
+          } else if (type === 'audio') {
+            audioDatabase.set(id, item);
+          } else {
+            imageDatabase.set(id, item);
+          }
+          totalDocsLoaded++;
+        });
+      } catch (colErr) {
+        // Individual collection might not exist or error, continue
       }
-    });
-    console.log(`[Firebase] Loaded ${snap.size} media records from Firestore`);
+    }
+
+    saveImageIndex();
+    saveVideoIndex();
+    saveAudioIndex();
+    lastRemoteIndexesFetchTime = Date.now();
+    console.log(`[Firebase] Loaded ${totalDocsLoaded} total media records across Firestore collections`);
   } catch (error) {
     console.warn('[Firebase] Could not load media indexes:', error.message);
+  } finally {
+    remoteIndexesLoaded = true;
   }
+}
+
+function ensureRemoteIndexesLoaded(force = false) {
+  const isStale = (Date.now() - lastRemoteIndexesFetchTime) > 3000;
+  if (!force && remoteIndexesLoaded && !isStale) {
+    return Promise.resolve();
+  }
+  if (remoteIndexesPromise) {
+    return remoteIndexesPromise;
+  }
+  remoteIndexesPromise = loadRemoteIndexes(force).finally(() => {
+    remoteIndexesPromise = null;
+  });
+  return remoteIndexesPromise;
 }
 
 // Ensure local directories exist
@@ -139,7 +340,7 @@ function loadImageIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(imageIndexPath, 'utf8'));
     Object.entries(entries).forEach(([imageId, image]) => {
-      if (image && image.filename && fs.existsSync(path.join(imagesDir, image.filename))) imageDatabase.set(imageId, image);
+      if (image && image.filename) imageDatabase.set(imageId, image);
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load image index:', error.message);
@@ -156,7 +357,7 @@ function loadVideoIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(videoIndexPath, 'utf8'));
     Object.entries(entries).forEach(([videoId, video]) => {
-      if (video && video.filename && fs.existsSync(path.join(videosDir, video.filename))) videoDatabase.set(videoId, video);
+      if (video && video.filename) videoDatabase.set(videoId, video);
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load video index:', error.message);
@@ -200,7 +401,7 @@ function loadAudioIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(audioIndexPath, 'utf8'));
     Object.entries(entries).forEach(([audioId, audio]) => {
-      if (audio && audio.filename && fs.existsSync(path.join(audioDir, audio.filename))) audioDatabase.set(audioId, audio);
+      if (audio && audio.filename) audioDatabase.set(audioId, audio);
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load audio index:', error.message);
@@ -236,6 +437,49 @@ function loadAudioIndex() {
 
 loadAudioIndex();
 
+const defaultKbcAudioFiles = [
+  { file: '30 sec timer.mp3', id: 'audio-30-sec-timer', name: '30 Sec Timer' },
+  { file: '50 50.mp3', id: 'audio-50-50', name: '50-50 Lifeline Sound' },
+  { file: '60 sec timer.mp3', id: 'audio-60-sec-timer', name: '60 Sec Timer' },
+  { file: 'Infinite timer.mp3', id: 'audio-infinite-timer', name: 'Infinite Timer' },
+  { file: 'kbc timer real.mp3', id: 'audio-kbc-timer-real', name: 'KBC Timer Real' },
+  { file: 'question lock sound.mp3', id: 'audio-question-lock', name: 'Question Lock Sound' },
+  { file: 'wrong buzzer.mp3', id: 'audio-wrong-buzzer', name: 'Wrong Buzzer' }
+];
+
+async function seedDefaultAudioFiles() {
+  if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+  for (const item of defaultKbcAudioFiles) {
+    const rootPath = path.join(__dirname, item.file);
+    const destPath = path.join(audioDir, item.file);
+    if (fs.existsSync(rootPath)) {
+      if (!fs.existsSync(destPath)) {
+        try {
+          fs.copyFileSync(rootPath, destPath);
+        } catch (copyErr) {
+          console.warn('Could not copy default audio file:', item.file, copyErr.message);
+        }
+      }
+      if (!audioDatabase.has(item.id)) {
+        const stats = fs.existsSync(destPath) ? fs.statSync(destPath) : fs.statSync(rootPath);
+        const audioItem = {
+          id: item.id,
+          name: item.name,
+          url: `/audio/${encodeURIComponent(item.file)}`,
+          filename: item.file,
+          type: 'audio',
+          uploadedAt: stats.mtime.toISOString(),
+          size: stats.size
+        };
+        audioDatabase.set(item.id, audioItem);
+        saveRemoteMedia(item.id, audioItem, destPath).catch(() => {});
+      }
+    }
+  }
+  saveAudioIndex();
+}
+seedDefaultAudioFiles().catch(e => console.warn('Could not seed default audio files:', e.message));
+
 function saveScoreDatabase() {
   fs.writeFileSync(scoreDatabasePath, JSON.stringify(scoreDatabase, null, 2));
 }
@@ -254,7 +498,10 @@ function loadScoreDatabase() {
 }
 
 async function loadRemoteScores() {
-  if (!firestoreDb) return;
+  if (!firestoreDb) {
+    remoteScoresLoaded = true;
+    return;
+  }
   try {
     const snap = await getDocs(collection(firestoreDb, 'scores'));
     snap.forEach((docSnap) => {
@@ -269,9 +516,20 @@ async function loadRemoteScores() {
       }
     });
     scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
+    saveScoreDatabase();
   } catch (error) {
     console.warn('[Firebase] Could not load scores from Firestore:', error.message);
+  } finally {
+    remoteScoresLoaded = true;
   }
+}
+
+function ensureRemoteScoresLoaded() {
+  if (remoteScoresLoaded) return Promise.resolve();
+  if (!remoteScoresPromise) {
+    remoteScoresPromise = loadRemoteScores();
+  }
+  return remoteScoresPromise;
 }
 
 function persistScoreSnapshot({ playerId, name, roomId, score, cash, clearedLevel, eliminated }) {
@@ -426,7 +684,7 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
         size: file.size
       };
       imageDatabase.set(imageId, mediaItem);
-      await saveRemoteMedia(imageId, mediaItem);
+      await saveRemoteMedia(imageId, mediaItem, path.join(imagesDir, file.filename));
       uploadedImages.push({
         imageId,
         url: stored.url,
@@ -447,7 +705,8 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
 });
 
 // Get all uploaded images
-app.get('/api/images/list', (req, res) => {
+app.get('/api/images/list', async (req, res) => {
+  await ensureRemoteIndexesLoaded(Boolean(req.query.refresh));
   const images = Array.from(imageDatabase.entries()).map(([imageId, data]) => ({
     imageId,
     name: data.name,
@@ -459,7 +718,8 @@ app.get('/api/images/list', (req, res) => {
 });
 
 // Get image by ID
-app.get('/api/images/:imageId', (req, res) => {
+app.get('/api/images/:imageId', async (req, res) => {
+  await ensureRemoteIndexesLoaded();
   const { imageId } = req.params;
   const imageData = imageDatabase.get(imageId);
   if (!imageData) {
@@ -526,7 +786,7 @@ app.post('/api/videos/upload', (req, res, next) => {
         size: file.size
       };
       videoDatabase.set(videoId, mediaItem);
-      await saveRemoteMedia(videoId, mediaItem);
+      await saveRemoteMedia(videoId, mediaItem, path.join(videosDir, file.filename));
       videos.push({ videoId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
     saveVideoIndex();
@@ -536,7 +796,8 @@ app.post('/api/videos/upload', (req, res, next) => {
   }
 });
 
-app.get('/api/videos/list', (req, res) => {
+app.get('/api/videos/list', async (req, res) => {
+  await ensureRemoteIndexesLoaded(Boolean(req.query.refresh));
   res.json({
     videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => ({
       videoId,
@@ -548,7 +809,8 @@ app.get('/api/videos/list', (req, res) => {
   });
 });
 
-app.get('/api/scores', (req, res) => {
+app.get('/api/scores', async (req, res) => {
+  await ensureRemoteScoresLoaded();
   const limit = Number(req.query.limit) || 20;
   res.json({ success: true, scores: getTopScores(limit) });
 });
@@ -629,7 +891,7 @@ app.post('/api/audio/upload', (req, res, next) => {
         size: file.size
       };
       audioDatabase.set(audioId, mediaItem);
-      await saveRemoteMedia(audioId, mediaItem);
+      await saveRemoteMedia(audioId, mediaItem, path.join(audioDir, file.filename));
       audios.push({ audioId, name: mediaItem.name, url: mediaItem.url });
     }
     saveAudioIndex();
@@ -639,7 +901,8 @@ app.post('/api/audio/upload', (req, res, next) => {
   }
 });
 
-app.get('/api/audio/list', (req, res) => {
+app.get('/api/audio/list', async (req, res) => {
+  await ensureRemoteIndexesLoaded(Boolean(req.query.refresh));
   res.json({
     audios: Array.from(audioDatabase.entries()).map(([audioId, data]) => ({
       audioId,
@@ -664,6 +927,68 @@ app.delete('/api/audio/:audioId', async (req, res) => {
     res.json({ success: true, message: 'Audio deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete audio file' });
+  }
+});
+
+// Explicit media sync endpoint from Firestore
+app.all(['/api/media/sync', '/api/media/refresh'], async (req, res) => {
+  try {
+    await loadRemoteIndexes(true);
+    res.json({
+      success: true,
+      message: 'Synced successfully with Firebase Firestore',
+      counts: {
+        images: imageDatabase.size,
+        videos: videoDatabase.size,
+        audios: audioDatabase.size
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add media via URL or Firebase Storage URL
+app.post('/api/media/add-url', async (req, res) => {
+  try {
+    const { url, name, type } = req.body || {};
+    if (!url || !url.trim()) {
+      return res.status(400).json({ error: 'Media URL is required' });
+    }
+    const cleanUrl = url.trim();
+    const mediaType = ['image', 'video', 'audio'].includes(type) ? type : inferMediaType(name, '', cleanUrl);
+    
+    let mediaId = '';
+    if (mediaType === 'video') mediaId = createVideoId();
+    else if (mediaType === 'audio') mediaId = createAudioId();
+    else mediaId = createImageId();
+
+    const displayName = (name && name.trim()) || path.basename(cleanUrl.split('?')[0]) || `${mediaType}-${Date.now()}`;
+    const filename = path.basename(cleanUrl.split('?')[0]) || `${mediaId}.${mediaType === 'video' ? 'mp4' : mediaType === 'audio' ? 'mp3' : 'jpg'}`;
+
+    const mediaItem = {
+      id: mediaId,
+      name: displayName,
+      url: cleanUrl,
+      filename: filename,
+      type: mediaType,
+      uploadedAt: new Date().toISOString(),
+      size: 0
+    };
+
+    if (mediaType === 'video') videoDatabase.set(mediaId, mediaItem);
+    else if (mediaType === 'audio') audioDatabase.set(mediaId, mediaItem);
+    else imageDatabase.set(mediaId, mediaItem);
+
+    await saveRemoteMedia(mediaId, mediaItem);
+
+    if (mediaType === 'video') saveVideoIndex();
+    else if (mediaType === 'audio') saveAudioIndex();
+    else saveImageIndex();
+
+    res.json({ success: true, message: `${mediaType} added successfully to library and Firestore`, media: mediaItem });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1013,6 +1338,53 @@ function broadcastScoreboard(room) {
   }));
   broadcastToRoom(room.host && room.host.roomId, { type: 'scoreboard', payload: scoreboard });
 }
+
+function escapeXml(unsafe) {
+  return String(unsafe || '').replace(/[<>&'"]/g, c => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+    }
+  });
+}
+
+app.get('/images/:filename', async (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(imagesDir, filename);
+  if (fs.existsSync(filePath)) return next();
+  const restored = await rehydrateMediaFile('image', filename);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
+  const item = Array.from(imageDatabase.values()).find(i => i.filename === filename);
+  const title = item ? item.name : filename;
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+    <rect width="600" height="400" fill="#152238"/>
+    <rect x="20" y="20" width="560" height="360" rx="12" fill="#1f3252" stroke="#ffd54d" stroke-width="2"/>
+    <text x="50%" y="45%" text-anchor="middle" fill="#ffd54d" font-family="sans-serif" font-size="24" font-weight="bold">📷 ${escapeXml(title)}</text>
+    <text x="50%" y="60%" text-anchor="middle" fill="#9ec5e8" font-family="sans-serif" font-size="14">Persisted media record from Firestore</text>
+  </svg>`);
+});
+
+app.get('/videos/:filename', async (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(videosDir, filename);
+  if (fs.existsSync(filePath)) return next();
+  const restored = await rehydrateMediaFile('video', filename);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
+  next();
+});
+
+app.get('/audio/:filename', async (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(audioDir, filename);
+  if (fs.existsSync(filePath)) return next();
+  const restored = await rehydrateMediaFile('audio', filename);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
+  next();
+});
 
 app.use('/images', express.static(imagesDir));
 app.use('/videos', express.static(videosDir));

@@ -288,19 +288,70 @@
   <textarea id="qText" rows="3" placeholder="Enter your question here..."></textarea>
 
   <label for="questionVideoId" style="display:block; margin-top:10px;">Video ID (optional):</label>
-  <input id="questionVideoId" type="text" placeholder="Example: video-1" autocomplete="off" />
+  <div style="display:flex; gap:6px; align-items:center;">
+    <input id="questionVideoId" type="text" placeholder="Example: video-1" autocomplete="off" style="flex:1; margin:0;" />
+    <button type="button" id="clearQuestionVideoIdBtn" title="Remove / Clear Video" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
+  </div>
+
   <label for="questionAudioId" style="display:block; margin-top:10px;">Audio ID (optional):</label>
-  <input id="questionAudioId" type="text" placeholder="Example: audio-1" autocomplete="off" />
+  <div style="display:flex; gap:6px; align-items:center;">
+    <input id="questionAudioId" type="text" placeholder="Example: audio-1" autocomplete="off" style="flex:1; margin:0;" />
+    <button type="button" id="clearQuestionAudioIdBtn" title="Remove / Clear Audio" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
+  </div>
 
   <label for="pdfFile">Upload Questions PDF:</label>
   <input id="pdfFile" type="file" accept="application/pdf,.pdf" />
   <div id="pdfStatus" style="margin-top: 8px; color: #00ff00;"></div>
   <button id="nextPdfQuestion" type="button" class="gold-btn" style="display:none; margin-top:8px; width:100%;">NEXT PDF QUESTION</button>
   
+  <!-- Firebase Media Storage & Sync Card -->
+  <div style="background:linear-gradient(135deg, rgba(25,118,210,0.18), rgba(38,170,130,0.15)); border:1px solid rgba(82,183,255,0.4); border-radius:10px; padding:12px 14px; margin-top:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:20px;">🔥</span>
+        <div>
+          <span style="font-weight:bold; color:#ffd54d; font-size:14px;">Firebase Media Storage & Sync</span>
+          <div style="font-size:11px; color:#8ed0ff;">Connected Firestore Database: <code style="color:#fff; background:rgba(0,0,0,0.4); padding:1px 5px; border-radius:4px;">ai-studio-kbh</code></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" id="syncFirebaseBtn" class="gold-btn" style="padding:6px 12px; font-size:12px; background:#1976d2; color:#fff;" title="Force re-sync all media files directly from Firebase">🔄 Sync with Firebase</button>
+        <button type="button" id="toggleAddUrlBtn" class="gold-btn" style="padding:6px 12px; font-size:12px; background:#168b6b; color:#fff;">+ Add via URL / Firebase Link</button>
+      </div>
+    </div>
+    
+    <!-- Collapsible Add via URL form -->
+    <div id="addMediaUrlForm" style="display:none; margin-top:12px; background:rgba(0,0,0,0.5); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);">
+      <div style="font-size:12px; font-weight:bold; color:#79e0bd; margin-bottom:6px;">Paste Firebase Storage download URL, Google Drive link, or direct media URL:</div>
+      <div style="display:grid; grid-template-columns:1fr 130px 100px; gap:8px; margin-bottom:8px;">
+        <input type="url" id="customMediaUrl" placeholder="https://firebasestorage.googleapis.com/... or https://..." style="margin:0; font-size:12px;" />
+        <input type="text" id="customMediaName" placeholder="File Name (e.g. Intro)" style="margin:0; font-size:12px;" />
+        <select id="customMediaType" style="margin:0; font-size:12px;">
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:6px;">
+        <button type="button" onclick="document.getElementById('addMediaUrlForm').style.display='none'" style="background:rgba(255,255,255,0.1); color:#ccc; border:none; border-radius:4px; padding:6px 12px; font-size:12px; cursor:pointer;">Cancel</button>
+        <button type="button" id="submitAddMediaUrlBtn" class="gold-btn" style="padding:6px 14px; font-size:12px;">Save to Library & Firebase</button>
+      </div>
+      <div id="customMediaStatus" style="font-size:11px; margin-top:4px;"></div>
+    </div>
+  </div>
+
   <!-- Image Management Section -->
   <div id="imageManagement" style="background: rgba(255,215,0,0.08); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(255,215,0,0.2);">
-    <label style="color: #ffd54d; font-weight: bold;">📸 Image Library Management</label>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <label style="color: #ffd54d; font-weight: bold;">📸 Image Library Management</label>
+      <button type="button" id="clearActiveImageBtn" style="background:#c93b4a; color:white; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold; display:none;">✕ Unselect Image</button>
+    </div>
     
+    <div id="activeImageSelectionBanner" style="display:none; margin-top:8px; background:rgba(255,215,0,0.15); border:1px solid gold; border-radius:6px; padding:8px 12px; font-size:12px; justify-content:space-between; align-items:center;">
+      <span id="activeImageSelectionText" style="color:#ffd54d; font-weight:600;"></span>
+      <button type="button" id="clearBannerImageBtn" style="background:#c93b4a; color:white; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+    </div>
+
     <div style="margin-top: 10px;">
       <label for="imageUploadBatch">Upload Multiple Images:</label>
       <input id="imageUploadBatch" type="file" accept="image/*" multiple />
@@ -337,7 +388,10 @@
     <div id="hostVideoPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(82,183,255,0.45);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostVideoPreviewTitle">🎬 Host Video Player</span>
-        <span id="hostVideoPlaybackBadge" style="font-size:11px; background:#1976d2; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span id="hostVideoPlaybackBadge" style="font-size:11px; background:#1976d2; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+          <button type="button" id="clearVideoBtn" title="Remove / Unselect Video" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        </div>
       </div>
       <video id="hostVideoPlayer" controls playsinline style="width:100%; max-height:240px; border-radius:6px; background:#000; outline:none; display:block;"></video>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
@@ -379,7 +433,10 @@
     <div id="hostAudioPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(38,170,130,0.45);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostAudioPreviewTitle">🎧 Host Audio Player</span>
-        <span id="hostAudioPlaybackBadge" style="font-size:11px; background:#168b6b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span id="hostAudioPlaybackBadge" style="font-size:11px; background:#168b6b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
+          <button type="button" id="clearAudioBtn" title="Remove / Unselect Audio" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        </div>
       </div>
       <audio id="hostAudioPlayer" controls style="width:100%; display:block;"></audio>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
@@ -403,14 +460,22 @@
     <div id="selectedAudioLabel" style="font-size:12px; color:#b8e8ff; margin-top:8px;"></div>
   </div>
 
-  <!-- Image Preview for PDF Questions -->
-
-  <img id="imagePreview" style="display:none; max-width: 100%; max-height: 300px; margin-top: 10px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.2);" alt="Question Image"/>
+  <!-- Image Preview Container -->
+  <div id="imagePreviewContainer" style="display:none; margin-top:10px; background:rgba(0,0,0,0.45); padding:10px; border-radius:8px; border:1px solid rgba(255,215,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span id="imagePreviewTitle" style="font-size:13px; font-weight:bold; color:#ffd54d;">📸 Question Image</span>
+      <button type="button" id="clearImageBtn" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;" title="Remove / Unselect Image">✕ Remove Image</button>
+    </div>
+    <img id="imagePreview" style="display:none; max-width:100%; max-height:280px; border-radius:6px; display:block; margin:0 auto;" alt="Question Image"/>
+  </div>
   
   <div id="imageFileField">
-    <label></label>
+    <label for="imageFile" style="font-size:12px; color:#ffd54d; font-weight:bold; display:block; margin-top:8px;">Or Upload Single Image:</label>
+    <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+      <input id="imageFile" type="file" accept="image/*" style="flex:1; margin:0;" />
+      <button type="button" id="clearImageFileBtn" title="Clear file" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
+    </div>
     <div id="selectedImageLabel" style="font-size:12px; color:#b8e8ff; margin-top:5px;"></div>
-   
   </div>
   
   <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-top: 10px; border: 1px solid rgba(255,215,0,0.3);">
@@ -597,11 +662,48 @@
     }, 4000);
   }
   window.alert = function(msg) { showNotification(msg); };
+
+  function showAppConfirm(message, onConfirm) {
+    let modal = document.getElementById('appConfirmModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'appConfirmModal';
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;z-index:999999;backdrop-filter:blur(3px);padding:16px;';
+      modal.innerHTML = `
+        <div style="background:#152238; border:2px solid #ffd54d; border-radius:12px; padding:22px; max-width:420px; width:100%; color:#fff; text-align:center; box-shadow:0 12px 35px rgba(0,0,0,0.85); box-sizing:border-box;">
+          <div style="font-size:32px; margin-bottom:10px;">⚠️</div>
+          <div id="appConfirmMsg" style="font-size:15px; margin-bottom:20px; line-height:1.5; color:#f0f4f8;"></div>
+          <div style="display:flex; gap:12px; justify-content:center;">
+            <button id="appConfirmCancel" type="button" style="padding:9px 20px; border-radius:6px; background:#4a5568; color:white; border:none; cursor:pointer; font-weight:bold; font-size:14px;">Cancel</button>
+            <button id="appConfirmOk" type="button" style="padding:9px 20px; border-radius:6px; background:#c93b4a; color:white; border:none; cursor:pointer; font-weight:bold; font-size:14px;">Delete ✕</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    const msgEl = modal.querySelector('#appConfirmMsg');
+    const okBtn = modal.querySelector('#appConfirmOk');
+    const cancelBtn = modal.querySelector('#appConfirmCancel');
+    msgEl.textContent = message;
+    modal.style.display = 'flex';
     
-  const log = (t) => { 
+    const cleanup = () => {
+      modal.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+    };
+    
+    cancelBtn.onclick = cleanup;
+    okBtn.onclick = () => {
+      cleanup();
+      if (typeof onConfirm === 'function') onConfirm();
+    };
+  }
+
+  function log(t) {
     const el = document.getElementById('events'); 
-    el.textContent = `[${new Date().toLocaleTimeString()}] ${t}\n` + el.textContent; 
-  };
+    if (el) el.textContent = `[${new Date().toLocaleTimeString()}] ${t}\n` + el.textContent; 
+  }
 
   function updateHostTimerDisplay(timeLeft, totalTime) {
     const timerDisplay = document.getElementById('hostTimerValue');
@@ -802,8 +904,39 @@
     
   document.getElementById('qFormat').onchange = () => {
     const isImage = document.getElementById('qFormat').value === 'image';
-    document.getElementById('imageFileField').style.display = isImage ? 'block' : 'none';
+    const field = document.getElementById('imageFileField');
+    if (field) field.style.display = isImage ? 'block' : 'none';
   };
+
+  const imageFileInputEl = document.getElementById('imageFile');
+  if (imageFileInputEl) {
+    imageFileInputEl.onchange = () => {
+      if (imageFileInputEl.files && imageFileInputEl.files[0]) {
+        selectedImageId = null;
+        currentPdfQuestion = null;
+        const file = imageFileInputEl.files[0];
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        if (previewContainer) previewContainer.style.display = 'block';
+        const preview = document.getElementById('imagePreview');
+        if (preview) {
+          preview.src = URL.createObjectURL(file);
+          preview.style.display = 'block';
+        }
+        const label = document.getElementById('selectedImageLabel');
+        if (label) {
+          label.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,215,0,0.15); padding:6px 10px; border-radius:6px; border:1px solid gold; width:100%; box-sizing:border-box;">
+              <span><b>Single file selected:</b> ${escapeHtml(file.name)}</span>
+              <button type="button" onclick="clearImageSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+            </div>
+          `;
+        }
+        const clearFileBtn = document.getElementById('clearImageFileBtn');
+        if (clearFileBtn) clearFileBtn.style.display = 'inline-block';
+        refreshImageLibrary();
+      }
+    };
+  }
 
   function updateHostAnswerControls() {
     document.querySelectorAll('.host-answer-btn').forEach(button => {
@@ -909,18 +1042,43 @@
   }
 
   const updateVideoQuestionState = () => {
-    currentQuestionVideoId = '';
-    videoReadyForQuestion = false;
-    activeVideoPlaybackId = '';
-    syncVideoQuestionControls();
+    const rawVal = document.getElementById('questionVideoId').value;
+    const val = rawVal.trim();
+    const clearBtn = document.getElementById('clearQuestionVideoIdBtn');
+    if (clearBtn) clearBtn.style.display = val ? 'inline-block' : 'none';
+    if (!val) {
+      if (selectedVideoId || currentQuestionVideoId) {
+        clearVideoSelection(false);
+      }
+    } else {
+      const vid = extractVideoId(val) || val.toLowerCase().replace(/\s+/g, '');
+      currentQuestionVideoId = vid;
+      videoReadyForQuestion = false;
+      activeVideoPlaybackId = '';
+      syncVideoQuestionControls();
+    }
   };
   document.getElementById('questionVideoId').addEventListener('input', updateVideoQuestionState);
-  document.getElementById('questionAudioId').addEventListener('input', () => {
-    currentQuestionAudioId = '';
-    audioReadyForQuestion = false;
-    activeAudioPlaybackId = '';
-    syncVideoQuestionControls();
-  });
+
+  const updateAudioQuestionState = () => {
+    const rawVal = document.getElementById('questionAudioId').value;
+    const val = rawVal.trim();
+    const clearBtn = document.getElementById('clearQuestionAudioIdBtn');
+    if (clearBtn) clearBtn.style.display = val ? 'inline-block' : 'none';
+    if (!val) {
+      if (selectedAudioId || currentQuestionAudioId) {
+        clearAudioSelection(false);
+      }
+    } else {
+      const aud = extractAudioId(val) || val.toLowerCase().replace(/\s+/g, '');
+      currentQuestionAudioId = aud;
+      audioReadyForQuestion = false;
+      activeAudioPlaybackId = '';
+      syncVideoQuestionControls();
+    }
+  };
+  document.getElementById('questionAudioId').addEventListener('input', updateAudioQuestionState);
+
   document.getElementById('qText').addEventListener('input', () => {
     if (!document.getElementById('questionVideoId').value.trim()) currentQuestionVideoId = '';
   });
@@ -960,11 +1118,35 @@
     return element.innerHTML;
   }
 
+  function clearImageSelection(notify = true) {
+    selectedImageId = null;
+    if (currentPdfQuestion) currentPdfQuestion.image = null;
+    const imgFile = document.getElementById('imageFile');
+    if (imgFile) imgFile.value = '';
+    const prevContainer = document.getElementById('imagePreviewContainer');
+    if (prevContainer) prevContainer.style.display = 'none';
+    const preview = document.getElementById('imagePreview');
+    if (preview) {
+      preview.style.display = 'none';
+      preview.removeAttribute('src');
+    }
+    const label = document.getElementById('selectedImageLabel');
+    if (label) label.innerHTML = '';
+    const clearFileBtn = document.getElementById('clearImageFileBtn');
+    if (clearFileBtn) clearFileBtn.style.display = 'none';
+    const clearActiveBtn = document.getElementById('clearActiveImageBtn');
+    if (clearActiveBtn) clearActiveBtn.style.display = 'none';
+    const banner = document.getElementById('activeImageSelectionBanner');
+    if (banner) banner.style.display = 'none';
+    refreshImageLibrary();
+    if (notify) showNotification('Image unselected / cleared', false);
+  }
+
   async function refreshImageLibrary() {
     const library = document.getElementById('imageLibrary');
     library.innerHTML = '<p style="color:#999; text-align:center;">Loading images…</p>';
     try {
-      const response = await fetch('/api/images/list');
+      const response = await fetch('/api/images/list?refresh=1');
       if (!response.ok) throw new Error('Could not load image library');
       const data = await response.json();
       imageLibrary = data.images || [];
@@ -973,12 +1155,18 @@
         library.innerHTML = '<p style="color:#999; text-align:center;">No images uploaded yet</p>';
         return;
       }
-      library.innerHTML = imageLibrary.map(image => `
-        <div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12);">
-          <img src="${image.url}" alt="" style="width:42px; height:32px; object-fit:cover; border-radius:4px;">
-          <button type="button" data-image-id="${image.imageId}" style="flex:1; text-align:left; background:${selectedImageId === image.imageId ? '#ffd54d' : '#24385d'}; color:${selectedImageId === image.imageId ? '#111' : 'white'}; padding:6px;">${escapeHtml(image.name)}<br><small>${image.imageId}</small></button>
-          <button type="button" data-delete-image-id="${image.imageId}" style="background:#9d2636; color:white; padding:6px;" title="Delete image">×</button>
-        </div>`).join('');
+      library.innerHTML = imageLibrary.map(image => {
+        const isSelected = selectedImageId === image.imageId;
+        return `
+        <div style="display:flex; gap:8px; align-items:center; padding:6px; border-bottom:1px solid rgba(255,255,255,.12); background:${isSelected ? 'rgba(255,215,0,0.18)' : 'transparent'}; border-radius:6px; margin-bottom:3px;">
+          <img src="${image.url}" alt="" style="width:42px; height:32px; object-fit:cover; border-radius:4px; border:1px solid ${isSelected ? 'gold' : 'rgba(255,255,255,0.2)'};">
+          <button type="button" data-image-id="${image.imageId}" style="flex:1; text-align:left; background:${isSelected ? '#ffd54d' : '#24385d'}; color:${isSelected ? '#111' : 'white'}; padding:6px 8px; border-radius:6px; font-weight:${isSelected ? 'bold' : 'normal'};">
+            ${escapeHtml(image.name)}<br>
+            <small style="opacity:0.9;">${image.imageId} ${isSelected ? ' • <b>✓ Selected (Click to Unselect)</b>' : ''}</small>
+          </button>
+          <button type="button" data-delete-image-id="${image.imageId}" style="background:#9d2636; color:white; padding:6px 10px; border-radius:6px; font-weight:bold; cursor:pointer;" title="Delete image from library">✕</button>
+        </div>`;
+      }).join('');
       library.querySelectorAll('[data-image-id]').forEach(button => { button.onclick = () => selectLibraryImage(button.dataset.imageId); });
       library.querySelectorAll('[data-delete-image-id]').forEach(button => { button.onclick = () => deleteLibraryImage(button.dataset.deleteImageId); });
     } catch (error) {
@@ -986,32 +1174,139 @@
     }
   }
 
+  // Firebase Media Sync handlers
+  const syncFirebaseBtn = document.getElementById('syncFirebaseBtn');
+  if (syncFirebaseBtn) {
+    syncFirebaseBtn.onclick = async () => {
+      syncFirebaseBtn.disabled = true;
+      syncFirebaseBtn.textContent = '⏳ Syncing…';
+      try {
+        const res = await fetch('/api/media/sync');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Sync failed');
+        await Promise.all([refreshImageLibrary(), refreshVideoLibrary(), refreshAudioLibrary()]);
+        showNotification(`Synced with Firebase! Images: ${data.counts.images}, Videos: ${data.counts.videos}, Audio: ${data.counts.audios}`, false);
+      } catch (err) {
+        showNotification(`Sync error: ${err.message}`, true);
+      } finally {
+        syncFirebaseBtn.disabled = false;
+        syncFirebaseBtn.textContent = '🔄 Sync with Firebase';
+      }
+    };
+  }
+
+  const toggleAddUrlBtn = document.getElementById('toggleAddUrlBtn');
+  if (toggleAddUrlBtn) {
+    toggleAddUrlBtn.onclick = () => {
+      const form = document.getElementById('addMediaUrlForm');
+      if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      }
+    };
+  }
+
+  const submitAddMediaUrlBtn = document.getElementById('submitAddMediaUrlBtn');
+  if (submitAddMediaUrlBtn) {
+    submitAddMediaUrlBtn.onclick = async () => {
+      const urlInput = document.getElementById('customMediaUrl');
+      const nameInput = document.getElementById('customMediaName');
+      const typeSelect = document.getElementById('customMediaType');
+      const status = document.getElementById('customMediaStatus');
+      const url = urlInput ? urlInput.value.trim() : '';
+      const name = nameInput ? nameInput.value.trim() : '';
+      const type = typeSelect ? typeSelect.value : 'image';
+      if (!url) {
+        if (status) { status.style.color = '#ff8a8a'; status.textContent = 'Please enter a valid media URL.'; }
+        return;
+      }
+      if (status) { status.style.color = '#ffd54d'; status.textContent = 'Saving to Firebase…'; }
+      try {
+        const res = await fetch('/api/media/add-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, name, type })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add media');
+        if (urlInput) urlInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (status) { status.style.color = '#45e27a'; status.textContent = 'Saved successfully to Firebase & Library!'; }
+        setTimeout(() => {
+          const form = document.getElementById('addMediaUrlForm');
+          if (form) form.style.display = 'none';
+          if (status) status.textContent = '';
+        }, 1500);
+        if (type === 'video') await refreshVideoLibrary();
+        else if (type === 'audio') await refreshAudioLibrary();
+        else await refreshImageLibrary();
+        showNotification(`${type.toUpperCase()} added to library & saved in Firebase!`, false);
+      } catch (err) {
+        if (status) { status.style.color = '#ff8a8a'; status.textContent = err.message; }
+      }
+    };
+  }
+
   function selectLibraryImage(imageId) {
+    if (selectedImageId === imageId) {
+      clearImageSelection();
+      return;
+    }
     const image = imageLibrary.find(item => item.imageId === imageId);
     if (!image) return;
     selectedImageId = imageId;
     currentPdfQuestion = null;
-    document.getElementById('qFormat').value = 'image';
-    document.getElementById('qFormat').dispatchEvent(new Event('change'));
-    document.getElementById('imageFile').value = '';
-    document.getElementById('selectedImageLabel').textContent = `Selected: ${image.name} (ID: ${image.imageId})`;
+    const qFormatEl = document.getElementById('qFormat');
+    if (qFormatEl) {
+      qFormatEl.value = 'image';
+      qFormatEl.dispatchEvent(new Event('change'));
+    }
+    const imgFileEl = document.getElementById('imageFile');
+    if (imgFileEl) {
+      imgFileEl.value = '';
+    }
+    const labelEl = document.getElementById('selectedImageLabel');
+    if (labelEl) {
+      labelEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,215,0,0.15); padding:6px 10px; border-radius:6px; border:1px solid gold; width:100%; box-sizing:border-box;">
+          <span><b>Selected Image:</b> ${escapeHtml(image.name)} (<code style="color:#ffd54d;">${image.imageId}</code>)</span>
+          <button type="button" onclick="clearImageSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        </div>
+      `;
+    }
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    if (previewContainer) previewContainer.style.display = 'block';
     const preview = document.getElementById('imagePreview');
-    preview.src = image.url;
-    preview.style.display = 'block';
+    if (preview) {
+      preview.src = image.url;
+      preview.style.display = 'block';
+    }
+    const clearActiveBtn = document.getElementById('clearActiveImageBtn');
+    if (clearActiveBtn) clearActiveBtn.style.display = 'inline-block';
+    const banner = document.getElementById('activeImageSelectionBanner');
+    if (banner) {
+      banner.style.display = 'flex';
+      const bannerText = document.getElementById('activeImageSelectionText');
+      if (bannerText) bannerText.textContent = `Selected: ${image.name} (${image.imageId})`;
+    }
     refreshImageLibrary();
   }
 
-  async function deleteLibraryImage(imageId) {
-    if (!confirm('Delete this image from the library?')) return;
-    try {
-      const response = await fetch(`/api/images/${encodeURIComponent(imageId)}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error((await response.json()).error || 'Could not delete image');
-      if (selectedImageId === imageId) {
-        selectedImageId = null;
-        document.getElementById('selectedImageLabel').textContent = 'Choose an image from the library above, or upload a one-off image.';
+  function deleteLibraryImage(imageId) {
+    const image = imageLibrary.find(i => i.imageId === imageId);
+    const displayName = image ? image.name : imageId;
+    showAppConfirm(`Are you sure you want to delete image "${displayName}" from the library?`, async () => {
+      try {
+        const response = await fetch(`/api/images/${encodeURIComponent(imageId)}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error((await response.json()).error || 'Could not delete image');
+        if (selectedImageId === imageId) {
+          clearImageSelection(false);
+        }
+        await refreshImageLibrary();
+        showNotification('Image deleted from library', false);
+      } catch (error) {
+        showNotification(error.message, true);
       }
-      await refreshImageLibrary();
-    } catch (error) { alert(error.message); }
+    });
   }
 
   document.getElementById('uploadImagesBtn').onclick = async () => {
@@ -1063,10 +1358,38 @@
     };
   }
 
+  function clearVideoSelection(notify = true) {
+    selectedVideoId = null;
+    currentQuestionVideoId = '';
+    activeVideoPlaybackId = '';
+    videoReadyForQuestion = false;
+    const qVidInput = document.getElementById('questionVideoId');
+    if (qVidInput) qVidInput.value = '';
+    const clearBtn = document.getElementById('clearQuestionVideoIdBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    const previewContainer = document.getElementById('hostVideoPreviewContainer');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const player = document.getElementById('hostVideoPlayer');
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+    const selectedLabel = document.getElementById('selectedVideoLabel');
+    if (selectedLabel) selectedLabel.innerHTML = '';
+    const notice = document.getElementById('videoReadyNotice');
+    if (notice) notice.style.display = 'none';
+    const badge = document.getElementById('hostVideoPlaybackBadge');
+    if (badge) badge.textContent = 'Ready';
+    syncVideoQuestionControls();
+    refreshVideoLibrary();
+    if (notify) showNotification('Video unselected / removed', false);
+  }
+
   async function refreshVideoLibrary() {
     const library = document.getElementById('videoLibrary');
     try {
-      const response = await fetch('/api/videos/list');
+      const response = await fetch('/api/videos/list?refresh=1');
       if (!response.ok) throw new Error('Could not load video library');
       const data = await response.json();
       videoLibrary = data.videos || [];
@@ -1088,8 +1411,8 @@
               </div>
             </div>
             <div style="display:flex; gap:4px; flex-shrink:0;">
-              <button type="button" data-video-id="${video.videoId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#1976d2'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px;">${isSelected ? '✓ Loaded' : '▶ Preview & Use'}</button>
-              <button type="button" data-delete-video-id="${video.videoId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px;" title="Delete video">✕</button>
+              <button type="button" data-video-id="${video.videoId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#1976d2'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px; cursor:pointer;">${isSelected ? '✓ Loaded (Click to Unselect)' : '▶ Preview & Use'}</button>
+              <button type="button" data-delete-video-id="${video.videoId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Delete video from library">✕</button>
             </div>
           </div>
         `;
@@ -1106,10 +1429,17 @@
   }
 
   function selectLibraryVideo(videoId, autoPlay = false) {
+    if (selectedVideoId === videoId && !autoPlay) {
+      clearVideoSelection();
+      return;
+    }
     const video = videoLibrary.find(item => item.videoId === videoId);
     if (!video) return;
     selectedVideoId = videoId;
-    document.getElementById('questionVideoId').value = videoId;
+    const qVidInput = document.getElementById('questionVideoId');
+    if (qVidInput) qVidInput.value = videoId;
+    const clearBtn = document.getElementById('clearQuestionVideoIdBtn');
+    if (clearBtn) clearBtn.style.display = 'inline-block';
     currentQuestionVideoId = videoId;
     videoReadyForQuestion = false;
     activeVideoPlaybackId = '';
@@ -1133,34 +1463,35 @@
       }
     }
 
-    document.getElementById('selectedVideoLabel').innerHTML = `<b>Selected Video:</b> <span style="color:#ffd54d;">${escapeHtml(video.name)}</span> (ID: <code style="color:#8ed0ff;">${video.videoId}</code>)`;
+    const selectedLabel = document.getElementById('selectedVideoLabel');
+    if (selectedLabel) {
+      selectedLabel.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(25,118,210,0.22); padding:6px 10px; border-radius:6px; border:1px solid #52b7ff; width:100%; box-sizing:border-box;">
+          <span><b>Selected Video:</b> <span style="color:#ffd54d;">${escapeHtml(video.name)}</span> (ID: <code style="color:#8ed0ff;">${video.videoId}</code>)</span>
+          <button type="button" onclick="clearVideoSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        </div>
+      `;
+    }
     syncVideoQuestionControls();
     refreshVideoLibrary();
   }
 
-  async function deleteLibraryVideo(videoId) {
-    if (!confirm(`Delete video ${videoId} from the library?`)) return;
-    try {
-      const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Could not delete video.');
-      if (selectedVideoId === videoId) {
-        selectedVideoId = null;
-        if (currentQuestionVideoId === videoId) {
-          currentQuestionVideoId = '';
-          document.getElementById('questionVideoId').value = '';
-          videoReadyForQuestion = false;
-          syncVideoQuestionControls();
+  function deleteLibraryVideo(videoId) {
+    const video = videoLibrary.find(v => v.videoId === videoId);
+    const displayName = video ? video.name : videoId;
+    showAppConfirm(`Are you sure you want to delete video "${displayName}" from the library?`, async () => {
+      try {
+        const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Could not delete video.');
+        if (selectedVideoId === videoId || currentQuestionVideoId === videoId) {
+          clearVideoSelection(false);
         }
-        const previewContainer = document.getElementById('hostVideoPreviewContainer');
-        if (previewContainer) previewContainer.style.display = 'none';
-        const player = document.getElementById('hostVideoPlayer');
-        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
-        document.getElementById('selectedVideoLabel').textContent = '';
+        await refreshVideoLibrary();
+        showNotification('Video deleted from library', false);
+      } catch (error) {
+        showNotification(error.message, true);
       }
-      refreshVideoLibrary();
-    } catch (error) {
-      alert(error.message);
-    }
+    });
   }
 
   async function uploadSelectedVideos() {
@@ -1239,6 +1570,34 @@
   refreshVideoLibrary();
 
   // --- Audio Library & Host Preview Logic ---
+  function clearAudioSelection(notify = true) {
+    selectedAudioId = null;
+    currentQuestionAudioId = '';
+    activeAudioPlaybackId = '';
+    audioReadyForQuestion = false;
+    const qAudioInput = document.getElementById('questionAudioId');
+    if (qAudioInput) qAudioInput.value = '';
+    const clearBtn = document.getElementById('clearQuestionAudioIdBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    const previewContainer = document.getElementById('hostAudioPreviewContainer');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const player = document.getElementById('hostAudioPlayer');
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+    const selectedLabel = document.getElementById('selectedAudioLabel');
+    if (selectedLabel) selectedLabel.innerHTML = '';
+    const notice = document.getElementById('audioReadyNotice');
+    if (notice) notice.style.display = 'none';
+    const badge = document.getElementById('hostAudioPlaybackBadge');
+    if (badge) badge.textContent = 'Ready';
+    syncVideoQuestionControls();
+    refreshAudioLibrary();
+    if (notify) showNotification('Audio unselected / removed', false);
+  }
+
   const hostAudioPlayer = document.getElementById('hostAudioPlayer');
   if (hostAudioPlayer) {
     hostAudioPlayer.onended = () => {
@@ -1256,7 +1615,7 @@
   async function refreshAudioLibrary() {
     const library = document.getElementById('audioLibrary');
     try {
-      const response = await fetch('/api/audio/list');
+      const response = await fetch('/api/audio/list?refresh=1');
       if (!response.ok) throw new Error('Could not load audio library');
       const data = await response.json();
       audioLibrary = data.audios || [];
@@ -1278,8 +1637,8 @@
               </div>
             </div>
             <div style="display:flex; gap:4px; flex-shrink:0;">
-              <button type="button" data-audio-id="${audio.audioId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#168b6b'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px;">${isSelected ? '✓ Loaded' : '▶ Preview & Use'}</button>
-              <button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px;" title="Delete audio">✕</button>
+              <button type="button" data-audio-id="${audio.audioId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#168b6b'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px; cursor:pointer;">${isSelected ? '✓ Loaded (Click to Unselect)' : '▶ Preview & Use'}</button>
+              <button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Delete audio from library">✕</button>
             </div>
           </div>
         `;
@@ -1296,10 +1655,17 @@
   }
 
   function selectLibraryAudio(audioId, autoPlay = false) {
+    if (selectedAudioId === audioId && !autoPlay) {
+      clearAudioSelection();
+      return;
+    }
     const audio = audioLibrary.find(item => item.audioId === audioId);
     if (!audio) return;
     selectedAudioId = audioId;
-    document.getElementById('questionAudioId').value = audioId;
+    const qAudioInput = document.getElementById('questionAudioId');
+    if (qAudioInput) qAudioInput.value = audioId;
+    const clearBtn = document.getElementById('clearQuestionAudioIdBtn');
+    if (clearBtn) clearBtn.style.display = 'inline-block';
     currentQuestionAudioId = audioId;
     audioReadyForQuestion = false;
     activeAudioPlaybackId = '';
@@ -1323,34 +1689,35 @@
       }
     }
 
-    document.getElementById('selectedAudioLabel').innerHTML = `<b>Selected Audio:</b> <span style="color:#ffd54d;">${escapeHtml(audio.name)}</span> (ID: <code style="color:#79e0bd;">${audio.audioId}</code>)`;
+    const selectedLabel = document.getElementById('selectedAudioLabel');
+    if (selectedLabel) {
+      selectedLabel.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(38,170,130,0.22); padding:6px 10px; border-radius:6px; border:1px solid #79e0bd; width:100%; box-sizing:border-box;">
+          <span><b>Selected Audio:</b> <span style="color:#ffd54d;">${escapeHtml(audio.name)}</span> (ID: <code style="color:#79e0bd;">${audio.audioId}</code>)</span>
+          <button type="button" onclick="clearAudioSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        </div>
+      `;
+    }
     syncVideoQuestionControls();
     refreshAudioLibrary();
   }
 
-  async function deleteLibraryAudio(audioId) {
-    if (!confirm(`Delete audio ${audioId} from the library?`)) return;
-    try {
-      const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Could not delete audio.');
-      if (selectedAudioId === audioId) {
-        selectedAudioId = null;
-        if (currentQuestionAudioId === audioId) {
-          currentQuestionAudioId = '';
-          document.getElementById('questionAudioId').value = '';
-          audioReadyForQuestion = false;
-          syncVideoQuestionControls();
+  function deleteLibraryAudio(audioId) {
+    const audio = audioLibrary.find(a => a.audioId === audioId);
+    const displayName = audio ? audio.name : audioId;
+    showAppConfirm(`Are you sure you want to delete audio "${displayName}" from the library?`, async () => {
+      try {
+        const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Could not delete audio.');
+        if (selectedAudioId === audioId || currentQuestionAudioId === audioId) {
+          clearAudioSelection(false);
         }
-        const previewContainer = document.getElementById('hostAudioPreviewContainer');
-        if (previewContainer) previewContainer.style.display = 'none';
-        const player = document.getElementById('hostAudioPlayer');
-        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
-        document.getElementById('selectedAudioLabel').textContent = '';
+        await refreshAudioLibrary();
+        showNotification('Audio deleted from library', false);
+      } catch (error) {
+        showNotification(error.message, true);
       }
-      refreshAudioLibrary();
-    } catch (error) {
-      alert(error.message);
-    }
+    });
   }
 
   async function uploadSelectedAudios() {
@@ -1427,6 +1794,19 @@
     }
   };
   refreshAudioLibrary();
+
+  const bindMediaBtn = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.onclick = fn;
+  };
+  bindMediaBtn('clearQuestionVideoIdBtn', () => clearVideoSelection());
+  bindMediaBtn('clearQuestionAudioIdBtn', () => clearAudioSelection());
+  bindMediaBtn('clearVideoBtn', () => clearVideoSelection());
+  bindMediaBtn('clearAudioBtn', () => clearAudioSelection());
+  bindMediaBtn('clearImageBtn', () => clearImageSelection());
+  bindMediaBtn('clearImageFileBtn', () => clearImageSelection());
+  bindMediaBtn('clearActiveImageBtn', () => clearImageSelection());
+  bindMediaBtn('clearBannerImageBtn', () => clearImageSelection());
 
   document.getElementById('pdfFile').onchange = async (event) => {
     const file = event.target.files[0];
@@ -1701,23 +2081,13 @@
     if (question.videoId) {
       selectLibraryVideo(question.videoId);
     } else {
-      const vContainer = document.getElementById('hostVideoPreviewContainer');
-      if (vContainer) vContainer.style.display = 'none';
-      const vPlayer = document.getElementById('hostVideoPlayer');
-      if (vPlayer) { vPlayer.pause(); vPlayer.removeAttribute('src'); vPlayer.load(); }
-      document.getElementById('selectedVideoLabel').textContent = '';
-      selectedVideoId = null;
+      clearVideoSelection(false);
     }
 
     if (question.audioId) {
       selectLibraryAudio(question.audioId);
     } else {
-      const aContainer = document.getElementById('hostAudioPreviewContainer');
-      if (aContainer) aContainer.style.display = 'none';
-      const aPlayer = document.getElementById('hostAudioPlayer');
-      if (aPlayer) { aPlayer.pause(); aPlayer.removeAttribute('src'); aPlayer.load(); }
-      document.getElementById('selectedAudioLabel').textContent = '';
-      selectedAudioId = null;
+      clearAudioSelection(false);
     }
 
     syncVideoQuestionControls();
@@ -1727,18 +2097,27 @@
     document.getElementById('correctAns').value = question.correct;
     
     // Display image preview if available
+    const prevContainer = document.getElementById('imagePreviewContainer');
+    const preview = document.getElementById('imagePreview');
+    const label = document.getElementById('selectedImageLabel');
     if (question.image) {
-      const preview = document.getElementById('imagePreview');
+      if (prevContainer) prevContainer.style.display = 'block';
       if (preview) {
         preview.src = question.image;
         preview.style.display = 'block';
       }
-    } else {
-      const preview = document.getElementById('imagePreview');
-      if (preview) {
-        preview.style.display = 'none';
+      if (label) {
+        label.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,215,0,0.15); padding:6px 10px; border-radius:6px; border:1px solid gold; width:100%; box-sizing:border-box;">
+            <span><b>PDF Question Image:</b> Loaded from question ${pdfQuestionIndex + 1}</span>
+            <button type="button" onclick="clearImageSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+          </div>
+        `;
       }
+    } else {
+      clearImageSelection(false);
     }
+    refreshImageLibrary();
     
     document.getElementById('pdfStatus').textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length} ready. ${question.image ? '(with image)' : '(text only)'}`;
   }
@@ -1776,8 +2155,9 @@
             dataUrl = image.url;
         } else {
             // Otherwise, use uploaded image file
-            const imageFile = document.getElementById('imageFile').files[0];
-            if (!imageFile) return alert("Choose an image file first!");
+            const fileInput = document.getElementById('imageFile');
+            const imageFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+            if (!imageFile) return alert("Select an image from the library or choose an image file first!");
             try {
               dataUrl = await readFileAsDataUrl(imageFile);
             } catch (error) {
