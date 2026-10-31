@@ -107,20 +107,36 @@ let remoteIndexesPromise = null;
 let remoteScoresLoaded = false;
 let remoteScoresPromise = null;
 
+let firestoreQuotaExhausted = false;
+
 async function saveRemoteMedia(mediaId, item, localFilePath = null) {
-  if (!firestoreDb) return;
+  if (!firestoreDb || firestoreQuotaExhausted) return;
   try {
-    let hasChunks = false;
-    let totalChunks = 0;
+    // 1. Immediately persist media metadata record with a fast 3-second safety timeout
+    await Promise.race([
+      setDoc(doc(firestoreDb, 'media', mediaId), {
+        id: mediaId,
+        name: item.name || '',
+        url: item.url || '',
+        filename: item.filename || '',
+        type: item.type || 'image',
+        uploadedAt: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
+        size: Number(item.size) || 0,
+        hasChunks: false,
+        totalChunks: 0
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 3000))
+    ]);
+
+    // 2. Persist binary chunks if file is present on disk (up to 25MB)
     if (localFilePath && fs.existsSync(localFilePath)) {
       try {
         const stats = fs.statSync(localFilePath);
-        // Persist files up to 25MB in Firestore chunks (650KB base64 chunk size)
         if (stats.size > 0 && stats.size <= 25 * 1024 * 1024) {
           const fileBuf = fs.readFileSync(localFilePath);
           const base64Str = fileBuf.toString('base64');
-          const CHUNK_SIZE = 650 * 1024;
-          totalChunks = Math.ceil(base64Str.length / CHUNK_SIZE);
+          const CHUNK_SIZE = 800 * 1024;
+          const totalChunks = Math.ceil(base64Str.length / CHUNK_SIZE);
           for (let i = 0; i < totalChunks; i++) {
             const chunkData = base64Str.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
             await setDoc(doc(firestoreDb, 'media', mediaId, 'chunks', String(i)), {
@@ -129,26 +145,27 @@ async function saveRemoteMedia(mediaId, item, localFilePath = null) {
               data: chunkData
             });
           }
-          hasChunks = true;
+          await setDoc(doc(firestoreDb, 'media', mediaId), {
+            hasChunks: true,
+            totalChunks: totalChunks
+          }, { merge: true });
         }
       } catch (chunkErr) {
-        console.warn(`[Firebase] Could not save chunks for ${mediaId}:`, chunkErr.message);
+        if (chunkErr.message && chunkErr.message.includes('RESOURCE_EXHAUSTED')) {
+          firestoreQuotaExhausted = true;
+          console.warn('[Firebase] Firestore daily write quota reached; saving media locally on disk.');
+        } else {
+          console.warn(`[Firebase] Could not save chunks for ${mediaId}:`, chunkErr.message);
+        }
       }
     }
-
-    await setDoc(doc(firestoreDb, 'media', mediaId), {
-      id: mediaId,
-      name: item.name || '',
-      url: item.url || '',
-      filename: item.filename || '',
-      type: item.type || 'image',
-      uploadedAt: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
-      size: Number(item.size) || 0,
-      hasChunks: hasChunks,
-      totalChunks: totalChunks
-    });
   } catch (error) {
-    console.warn(`[Firebase] Could not save media ${mediaId} to Firestore:`, error.message);
+    if (error.message && error.message.includes('RESOURCE_EXHAUSTED')) {
+      firestoreQuotaExhausted = true;
+      console.warn('[Firebase] Firestore daily write quota reached; continuing with local storage.');
+    } else {
+      console.warn(`[Firebase] Could not save media ${mediaId} to Firestore:`, error.message);
+    }
   }
 }
 
@@ -157,9 +174,7 @@ async function deleteRemoteMedia(mediaId) {
   try {
     try {
       const chunksSnap = await getDocs(collection(firestoreDb, 'media', mediaId, 'chunks'));
-      for (const chunkDoc of chunksSnap.docs) {
-        await deleteDoc(chunkDoc.ref);
-      }
+      await Promise.all(chunksSnap.docs.map(chunkDoc => deleteDoc(chunkDoc.ref).catch(() => {})));
     } catch (e) {
       // Ignore if no chunks
     }
@@ -214,6 +229,29 @@ function inferMediaType(name, filename, url) {
     return 'audio';
   }
   return 'image';
+}
+
+function normalizeMediaUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+  let url = rawUrl.trim();
+
+  // 1. Google Drive URLs (converts preview/share link to direct stream/download)
+  const gDriveMatch = url.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/i);
+  if (gDriveMatch && gDriveMatch[1]) {
+    return `https://drive.google.com/uc?export=download&id=${gDriveMatch[1]}`;
+  }
+
+  // 2. Dropbox URLs (dl=0 -> raw=1 allows direct media stream in browser)
+  if (url.includes('dropbox.com')) {
+    if (url.includes('dl=0')) {
+      return url.replace('dl=0', 'raw=1');
+    }
+    if (!url.includes('raw=1')) {
+      return url.includes('?') ? `${url}&raw=1` : `${url}?raw=1`;
+    }
+  }
+
+  return url;
 }
 
 async function loadRemoteIndexes(force = false) {
@@ -604,42 +642,97 @@ function createImageId() {
 // Multer configuration for media uploads
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, imagesDir),
-  filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
+  filename: (req, file, cb) => {
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || ext.length <= 1) {
+      const mime = (file.mimetype || '').toLowerCase();
+      if (mime.includes('png')) ext = '.png';
+      else if (mime.includes('gif')) ext = '.gif';
+      else if (mime.includes('webp')) ext = '.webp';
+      else if (mime.includes('svg')) ext = '.svg';
+      else ext = '.jpg';
+    }
+    cb(null, uuidv4() + ext);
+  }
 });
 
 const upload = multer({
   storage: imageStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per image
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB per image
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', '.tiff'];
+    const mime = (file.mimetype || '').toLowerCase();
+    if (
+      !ext ||
+      allowedExts.includes(ext) ||
+      mime.startsWith('image/') ||
+      mime === 'application/octet-stream' ||
+      !mime
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPG, PNG, GIF, WEBP allowed.'));
+      cb(new Error('Invalid file type. Only JPG, PNG, GIF, WEBP, SVG images allowed.'));
     }
   }
 });
 
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, videosDir),
-  filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
+  filename: (req, file, cb) => {
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || ext.length <= 1) {
+      const mime = (file.mimetype || '').toLowerCase();
+      if (mime.includes('webm')) ext = '.webm';
+      else if (mime.includes('ogg') || mime.includes('ogv')) ext = '.ogg';
+      else if (mime.includes('quicktime') || mime.includes('mov')) ext = '.mov';
+      else if (mime.includes('mkv') || mime.includes('matroska')) ext = '.mkv';
+      else ext = '.mp4';
+    }
+    cb(null, uuidv4() + ext);
+  }
 });
 const uploadVideos = multer({
   storage: videoStorage,
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB per video
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase();
-    const allowedExts = ['.mp4', '.webm', '.ogg', '.ogv', '.mov', '.qt', '.mkv', '.avi', '.m4v', '.3gp', '.flv', '.wmv'];
-    if ((file.mimetype && file.mimetype.startsWith('video/')) || allowedExts.includes(ext) || file.mimetype === 'application/octet-stream') {
+    const allowedExts = [
+      '.mp4', '.webm', '.ogg', '.ogv', '.mov', '.qt', '.mkv', '.avi',
+      '.m4v', '.3gp', '.3g2', '.flv', '.wmv', '.ts', '.mts', '.m2ts',
+      '.mpg', '.mpeg', '.vob', '.f4v', '.asf'
+    ];
+    const mime = (file.mimetype || '').toLowerCase();
+    if (
+      !ext ||
+      allowedExts.includes(ext) ||
+      mime.startsWith('video/') ||
+      mime.includes('mp4') ||
+      mime.includes('quicktime') ||
+      mime.includes('webm') ||
+      mime === 'application/octet-stream' ||
+      !mime
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only video files (MP4, WEBM, OGG, MOV, MKV, AVI, etc.) are allowed.'));
+      cb(new Error('Invalid file type. Please upload a standard video file (MP4, WebM, MOV, MKV, AVI, etc.).'));
     }
   }
 });
 const audioStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, audioDir),
-  filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname).toLowerCase())
+  filename: (req, file, cb) => {
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || ext.length <= 1) {
+      const mime = (file.mimetype || '').toLowerCase();
+      if (mime.includes('wav')) ext = '.wav';
+      else if (mime.includes('ogg') || mime.includes('oga')) ext = '.ogg';
+      else if (mime.includes('m4a') || mime.includes('aac')) ext = '.m4a';
+      else if (mime.includes('flac')) ext = '.flac';
+      else ext = '.mp3';
+    }
+    cb(null, uuidv4() + ext);
+  }
 });
 const uploadAudios = multer({
   storage: audioStorage,
@@ -684,11 +777,14 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
         size: file.size
       };
       imageDatabase.set(imageId, mediaItem);
-      await saveRemoteMedia(imageId, mediaItem, path.join(imagesDir, file.filename));
+      saveRemoteMedia(imageId, mediaItem, path.join(imagesDir, file.filename)).catch(err => {
+        console.warn(`[Firebase] Image remote save notice for ${imageId}:`, err.message);
+      });
       uploadedImages.push({
         imageId,
         url: stored.url,
-        name: file.originalname
+        name: file.originalname,
+        size: file.size
       });
     }
 
@@ -747,8 +843,8 @@ app.delete('/api/images/:imageId', async (req, res) => {
       if (error.code !== 'ENOENT') throw error;
     });
     imageDatabase.delete(imageId);
-    await deleteRemoteMedia(imageId);
     saveImageIndex();
+    deleteRemoteMedia(imageId).catch(err => console.warn(`[Firebase] Image delete background notice:`, err.message));
     res.json({ success: true, message: 'Image deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete image file' });
@@ -786,26 +882,37 @@ app.post('/api/videos/upload', (req, res, next) => {
         size: file.size
       };
       videoDatabase.set(videoId, mediaItem);
-      await saveRemoteMedia(videoId, mediaItem, path.join(videosDir, file.filename));
+      // Persist to Firestore in background so large video chunks do not delay or time out the client HTTP upload
+      saveRemoteMedia(videoId, mediaItem, path.join(videosDir, file.filename)).catch(remoteErr => {
+        console.warn(`[Firebase] Video remote save notice for ${videoId}:`, remoteErr.message);
+      });
       videos.push({ videoId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
     saveVideoIndex();
     res.json({ success: true, message: `${videos.length} video(s) uploaded successfully`, videos });
   } catch (error) {
-    res.status(500).json({ error: 'Could not upload video files' });
+    console.error('Video upload error:', error);
+    res.status(500).json({ error: error.message || 'Could not upload video files' });
   }
 });
 
 app.get('/api/videos/list', async (req, res) => {
   await ensureRemoteIndexesLoaded(Boolean(req.query.refresh));
   res.json({
-    videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => ({
-      videoId,
-      name: data.name,
-      url: data.url,
-      uploadedAt: data.uploadedAt,
-      size: data.size
-    }))
+    videos: Array.from(videoDatabase.entries()).map(([videoId, data]) => {
+      const filePath = path.join(videosDir, data.filename || '');
+      const fileOnDisk = fs.existsSync(filePath);
+      const isAvailable = fileOnDisk || Boolean(data.hasChunks) || (data.url && data.url.startsWith('http'));
+      return {
+        videoId,
+        name: data.name,
+        url: data.url,
+        uploadedAt: data.uploadedAt,
+        size: data.size,
+        fileOnDisk,
+        isAvailable
+      };
+    })
   });
 });
 
@@ -852,8 +959,8 @@ app.delete('/api/videos/:videoId', async (req, res) => {
       if (error.code !== 'ENOENT') throw error;
     });
     videoDatabase.delete(req.params.videoId);
-    await deleteRemoteMedia(req.params.videoId);
     saveVideoIndex();
+    deleteRemoteMedia(req.params.videoId).catch(err => console.warn(`[Firebase] Video delete background notice:`, err.message));
     res.json({ success: true, message: 'Video deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete video file' });
@@ -891,13 +998,16 @@ app.post('/api/audio/upload', (req, res, next) => {
         size: file.size
       };
       audioDatabase.set(audioId, mediaItem);
-      await saveRemoteMedia(audioId, mediaItem, path.join(audioDir, file.filename));
-      audios.push({ audioId, name: mediaItem.name, url: mediaItem.url });
+      saveRemoteMedia(audioId, mediaItem, path.join(audioDir, file.filename)).catch(err => {
+        console.warn(`[Firebase] Audio remote save notice for ${audioId}:`, err.message);
+      });
+      audios.push({ audioId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
     saveAudioIndex();
-    res.json({ success: true, message: `${audios.length} audio files uploaded successfully`, audios });
+    res.json({ success: true, message: `${audios.length} audio file(s) uploaded successfully`, audios });
   } catch (error) {
-    res.status(500).json({ error: 'Could not upload audio files' });
+    console.error('Audio upload error:', error);
+    res.status(500).json({ error: error.message || 'Could not upload audio files' });
   }
 });
 
@@ -922,8 +1032,8 @@ app.delete('/api/audio/:audioId', async (req, res) => {
       if (error.code !== 'ENOENT') throw error;
     });
     audioDatabase.delete(req.params.audioId);
-    await deleteRemoteMedia(req.params.audioId);
     saveAudioIndex();
+    deleteRemoteMedia(req.params.audioId).catch(err => console.warn(`[Firebase] Audio delete background notice:`, err.message));
     res.json({ success: true, message: 'Audio deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete audio file' });
@@ -955,7 +1065,7 @@ app.post('/api/media/add-url', async (req, res) => {
     if (!url || !url.trim()) {
       return res.status(400).json({ error: 'Media URL is required' });
     }
-    const cleanUrl = url.trim();
+    const cleanUrl = normalizeMediaUrl(url);
     const mediaType = ['image', 'video', 'audio'].includes(type) ? type : inferMediaType(name, '', cleanUrl);
     
     let mediaId = '';
@@ -1015,9 +1125,11 @@ function send(ws, obj) {
 function broadcastToRoom(roomId, message) {
   const room = rooms.get(roomId);
   if (!room) return;
-  if (room.host) send(room.host, message);
+  if (room.host && room.host.readyState === WebSocket.OPEN) send(room.host, message);
   for (const [, p] of room.players.entries()) {
-    send(p.ws, message);
+    if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+      send(p.ws, message);
+    }
   }
 }
 
@@ -1028,7 +1140,7 @@ function broadcastConnectionStatus(roomId) {
     type: 'connection_status',
     payload: {
       host: Boolean(room.host && room.host.readyState === WebSocket.OPEN),
-      player: Array.from(room.players.values()).some(({ ws }) => ws.readyState === WebSocket.OPEN)
+      player: Array.from(room.players.values()).some(({ ws }) => ws && ws.readyState === WebSocket.OPEN)
     }
   });
 }
@@ -1050,28 +1162,168 @@ wss.on('connection', (ws) => {
       ws.name = name || (role === 'host' ? 'Host' : `Player-${ws.id.slice(0,4)}`);
 
       if (!rooms.has(roomId)) {
-        rooms.set(roomId, { host: null, players: new Map(), currentQuestion: null, questionLevel: 1, lifelines: { callUsed: false } });
+        rooms.set(roomId, {
+          roomId,
+          host: null,
+          players: new Map(),
+          currentQuestion: null,
+          currentVideo: null,
+          currentAudio: null,
+          questionLevel: 1,
+          lifelines: { callUsed: false, fiftyFiftyUsed: false, fiftyFiftyRemove: null }
+        });
       }
       const room = rooms.get(roomId);
+      room.roomId = roomId;
 
       if (role === 'host') {
         room.host = ws;
         room.currentQuestion = null;
+        room.currentVideo = null;
+        room.currentAudio = null;
         room.questionLevel = 1;
+        room.lifelines = { callUsed: false, fiftyFiftyUsed: false, fiftyFiftyRemove: null };
         for (const [, player] of room.players.entries()) {
           player.cash = 0;
           player.score = 0;
           player.clearedLevel = 0;
           player.eliminated = false;
-          persistScoreSnapshot({ playerId: player.ws?.id, name: player.name, roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
-          send(player.ws, { type: 'refresh' });
+          persistScoreSnapshot({ playerId: player.ws?.id || player.id, name: player.name, roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
+          if (player.ws) send(player.ws, { type: 'refresh' });
         }
         send(ws, { type: 'joined', payload: { role: 'host', roomId } });
       } else {
-        room.players.set(ws.id, { ws, name: ws.name, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
-        send(ws, { type: 'joined', payload: { role: 'player', roomId, playerId: ws.id } });
-        if (room.lifelines?.callUsed) send(ws, { type: 'lifeline_call' });
-        if (room.host) send(room.host, { type: 'player_joined', payload: { playerId: ws.id, name: ws.name } });
+        const reqPlayerId = payload?.playerId;
+        const normalizedName = String(ws.name || '').trim().toLowerCase();
+        let existingPlayerKey = null;
+        let existingPlayer = null;
+
+        // Check if player ID matches an existing record in room
+        if (reqPlayerId && room.players.has(reqPlayerId)) {
+          existingPlayerKey = reqPlayerId;
+          existingPlayer = room.players.get(reqPlayerId);
+        } else {
+          // Check by name match in this room
+          for (const [pId, p] of room.players.entries()) {
+            if (String(p.name || '').trim().toLowerCase() === normalizedName) {
+              existingPlayerKey = pId;
+              existingPlayer = p;
+              break;
+            }
+          }
+        }
+
+        if (existingPlayer) {
+          // Reconnect existing player
+          ws.id = existingPlayerKey;
+          existingPlayer.ws = ws;
+          existingPlayer.name = ws.name;
+          existingPlayer.connected = true;
+          delete existingPlayer.disconnectedAt;
+
+          console.log(`[Reconnected] Player "${existingPlayer.name}" (ID: ${ws.id}) in room ${roomId}. Cash: ₹${existingPlayer.cash}, Cleared: Q${existingPlayer.clearedLevel}`);
+
+          send(ws, {
+            type: 'joined',
+            payload: {
+              role: 'player',
+              roomId,
+              playerId: ws.id,
+              name: existingPlayer.name,
+              reconnected: true
+            }
+          });
+
+          // 1. Sync full game and ladder state
+          send(ws, {
+            type: 'sync_state',
+            payload: {
+              playerId: ws.id,
+              name: existingPlayer.name,
+              cash: existingPlayer.cash || 0,
+              score: existingPlayer.score || existingPlayer.cash || 0,
+              clearedLevel: existingPlayer.clearedLevel || 0,
+              eliminated: Boolean(existingPlayer.eliminated),
+              questionLevel: room.questionLevel || 1,
+              lifelines: room.lifelines || {}
+            }
+          });
+
+          // 2. Sync lifelines
+          if (room.lifelines?.callUsed) {
+            send(ws, { type: 'lifeline_call' });
+          }
+          if (room.lifelines?.fiftyFiftyRemove && Array.isArray(room.lifelines.fiftyFiftyRemove)) {
+            send(ws, { type: 'lifeline_5050', payload: { remove: room.lifelines.fiftyFiftyRemove } });
+          }
+
+          // 3. Sync media preview if active
+          if (room.currentVideo) {
+            send(ws, { type: 'video_preview', payload: room.currentVideo });
+          } else if (room.currentAudio) {
+            send(ws, { type: 'audio_preview', payload: room.currentAudio });
+          }
+
+          // 4. Sync active question
+          if (room.currentQuestion) {
+            const questionPayload = { ...room.currentQuestion };
+            if (questionPayload.startedAt && questionPayload.timeLimitSec) {
+              const elapsedSec = Math.floor((Date.now() - questionPayload.startedAt) / 1000);
+              questionPayload.remainingTimeSec = Math.max(0, questionPayload.timeLimitSec - elapsedSec);
+            }
+            send(ws, { type: 'question', payload: questionPayload });
+
+            if (room.currentQuestion.hostSelectedAnswer) {
+              send(ws, { type: 'host_answer_selected', payload: { answer: room.currentQuestion.hostSelectedAnswer } });
+            }
+            if (room.currentQuestion.answerLocked) {
+              send(ws, {
+                type: 'answer_locked',
+                payload: {
+                  answer: room.currentQuestion.hostSelectedAnswer,
+                  playerId: room.currentQuestion.activePlayerId,
+                  playerName: existingPlayer.name
+                }
+              });
+            }
+            if (room.currentQuestion.resultMarked) {
+              const correctAnswer = String(room.currentQuestion.metadata?.correct || '').toUpperCase();
+              const result = room.currentQuestion.hostSelectedAnswer === correctAnswer ? 'correct' : 'wrong';
+              send(ws, {
+                type: 'answer_result',
+                payload: {
+                  result,
+                  answer: room.currentQuestion.hostSelectedAnswer,
+                  playerId: ws.id,
+                  cash: existingPlayer.cash,
+                  eliminated: existingPlayer.eliminated,
+                  level: room.currentQuestion.level || 1,
+                  resetLevel: result === 'wrong' ? 1 : null
+                }
+              });
+            }
+          }
+
+          if (room.host) {
+            send(room.host, {
+              type: 'player_reconnected',
+              payload: { playerId: ws.id, name: existingPlayer.name, cash: existingPlayer.cash, clearedLevel: existingPlayer.clearedLevel }
+            });
+          }
+          broadcastScoreboard(room);
+        } else {
+          // Fresh player join
+          room.players.set(ws.id, { ws, name: ws.name, score: 0, cash: 0, clearedLevel: 0, eliminated: false, connected: true });
+          send(ws, { type: 'joined', payload: { role: 'player', roomId, playerId: ws.id, reconnected: false } });
+          if (room.lifelines?.callUsed) send(ws, { type: 'lifeline_call' });
+          if (room.lifelines?.fiftyFiftyRemove && Array.isArray(room.lifelines.fiftyFiftyRemove)) {
+            send(ws, { type: 'lifeline_5050', payload: { remove: room.lifelines.fiftyFiftyRemove } });
+          }
+          if (room.currentQuestion) {
+            send(ws, { type: 'question', payload: room.currentQuestion });
+          }
+          if (room.host) send(room.host, { type: 'player_joined', payload: { playerId: ws.id, name: ws.name } });
+        }
       }
       broadcastConnectionStatus(roomId);
       return;
@@ -1157,11 +1409,18 @@ wss.on('connection', (ws) => {
       room.currentQuestion = {
         ...payload,
         level,
+        startedAt: Date.now(),
         timeLimitSec: getQuestionTimeLimit(level),
         hostSelectedAnswer: null,
         answerLocked: false,
-        activePlayerId: null
+        activePlayerId: null,
+        resultMarked: false
       };
+      room.currentVideo = null;
+      room.currentAudio = null;
+      if (room.lifelines) {
+        room.lifelines.fiftyFiftyRemove = null;
+      }
       room.questionLevel = Math.min(room.questionLevel + 1, PRIZE_LADDER.length);
       broadcastToRoom(ws.roomId, { type: 'question', payload: room.currentQuestion });
       send(ws, {
@@ -1208,7 +1467,9 @@ wss.on('connection', (ws) => {
           name: p.name,
           score: p.score,
           cash: p.cash,
-          clearedLevel: p.clearedLevel
+          clearedLevel: p.clearedLevel,
+          eliminated: Boolean(p.eliminated),
+          connected: Boolean(p.ws && p.ws.readyState === WebSocket.OPEN)
         }));
         send(ws, { type: 'players', payload: players });
       }
@@ -1219,7 +1480,9 @@ wss.on('connection', (ws) => {
     if (type === 'video_preview') {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'host' || !payload?.url) return;
-      broadcastToRoom(ws.roomId, { type: 'video_preview', payload: { url: payload.url, name: payload.name || 'Video question', videoId: payload.videoId || null } });
+      room.currentVideo = { url: payload.url, name: payload.name || 'Video question', videoId: payload.videoId || null };
+      room.currentAudio = null;
+      broadcastToRoom(ws.roomId, { type: 'video_preview', payload: room.currentVideo });
       return;
     }
 
@@ -1233,7 +1496,9 @@ wss.on('connection', (ws) => {
     if (type === 'audio_preview') {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'host' || !payload?.url) return;
-      broadcastToRoom(ws.roomId, { type: 'audio_preview', payload: { url: payload.url, name: payload.name || 'Audio question', audioId: payload.audioId || null } });
+      room.currentAudio = { url: payload.url, name: payload.name || 'Audio question', audioId: payload.audioId || null };
+      room.currentVideo = null;
+      broadcastToRoom(ws.roomId, { type: 'audio_preview', payload: room.currentAudio });
       return;
     }
 
@@ -1245,6 +1510,12 @@ wss.on('connection', (ws) => {
     }
 
     if (type === 'lifeline_5050') {
+      const room = rooms.get(ws.roomId);
+      if (room) {
+        room.lifelines = room.lifelines || {};
+        room.lifelines.fiftyFiftyUsed = true;
+        room.lifelines.fiftyFiftyRemove = payload?.remove || [];
+      }
       broadcastToRoom(ws.roomId, {
         type: 'lifeline_5050',
         payload
@@ -1302,12 +1573,14 @@ wss.on('connection', (ws) => {
         player.score = 0;
         player.clearedLevel = 0;
         player.eliminated = false;
-        persistScoreSnapshot({ playerId: player.ws?.id, name: player.name, roomId: ws.roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
-        send(player.ws, { type: 'refresh' });
+        persistScoreSnapshot({ playerId: player.ws?.id || player.id, name: player.name, roomId: ws.roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
+        if (player.ws) send(player.ws, { type: 'refresh' });
       }
       room.currentQuestion = null;
+      room.currentVideo = null;
+      room.currentAudio = null;
       room.questionLevel = 1;
-      room.lifelines = { callUsed: false };
+      room.lifelines = { callUsed: false, fiftyFiftyUsed: false, fiftyFiftyRemove: null };
       broadcastScoreboard(room);
       console.log("Players refreshed");
       return;
@@ -1320,8 +1593,13 @@ wss.on('connection', (ws) => {
     if (ws.role === 'host' && room.host === ws) {
       room.host = null;
     } else if (ws.role === 'player') {
-      room.players.delete(ws.id);
-      if (room.host) send(room.host, { type: 'player_left', payload: { playerId: ws.id } });
+      const player = room.players.get(ws.id);
+      if (player) {
+        player.ws = null;
+        player.connected = false;
+        player.disconnectedAt = Date.now();
+      }
+      if (room.host) send(room.host, { type: 'player_left', payload: { playerId: ws.id, name: player ? player.name : ws.name } });
     }
     broadcastConnectionStatus(ws.roomId);
   });
@@ -1334,9 +1612,10 @@ function broadcastScoreboard(room) {
     score: player.score,
     cash: player.cash,
     clearedLevel: player.clearedLevel,
-    eliminated: player.eliminated
+    eliminated: player.eliminated,
+    connected: Boolean(player.ws && player.ws.readyState === WebSocket.OPEN)
   }));
-  broadcastToRoom(room.host && room.host.roomId, { type: 'scoreboard', payload: scoreboard });
+  broadcastToRoom(room.roomId || '', { type: 'scoreboard', payload: scoreboard });
 }
 
 function escapeXml(unsafe) {
@@ -1358,6 +1637,9 @@ app.get('/images/:filename', async (req, res, next) => {
   const restored = await rehydrateMediaFile('image', filename);
   if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
   const item = Array.from(imageDatabase.values()).find(i => i.filename === filename);
+  if (item && item.url && item.url.startsWith('http')) {
+    return res.redirect(item.url);
+  }
   const title = item ? item.name : filename;
   res.setHeader('Content-Type', 'image/svg+xml');
   res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
@@ -1373,7 +1655,11 @@ app.get('/videos/:filename', async (req, res, next) => {
   const filePath = path.join(videosDir, filename);
   if (fs.existsSync(filePath)) return next();
   const restored = await rehydrateMediaFile('video', filename);
-  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
+  const item = Array.from(videoDatabase.values()).find(v => v.filename === filename);
+  if (item && item.url && item.url.startsWith('http')) {
+    return res.redirect(item.url);
+  }
   next();
 });
 
@@ -1382,13 +1668,27 @@ app.get('/audio/:filename', async (req, res, next) => {
   const filePath = path.join(audioDir, filename);
   if (fs.existsSync(filePath)) return next();
   const restored = await rehydrateMediaFile('audio', filename);
-  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
+  const item = Array.from(audioDatabase.values()).find(a => a.filename === filename);
+  if (item && item.url && item.url.startsWith('http')) {
+    return res.redirect(item.url);
+  }
   next();
 });
 
 app.use('/images', express.static(imagesDir));
-app.use('/videos', express.static(videosDir));
-app.use('/audio', express.static(audioDir));
+app.use('/videos', express.static(videosDir, {
+  acceptRanges: true,
+  setHeaders: (res, filePath) => {
+    res.setHeader('Accept-Ranges', 'bytes');
+    const ext = path.extname(filePath).toLowerCase();
+    if (!ext || ext === '.mp4') res.setHeader('Content-Type', 'video/mp4');
+    else if (ext === '.webm') res.setHeader('Content-Type', 'video/webm');
+    else if (ext === '.ogg' || ext === '.ogv') res.setHeader('Content-Type', 'video/ogg');
+    else if (ext === '.mov' || ext === '.qt') res.setHeader('Content-Type', 'video/quicktime');
+  }
+}));
+app.use('/audio', express.static(audioDir, { acceptRanges: true }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'host.html')));
 app.get('/player', (req, res) => res.sendFile(path.join(__dirname, 'Player.html')));
 app.use(express.static(__dirname));

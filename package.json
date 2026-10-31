@@ -6,7 +6,7 @@
     "build": "node -c server.js",
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node submit-flow.test.js"
+    "test": "node submit-flow.test.js && node reconnect.test.js"
   },
   "dependencies": {
     "express": "^5.1.0",
