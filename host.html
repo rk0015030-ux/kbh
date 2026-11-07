@@ -63,6 +63,124 @@
     .presence-dot { width: 7px; height: 7px; border-radius: 50%; background: #e95c5c; }
     .presence-item[data-connected="true"] .presence-dot { background: #45d477; }
 
+    /* Host Tab Navigation Bar */
+    .host-nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0 16px;
+      background: rgba(3, 8, 20, 0.75);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 215, 0, 0.22);
+      flex-wrap: wrap;
+      backdrop-filter: blur(8px);
+    }
+    .host-tab-btn {
+      flex: 1 1 180px;
+      padding: 10px 16px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: #b8c7db;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.16s ease;
+      font-family: inherit;
+    }
+    .host-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .host-tab-btn.active {
+      background: linear-gradient(90deg, #ffd54d, #ffb800);
+      color: #081028;
+      box-shadow: 0 4px 16px rgba(255, 213, 77, 0.3);
+    }
+
+    .host-tab-panel {
+      display: none;
+      width: 100%;
+    }
+    .host-tab-panel.active {
+      display: block;
+    }
+
+    /* Laptop-Optimized Workspace: 2 Balanced Columns */
+    .host-workspace {
+      display: grid;
+      grid-template-columns: 1.15fr 0.95fr;
+      gap: 16px;
+      align-items: start;
+      width: 100%;
+    }
+    @media (max-width: 991px) {
+      .host-workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Host Card & Component Styling */
+    .host-card {
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.42));
+      padding: clamp(14px, 2vw, 18px);
+      border: 1px solid rgba(255,215,0,0.15);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .host-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(255,215,0,0.3);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .host-card-header h3 {
+      margin: 0;
+      color: #ffd54d;
+      font-size: clamp(16px, 1.8vw, 19px);
+      letter-spacing: 0.5px;
+    }
+
+    /* Option inputs 2x2 grid */
+    .option-inputs-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    /* Host Answer choices grid */
+    .host-answer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .host-answer-btn {
+      min-height: 46px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      background: #24385d;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      font-family: inherit;
+    }
+    .host-answer-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     /* Layout Containers */
     .top-container {
       display: flex;
@@ -72,28 +190,19 @@
       flex-wrap: wrap;
       width: 100%;
     }
-    .top-container > .card {
-      flex: 1.5 1 480px;
-      min-width: min(100%, 300px);
-    }
-    .top-container > .lifeline-card {
-      flex: 1 1 320px;
-      min-width: min(100%, 280px);
-    }
-
     .card {
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.38));
-      padding: clamp(12px, 2.5vw, 18px);
+      padding: clamp(12px, 2vw, 16px);
       border: 1px solid rgba(255,215,0,0.12);
       box-shadow: 0 10px 40px rgba(0,0,0,0.6);
       width: 100%;
     }
     .lifeline-card {
       border-radius: 14px;
-      padding: clamp(12px, 2.5vw, 16px);
+      padding: clamp(12px, 2vw, 16px);
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
       flex-wrap: wrap;
       background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.38));
@@ -103,18 +212,12 @@
     .lifeline-card button {
       flex: 1 1 calc(50% - 8px);
       min-width: 120px;
-      padding: 12px 14px;
-      font-size: clamp(13px, 1.8vw, 16px);
+      padding: 10px 12px;
+      font-size: clamp(13px, 1.5vw, 15px);
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-    }
-    @media (max-width: 480px) {
-      .lifeline-card button {
-        flex: 1 1 100%;
-        min-height: 44px;
-      }
     }
 
     .host-connect-row {
@@ -130,34 +233,20 @@
     }
     .host-connect-btn {
       flex: 1 1 180px;
-      padding: 12px 20px;
-      min-height: 44px;
+      padding: 11px 18px;
+      min-height: 42px;
     }
 
-    /* Main & Bottom Layouts */
-    .main-layout {
+    /* Media & Players grid */
+    .media-tab-grid, .players-tab-grid {
       display: grid;
-      grid-template-columns: 1.35fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 16px;
-      align-items: flex-start;
+      align-items: start;
       width: 100%;
     }
     @media (max-width: 960px) {
-      .main-layout {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .bottom-layout {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 16px;
-      align-items: flex-start;
-      margin-top: 16px;
-      width: 100%;
-    }
-    @media (max-width: 640px) {
-      .bottom-layout {
+      .media-tab-grid, .players-tab-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -165,25 +254,16 @@
     .side-panel {
       width: 100%;
       height: auto;
-      min-height: 380px;
+      min-height: 340px;
       max-height: 600px;
       overflow-y: auto;
       overflow-x: hidden;
       background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.38));
-      padding: clamp(12px, 2.5vw, 18px);
+      padding: clamp(12px, 2vw, 16px);
       border-radius: 14px;
       border: 1px solid rgba(255,215,0,0.1);
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    @media (max-width: 960px) {
-      .side-panel {
-        max-height: none;
-        min-height: auto;
-      }
-    }
-
-    #hostAnswerSide { height: auto; min-height: 380px; overflow: visible; }
-    #videoSide, #audioSide, #imageSide { height: auto; min-height: 340px; overflow: visible; }
 
     /* Form inputs and buttons */
     input, textarea, select {
@@ -396,6 +476,10 @@
 </head><body><div class="presence-indicator" role="status" aria-live="polite">
   <span class="presence-item" id="hostPresenceItem" data-connected="false"><span class="presence-dot"></span>Host: <strong id="hostPresence">Not connected</strong></span>
   <span class="presence-item" id="playerPresenceItem" data-connected="false"><span class="presence-dot"></span>Player: <strong id="playerPresence">Not connected</strong></span>
+  <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+    <button id="hostTopRestoreFilesBtn" type="button" class="gold-btn" style="padding:4px 12px; font-size:12px; font-weight:800; border-radius:6px; cursor:pointer; background:linear-gradient(135deg, #0284c7, #0369a1); border-color:#38bdf8;" title="Firebase se sabhi purani videos, audios aur images restore karein">🔄 Restore All Files</button>
+    <button id="hostTopRefreshPlayersBtn" type="button" class="gold-btn" style="padding:4px 12px; font-size:12px; font-weight:800; border-radius:6px; cursor:pointer;" title="Refresh connected players list">🔄 Refresh Players</button>
+  </div>
 </div><h1>Kaun Banega Hazarpata - Host Panel</h1>  <div class="top-container"><div class="card">
   <div class="host-connect-row">
     <div class="host-connect-field">
@@ -418,343 +502,450 @@
   </div>
 </div>
 
-<div class="lifeline-card">
-   <button id="auto5050" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">Use 50:50 ✨</button>
-   <button id="callFriendBtn" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">📞 Use Call Lifeline</button>
-   <button onclick="refreshPlayers()" class="gold-btn" style="padding: 15px 20px; font-size: 18px;">🔄 Refresh Players</button>
-</div>
 
-<div id="nextVideoNotification" role="status" aria-live="polite">🎬 Next question is a video question.</div>
-<div id="hostVideoEndedNotification" role="status" aria-live="polite">✅ Video finished.</div>
-<div id="nextAudioNotification" role="status" aria-live="polite">🎧 Next question is an audio question.</div>
-<div id="hostAudioEndedNotification" role="status" aria-live="polite">✅ Audio finished.</div>
+  <!-- Notification Badges -->
+  <div id="nextVideoNotification" class="kbc-notification" style="display:none; position:fixed; top:16px; right:16px; z-index:9999; background:rgba(14,28,58,0.95); border:1px solid #8ed0ff; border-radius:8px; padding:12px 18px; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
+  <div id="hostVideoEndedNotification" class="kbc-notification" style="display:none; position:fixed; top:16px; right:16px; z-index:9999; background:rgba(14,28,58,0.95); border:1px solid #ffd54d; border-radius:8px; padding:12px 18px; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
+  <div id="nextAudioNotification" class="kbc-notification" style="display:none; position:fixed; top:70px; right:16px; z-index:9999; background:rgba(14,28,58,0.95); border:1px solid #79e0bd; border-radius:8px; padding:12px 18px; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
+  <div id="hostAudioEndedNotification" class="kbc-notification" style="display:none; position:fixed; top:70px; right:16px; z-index:9999; background:rgba(14,28,58,0.95); border:1px solid #ffd54d; border-radius:8px; padding:12px 18px; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
 
-<!-- Timer Display Panel -->
-<div id="timerPanel" class="timer-panel" style="display:none; margin-top: 15px;">
-  <div class="timer-display-card">
-    <div style="display: flex; align-items: center; justify-content: center;">
-      <div class="host-timer-display">
-        <div id="hostTimerValue" class="host-timer-text">--</div>
-      </div>
-    </div>
-    <div style="display:flex; gap:6px; margin-top:7px;">
-      <button id="pauseHostTimerBtn" type="button" style="flex:1; background:#c98917; color:#111; padding:6px;">⏸ Pause</button>
-      <button id="resumeHostTimerBtn" type="button" style="flex:1; background:#2e9b54; color:white; padding:6px;" disabled>▶ Resume</button>
-    </div>
-  </div>
-</div>
-
-  </div>  <div class="main-layout"><div id="playerSide" class="side-panel">
-  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">👥 Active Players</h3>
-  <div id="players"></div>
-</div>
-
-<div id="leaderboardSide" class="side-panel">
-  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom: 2px solid gold; padding-bottom: 5px;">
-    <h3 style="margin:0;">🏆 Saved Leaderboard</h3>
-    <button id="refreshLeaderboardBtn" type="button" class="gold-btn" style="padding:8px 12px; font-size:12px;">Refresh</button>
-  </div>
-  <div id="leaderboardList" style="margin-top: 12px;"></div>
-</div>
-
-<div id="eventSide" class="side-panel">
-  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">📜 Live Logs</h3>
-  <pre id="events" style="white-space: pre-wrap; font-size: 13px; color: #00ff00; font-family: monospace;"></pre>
-</div>
-
-<div id="questionSide" class="side-panel" style="flex: 1.5; height: auto;">
-  <h3 style="border-bottom: 2px solid gold; padding-bottom: 5px;">🚀 Control Center</h3>
-  
-  <label>Question Format:</label>
-  <select id="qFormat">
-    <option value="text">Text Only</option>
-    <option value="image">Image + Text</option>
-  </select>
-
-  <label>Question Text:</label>
-  <textarea id="qText" rows="3" placeholder="Enter your question here..."></textarea>
-
-  <label for="questionVideoId" style="display:block; margin-top:10px;">Video ID (optional):</label>
-  <div style="display:flex; gap:6px; align-items:center;">
-    <input id="questionVideoId" type="text" placeholder="Example: video-1" autocomplete="off" style="flex:1; margin:0;" />
-    <button type="button" id="clearQuestionVideoIdBtn" title="Remove / Clear Video" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
+  <!-- Host Top Navigation Tabs -->
+  <div class="host-nav-tabs">
+    <button type="button" class="host-tab-btn active" data-tab="game" onclick="switchHostTab('game')">
+      <span>🎯</span> Control Center & Host Controls
+    </button>
+    <button type="button" class="host-tab-btn" data-tab="media" onclick="switchHostTab('media')">
+      <span>📁</span> Media & Questions Library
+    </button>
+    <button type="button" class="host-tab-btn" data-tab="players" onclick="switchHostTab('players')">
+      <span>👥</span> Active Players & Leaderboard
+    </button>
+    <button type="button" class="host-tab-btn" data-tab="logs" onclick="switchHostTab('logs')">
+      <span>📜</span> Live System Logs
+    </button>
   </div>
 
-  <label for="questionAudioId" style="display:block; margin-top:10px;">Audio ID (optional):</label>
-  <div style="display:flex; gap:6px; align-items:center;">
-    <input id="questionAudioId" type="text" placeholder="Example: audio-1" autocomplete="off" style="flex:1; margin:0;" />
-    <button type="button" id="clearQuestionAudioIdBtn" title="Remove / Clear Audio" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
-  </div>
+  <!-- TAB 1: CONTROL CENTER & HOST CONTROLS (SAME TAB WORKSPACE) -->
+  <div id="panel_game" class="host-tab-panel active">
+    <div class="host-workspace">
+      <!-- COLUMN 1: CONTROL CENTER (Question Composer, Format, Media, Options, Timer, Actions) -->
+      <div id="questionSide" class="host-card">
+        <div class="host-card-header">
+          <h3 style="margin:0; font-size:16px; color:gold; display:flex; align-items:center; gap:8px;">
+            <span>📝</span> Control Center — Question Composer
+          </h3>
+          <span style="font-size:11px; color:#8ed0ff; background:rgba(142,208,255,0.1); border:1px solid rgba(142,208,255,0.25); border-radius:12px; padding:2px 8px;">Hotseat Stage</span>
+        </div>
 
-  <label for="pdfFile">Upload Questions PDF:</label>
-  <input id="pdfFile" type="file" accept="application/pdf,.pdf" />
-  <div id="pdfStatus" style="margin-top: 8px; color: #00ff00;"></div>
-  <button id="nextPdfQuestion" type="button" class="gold-btn" style="display:none; margin-top:8px; width:100%;">NEXT PDF QUESTION</button>
-  
-  <!-- Firebase Media Storage & Sync Card -->
-  <div style="background:linear-gradient(135deg, rgba(25,118,210,0.18), rgba(38,170,130,0.15)); border:1px solid rgba(82,183,255,0.4); border-radius:10px; padding:12px 14px; margin-top:16px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:20px;">🔥</span>
-        <div>
-          <span style="font-weight:bold; color:#ffd54d; font-size:14px;">Firebase Media Storage & Sync</span>
-          <div style="font-size:11px; color:#8ed0ff;">Connected Firestore Database: <code style="color:#fff; background:rgba(0,0,0,0.4); padding:1px 5px; border-radius:4px;">ai-studio-kbh</code></div>
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <label for="qFormat" style="font-weight:700; font-size:13px; color:#ffd54d; display:block; margin-bottom:4px;">Question Format</label>
+            <select id="qFormat" class="kbc-input">
+              <option value="text">Classic 4-Option MCQ</option>
+              <option value="rapid">Rapid Fire (Yes/No)</option>
+              <option value="numerical">Numerical / Numeric Entry</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="qText" style="font-weight:700; font-size:13px; color:#ffd54d; display:block; margin-bottom:4px;">Question Statement</label>
+            <textarea id="qText" class="kbc-input" rows="3" placeholder="Enter question here (or load from PDF below)..." style="width:100%; box-sizing:border-box; resize:vertical; font-size:14px; line-height:1.4;"></textarea>
+          </div>
+
+          <!-- Attached Media Indicators -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(142,208,255,0.3); border-radius:8px; padding:6px 10px;">
+              <div style="font-size:11px; color:#8ed0ff; font-weight:700;">🎬 Attached Video ID</div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                <input type="text" id="questionVideoId" readonly placeholder="None attached" style="background:transparent; border:none; color:#fff; font-size:12px; width:100%; text-overflow:ellipsis;">
+                <button id="clearQuestionVideoIdBtn" type="button" style="background:#c93b4a; border:none; color:#fff; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;" title="Clear Video">✕</button>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(121,224,189,0.3); border-radius:8px; padding:6px 10px;">
+              <div style="font-size:11px; color:#79e0bd; font-weight:700;">🎧 Attached Audio ID</div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                <input type="text" id="questionAudioId" readonly placeholder="None attached" style="background:transparent; border:none; color:#fff; font-size:12px; width:100%; text-overflow:ellipsis;">
+                <button id="clearQuestionAudioIdBtn" type="button" style="background:#c93b4a; border:none; color:#fff; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;" title="Clear Audio">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Options in 2x2 grid for laptop screen efficiency -->
+          <div class="option-inputs-row">
+            <div>
+              <label for="optA" style="font-size:12px; font-weight:700; color:#ffd54d;">Option A</label>
+              <input type="text" id="optA" class="kbc-input" placeholder="Choice A" style="margin-top:2px;">
+            </div>
+            <div>
+              <label for="optB" style="font-size:12px; font-weight:700; color:#ffd54d;">Option B</label>
+              <input type="text" id="optB" class="kbc-input" placeholder="Choice B" style="margin-top:2px;">
+            </div>
+            <div>
+              <label for="optC" style="font-size:12px; font-weight:700; color:#ffd54d;">Option C</label>
+              <input type="text" id="optC" class="kbc-input" placeholder="Choice C" style="margin-top:2px;">
+            </div>
+            <div>
+              <label for="optD" style="font-size:12px; font-weight:700; color:#ffd54d;">Option D</label>
+              <input type="text" id="optD" class="kbc-input" placeholder="Choice D" style="margin-top:2px;">
+            </div>
+          </div>
+
+          <!-- Correct answer & Time Limit row -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label for="correctAns" style="font-size:12px; font-weight:700; color:#ffd54d; display:block; margin-bottom:2px;">Correct Option</label>
+              <select id="correctAns" class="kbc-input" style="width:100%;">
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+              </select>
+            </div>
+            <div>
+              <label for="timeLimit" style="font-size:12px; font-weight:700; color:#ffd54d; display:block; margin-bottom:2px;">Timer Duration</label>
+              <select id="timeLimit" class="kbc-input" style="width:100%;">
+                <option value="auto" selected>Auto by Level (Q1-4: 30s | Q5-7: 45s | Q8-10: 60s)</option>
+                <option value="30">30 Seconds (30 sec timer)</option>
+                <option value="45">45 Seconds (45 sec timer)</option>
+                <option value="60">60 Seconds (60 sec timer)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- PDF Question Loader -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,215,0,0.12); border-radius:8px; padding:8px 10px; margin-top:2px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label for="pdfFile" style="font-size:12px; font-weight:700; color:#b8c7db; margin:0;">📄 Import Question from PDF</label>
+              <span id="pdfStatus" style="font-size:11px; color:#8ed0ff;">No file</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input type="file" id="pdfFile" accept="application/pdf" style="font-size:12px; color:#b8c7db; flex:1;">
+              <button id="nextPdfQuestion" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px; white-space:nowrap;" disabled>Next PDF Q ⏭️</button>
+            </div>
+          </div>
+
+          <!-- Primary Action: Send Question & Media Buttons -->
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:8px;">
+            <button id="sendQ" type="button" class="gold-btn" style="width:100%; font-size:15px; font-weight:900; padding:12px; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 15px rgba(255,215,0,0.25);">
+              🚀 Send Question to Hotseat
+            </button>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <button id="playVideoBtn" type="button" style="display:none; background:linear-gradient(135deg, #1e3c72, #2a5298); color:#fff; border:1px solid #8ed0ff; border-radius:8px; padding:8px; font-weight:700; font-size:13px; cursor:pointer;">
+                ▶️ Play Attached Video
+              </button>
+              <button id="playAudioBtn" type="button" style="display:none; background:linear-gradient(135deg, #0d3b2e, #136f58); color:#fff; border:1px solid #79e0bd; border-radius:8px; padding:8px; font-weight:700; font-size:13px; cursor:pointer;">
+                ▶️ Play Attached Audio
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button type="button" id="syncFirebaseBtn" class="gold-btn" style="padding:6px 12px; font-size:12px; background:#1976d2; color:#fff;" title="Force re-sync all media files directly from Firebase">🔄 Sync with Firebase</button>
-        <button type="button" id="toggleAddUrlBtn" class="gold-btn" style="padding:6px 12px; font-size:12px; background:#168b6b; color:#fff;">+ Add via URL / Firebase Link</button>
-      </div>
-    </div>
-    
-    <!-- Collapsible Add via URL form -->
-    <div id="addMediaUrlForm" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:14px; border-radius:8px; border:1px solid rgba(82,183,255,0.3);">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-        <div style="font-size:13px; font-weight:bold; color:#79e0bd;">🔗 Paste Direct Media URL / Google Drive / Firebase Link:</div>
-        <button type="button" id="toggleUrlGuideBtn" style="background:rgba(255,215,0,0.15); border:1px solid rgba(255,215,0,0.4); color:#ffd54d; padding:3px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:600;">💡 URL कैसे बनाएं? (गाइड)</button>
-      </div>
 
-      <!-- Quick Helper Guide (Collapsible) -->
-      <div id="urlGuideBox" style="display:none; margin-bottom:12px; background:rgba(18,28,45,0.9); border:1px solid rgba(121,224,189,0.35); border-radius:6px; padding:10px 12px; font-size:12px; line-height:1.6; color:#d6e6f5;">
-        <div style="font-weight:bold; color:#ffd54d; margin-bottom:4px;">📌 URL बनाने के 3 सबसे आसान और 100% फ्री तरीके:</div>
-        <div style="margin-bottom:6px;">
-          <b>1. Google Drive (ऑडियो, वीडियो या फोटो):</b><br/>
-          Google Drive पर फाइल अपलोड करें ➔ फाइल पर Right-Click ➔ <b>Share</b> ➔ Access को <b>"Anyone with the link"</b> (कोई भी व्यक्ति जिसके पास लिंक है) करें ➔ Link कॉपी करके नीचे पेस्ट करें (हमारा सिस्टम इसे ऑटोमैटिक डायरेक्ट मीडिया लिंक में बदल देगा)।
-        </div>
-        <div style="margin-bottom:6px;">
-          <b>2. Catbox.moe (ऑडियो और वीडियो के लिए सबसे तेज):</b><br/>
-          <a href="https://catbox.moe" target="_blank" rel="noopener noreferrer" style="color:#64b5f6; text-decoration:underline; font-weight:bold;">catbox.moe</a> या <a href="https://litterbox.catbox.moe" target="_blank" rel="noopener noreferrer" style="color:#64b5f6; text-decoration:underline; font-weight:bold;">litterbox.catbox.moe</a> खोलें ➔ अपनी MP3/MP4 फाइल चुनें ➔ 1 सेकंड में डायरेक्ट URL (.mp3 / .mp4) मिलेगा ➔ उसे कॉपी करके यहाँ पेस्ट करें।
-        </div>
-        <div>
-          <b>3. PostImages (फोटो / इमेजेस के लिए):</b><br/>
-          <a href="https://postimages.org" target="_blank" rel="noopener noreferrer" style="color:#64b5f6; text-decoration:underline; font-weight:bold;">postimages.org</a> पर फोटो अपलोड करें ➔ <b>"Direct Link"</b> कॉपी करें और यहाँ पेस्ट करें।
-        </div>
-      </div>
+      <!-- COLUMN 2: HOST CONTROLS (Active Question Monitor, Timer Panel, Lifelines, Lock & Judgement) -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
 
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:8px;">
-        <div style="grid-column: 1 / -1;">
-          <input type="url" id="customMediaUrl" placeholder="https://drive.google.com/file/d/... or https://.../.mp3, .mp4, .png" style="margin:0; width:100%; box-sizing:border-box; font-size:12px; padding:8px;" />
+        <!-- Active Question & Player Live Status Card -->
+        <div id="hostActiveQuestionCard" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:gold; display:flex; align-items:center; gap:8px;">
+              <span>🎯</span> Active Question on Hotseat
+            </h3>
+            <span id="hostActiveStatusBadge" style="font-size:11px; color:#2ecc71; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.3); border-radius:10px; padding:2px 8px;">Ready</span>
+          </div>
+          <div style="margin-top:8px;">
+            <div id="hostLiveQuestionSnippet" style="font-size:13px; color:#e0e8f5; min-height:38px; line-height:1.4; background:rgba(0,0,0,0.25); border-radius:8px; padding:8px 10px; border:1px solid rgba(255,255,255,0.06);">
+              No active question yet. Compose on the left and click "Send Question".
+            </div>
+            <div id="hostLiveSelectedChoiceNotice" style="margin-top:6px; font-size:12px; color:#ffd54d; font-weight:700;">
+              Contestant Selection: <span id="hostLiveChoiceBadge" style="color:#fff; background:rgba(255,215,0,0.15); padding:2px 8px; border-radius:6px;">None</span>
+            </div>
+          </div>
         </div>
-        <div style="flex:1;">
-          <input type="text" id="customMediaName" placeholder="File Name (e.g. Intro Music)" style="margin:0; width:100%; box-sizing:border-box; font-size:12px; padding:8px;" />
+
+        <!-- Timer Control Card -->
+        <div id="timerPanel" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:gold; display:flex; align-items:center; gap:8px;">
+              <span>⏱️</span> Host Timer Control
+            </h3>
+            <div id="hostTimerValue" style="font-size:22px; font-weight:900; color:#ffd54d; font-family:monospace;">--s</div>
+          </div>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button id="pauseHostTimerBtn" type="button" class="gold-btn" style="flex:1; padding:8px 10px; font-size:13px;" disabled>⏸️ Pause Timer</button>
+            <button id="resumeHostTimerBtn" type="button" class="gold-btn" style="flex:1; padding:8px 10px; font-size:13px;" disabled>▶️ Resume Timer</button>
+          </div>
         </div>
-        <div style="width:100%;">
-          <select id="customMediaType" style="margin:0; width:100%; box-sizing:border-box; font-size:12px; padding:8px; height:35px;">
-            <option value="audio">🎵 Audio</option>
-            <option value="video">🎬 Video</option>
-            <option value="image">📸 Image</option>
-          </select>
+
+        <!-- Lifelines Card -->
+        <div class="lifeline-card host-card" style="margin-top:0;">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:gold; display:flex; align-items:center; gap:8px;">
+              <span>💡</span> Lifelines Control
+            </h3>
+            <span style="font-size:11px; color:#ffd54d;">Realtime</span>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:10px;">
+            <button id="auto5050" type="button" class="gold-btn" style="flex:1; padding:8px 10px; font-size:13px;">⚖️ 50:50 Lifeline</button>
+            <button id="callFriendBtn" type="button" class="gold-btn" style="flex:1; padding:8px 10px; font-size:13px;">📞 Phone a Friend</button>
+          </div>
         </div>
+
+        <!-- Host Answer Control & Judgement -->
+        <div id="hostAnswerControls" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:gold; display:flex; align-items:center; gap:8px;">
+              <span>🎙️</span> Host Answer Control & Judgement
+            </h3>
+          </div>
+
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label for="activePlayer" style="font-size:12px; font-weight:700; color:#ffd54d;">Hotseat Player</label>
+                <div style="display:flex; gap:6px;">
+                  <button id="quickRefreshPlayersBtn" type="button" class="gold-btn" style="padding:2px 8px; font-size:11px;" title="Refresh connected players roster">🔄 Refresh</button>
+                  <button id="quickResetGameBtn" type="button" style="background:#e67e22; color:#fff; border:none; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; cursor:pointer;" title="Reset score and restart player on hotseat">⚡ Reset Player</button>
+                </div>
+              </div>
+              <select id="activePlayer" class="kbc-input" style="width:100%;">
+                <option value="">No player on hotseat</option>
+              </select>
+            </div>
+
+            <div>
+              <div style="font-size:12px; font-weight:700; color:#b8c7db; margin-bottom:6px;">Select Verbal Choice:</div>
+              <div id="hostAnswerChoices" class="host-answer-grid">
+                <button id="choiceA" type="button" class="host-answer-btn" data-answer="A">A</button>
+                <button id="choiceB" type="button" class="host-answer-btn" data-answer="B">B</button>
+                <button id="choiceC" type="button" class="host-answer-btn" data-answer="C">C</button>
+                <button id="choiceD" type="button" class="host-answer-btn" data-answer="D">D</button>
+              </div>
+            </div>
+
+            <button id="lockAnswerBtn" type="button" class="gold-btn" style="width:100%; padding:10px; font-size:14px; font-weight:900;" disabled>
+              🔒 Lock Answer
+            </button>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <button id="markCorrectBtn" type="button" style="background:#28a745; color:#fff; border:none; border-radius:8px; padding:10px; font-weight:900; font-size:13px; cursor:pointer;" disabled>
+                ✅ Correct
+              </button>
+              <button id="markWrongBtn" type="button" style="background:#c93b4a; color:#fff; border:none; border-radius:8px; padding:10px; font-weight:900; font-size:13px; cursor:pointer;" disabled>
+                ❌ Wrong
+              </button>
+            </div>
+
+            <!-- Broadcast Media Buttons (Medium size, right under Correct / Wrong) -->
+            <div id="judgementMediaBroadcastBox" style="margin-top:2px; display:flex; flex-direction:column; gap:6px; background:rgba(0,0,0,0.22); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,215,0,0.18);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:11px; font-weight:700; color:#8ed0ff; text-transform:uppercase; letter-spacing:0.3px;">📡 Hotseat Broadcast</span>
+                <span id="judgementMediaActiveStatus" style="font-size:11px; color:#ffd54d; font-weight:600;">Ready</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <button id="broadcastVideoBtn" type="button" style="background:linear-gradient(135deg, #1e3c72, #2a5298); color:#fff; border:1px solid #52b7ff; border-radius:6px; padding:8px 10px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,0.3); transition:all 0.15s ease;" title="Broadcast video to player hotseat">
+                  <span>🎬</span> Broadcast Video
+                </button>
+                <button id="broadcastAudioBtn" type="button" style="background:linear-gradient(135deg, #0d3b2e, #136f58); color:#fff; border:1px solid #79e0bd; border-radius:6px; padding:8px 10px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,0.3); transition:all 0.15s ease;" title="Broadcast audio to player hotseat">
+                  <span>🎧</span> Broadcast Audio
+                </button>
+              </div>
+              <!-- Quick media picker dropdown row if host wants to choose a specific media from library -->
+              <div id="judgementMediaPickerRow" style="display:none; margin-top:2px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="judgementMediaSelect" class="kbc-input" style="flex:1; font-size:11px; padding:4px 6px;"></select>
+                  <button id="judgementPlaySelectedMediaBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px; white-space:nowrap;">▶ Send</button>
+                  <button id="judgementCloseMediaPickerBtn" type="button" style="background:#555; color:#fff; border:none; border-radius:4px; padding:4px 6px; font-size:11px; cursor:pointer;">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="hostAnswerStatus" style="font-size:12px; min-height:20px; line-height:1.4; color:#ffd54d; text-align:center; padding:4px;">
+              Select player choice then Lock.
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <div id="urlTransformTip" style="font-size:11px; color:#ffd54d; font-style:italic;"></div>
-        <div style="display:flex; gap:6px;">
-          <button type="button" onclick="document.getElementById('addMediaUrlForm').style.display='none'" style="background:rgba(255,255,255,0.1); color:#ccc; border:none; border-radius:4px; padding:6px 12px; font-size:12px; cursor:pointer;">Cancel</button>
-          <button type="button" id="submitAddMediaUrlBtn" class="gold-btn" style="padding:6px 14px; font-size:12px;">Save to Library & Firebase</button>
-        </div>
-      </div>
-      <div id="customMediaStatus" style="font-size:12px; margin-top:6px; font-weight:600;"></div>
     </div>
   </div>
 
-  <!-- Image Management Section -->
-  <div id="imageManagement" style="background: rgba(255,215,0,0.08); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(255,215,0,0.2);">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <label style="color: #ffd54d; font-weight: bold;">📸 Image Library Management</label>
-      <button type="button" id="clearActiveImageBtn" style="background:#c93b4a; color:white; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold; display:none;">✕ Unselect Image</button>
-    </div>
-    
-    <div id="activeImageSelectionBanner" style="display:none; margin-top:8px; background:rgba(255,215,0,0.15); border:1px solid gold; border-radius:6px; padding:8px 12px; font-size:12px; justify-content:space-between; align-items:center;">
-      <span id="activeImageSelectionText" style="color:#ffd54d; font-weight:600;"></span>
-      <button type="button" id="clearBannerImageBtn" style="background:#c93b4a; color:white; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
-    </div>
+  <!-- TAB 2: MEDIA & QUESTIONS LIBRARY -->
+  <div id="panel_media" class="host-tab-panel">
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <!-- Firebase Sync & URL Card -->
+      <div class="host-card">
+        <div class="host-card-header">
+          <h3 style="margin:0; font-size:16px; color:gold; display:flex; align-items:center; gap:8px;">
+            <span>🌐</span> Media Sync & Direct Link Importer
+          </h3>
+          <div style="display:flex; gap:8px;">
+            <button id="syncFirebaseBtn" type="button" class="gold-btn" style="padding:6px 12px; font-size:12px;">🔄 Sync Firebase</button>
+            <button id="toggleAddUrlBtn" type="button" class="gold-btn" style="padding:6px 12px; font-size:12px; background:linear-gradient(135deg, #10b981, #059669);">+ Add via URL / Direct Link</button>
+          </div>
+        </div>
 
-    <div style="margin-top: 10px;">
-      <label for="imageUploadBatch" style="color:#ffd54d; font-weight:bold; font-size:13px;">Upload Multiple Images:</label>
-      <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
-        <input id="imageUploadBatch" type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.svg" multiple style="flex:1; min-width:180px;" />
-        <button id="uploadImagesBtn" type="button" class="gold-btn" style="padding:8px 14px; font-size:13px;">⬆ Upload Images</button>
-      </div>
-      <!-- Image Progress Bar -->
-      <div id="imageProgressBarContainer" style="display:none; margin-top:8px; background:rgba(0,0,0,0.5); border-radius:6px; height:8px; overflow:hidden; border:1px solid rgba(255,215,0,0.4);">
-        <div id="imageProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #d4af37, #ffd54d); transition:width 0.15s ease;"></div>
-      </div>
-      <div id="uploadStatus" style="margin-top: 6px; color: #ffd54d; font-size: 12px; font-weight:600;"></div>
-    </div>
-    
-    <div style="margin-top: 15px;">
-      <button id="toggleImageLibraryBtn" type="button" class="gold-btn" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:10px 12px;">
-        <span>🖼️ Image Library <span id="imageLibraryCount" style="font-size:12px;"></span></span><span id="imageLibraryArrow">▼</span>
-      </button>
-      <div id="imageLibrary" style="display:none; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 8px;">
-        <p style="color: #999; text-align: center;">No images uploaded yet</p>
-      </div>
-      <button id="refreshImagesBtn" class="gold-btn" style="width:100%; margin-top:8px; font-size:12px;">🔄 Refresh Library</button>
-    </div>
-  </div>
+        <!-- Add URL Form -->
+        <div id="addMediaUrlForm" style="display:none; margin-top:14px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,215,0,0.2); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="margin:0; color:#ffd54d; font-size:14px;">🔗 Register Online Media (Firebase / GDrive / CDN)</h4>
+            <button id="toggleUrlGuideBtn" type="button" style="background:transparent; border:none; color:#8ed0ff; font-size:12px; cursor:pointer; text-decoration:underline;">Guide / How to use</button>
+          </div>
 
-  <!-- Video Management Section -->
-  <div id="videoManagement" style="background:rgba(45,139,255,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(45,139,255,.35);">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <label style="color:#8ed0ff; font-weight:bold; font-size:16px;">🎬 Video Library & Host Preview</label>
-      <span id="videoLibraryCount" style="font-size:12px; background:rgba(82,183,255,0.25); color:#8ed0ff; padding:2px 8px; border-radius:12px;">(0)</span>
-    </div>
-    
-    <label for="videoUploadBatch" style="display:block; margin-top:10px; font-size:13px; color:#cbe5ff;">Select video to upload (MP4, WebM, MOV, etc.):</label>
-    <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
-      <input id="videoUploadBatch" type="file" accept="video/*,.mp4,.webm,.ogg,.mov,.mkv,.avi,.m4v" multiple style="flex:1; min-width:180px;" />
-      <button id="uploadVideosBtn" type="button" class="gold-btn" style="padding:8px 14px; font-size:13px;">⬆ Upload Video</button>
-    </div>
-    <div id="videoProgressBarContainer" style="display:none; margin-top:8px; background:rgba(0,0,0,0.5); border-radius:6px; height:8px; overflow:hidden; border:1px solid rgba(82,183,255,0.4);">
-      <div id="videoProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #1976d2, #45e27a); transition:width 0.2s;"></div>
-    </div>
-    <div id="videoUploadStatus" style="margin-top:6px; color:#a8f0a8; font-size:12px; font-weight:600;"></div>
-    
-    <!-- Video Player Preview on Host -->
-    <div id="hostVideoPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(82,183,255,0.45);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostVideoPreviewTitle">🎬 Host Video Player</span>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <span id="hostVideoPlaybackBadge" style="font-size:11px; background:#1976d2; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
-          <button type="button" id="clearVideoBtn" title="Remove / Unselect Video" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+          <div id="urlGuideBox" style="display:none; margin-bottom:12px; background:rgba(142,208,255,0.06); border:1px solid rgba(142,208,255,0.2); border-radius:8px; padding:10px; font-size:12px; color:#b8c7db; line-height:1.5;">
+            Direct links from Firebase Storage, Google Drive (direct export/view), Cloudinary, Imgur, or any CDN are supported. URLs never expire across server restarts!
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 140px; gap:10px; margin-bottom:10px;">
+            <div>
+              <label for="customMediaUrl" style="font-size:12px; color:#ffd54d; font-weight:700;">Media URL</label>
+              <input type="text" id="customMediaUrl" class="kbc-input" placeholder="https://..." style="margin-top:2px;">
+            </div>
+            <div>
+              <label for="customMediaType" style="font-size:12px; color:#ffd54d; font-weight:700;">Type</label>
+              <select id="customMediaType" class="kbc-input" style="margin-top:2px;">
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+                <option value="audio">Audio</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end;">
+            <div>
+              <label for="customMediaName" style="font-size:12px; color:#ffd54d; font-weight:700;">Label / Name</label>
+              <input type="text" id="customMediaName" class="kbc-input" placeholder="e.g. Question 1 Clue Photo" style="margin-top:2px;">
+            </div>
+            <button id="submitAddMediaUrlBtn" type="button" class="gold-btn" style="padding:10px 18px; font-size:13px; font-weight:700;">Add to Library</button>
+          </div>
+
+          <div id="urlTransformTip" style="display:none; font-size:11px; color:#8ed0ff; margin-top:8px;"></div>
+          <div id="customMediaStatus" style="font-size:12px; margin-top:8px; min-height:18px;"></div>
         </div>
       </div>
-      <video id="hostVideoPlayer" controls playsinline style="width:100%; max-height:240px; border-radius:6px; background:#000; outline:none; display:block;"></video>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-        <button id="playVideoBtn" type="button" class="gold-btn" style="background:#1976d2; color:white; font-size:13px; padding:8px 10px;">▶ Broadcast Video</button>
-        <button id="markVideoReadyBtn" type="button" class="gold-btn" style="background:#28a745; color:white; font-size:13px; padding:8px 10px;">✅ Mark Video Finished</button>
-      </div>
-      <div id="videoReadyNotice" style="display:none; margin-top:6px; font-size:12px; color:#45e27a; text-align:center; font-weight:bold;">✅ Video finished! Question is unlocked and ready to send.</div>
-    </div>
 
-    <!-- Video Library List -->
-    <div style="margin-top:12px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:13px; color:#8ed0ff; font-weight:600;">Uploaded Videos in Library:</span>
-        <button id="refreshVideosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄 Refresh</button>
-      </div>
-      <div id="videoLibrary" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,.35); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="color:#999; text-align:center; margin:10px 0;">No videos uploaded yet</p>
-      </div>
-    </div>
-    
-    <div id="selectedVideoLabel" style="font-size:12px; color:#b8e8ff; margin-top:8px;"></div>
-  </div>
+      <!-- 3 Media Library Cards -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+        <!-- IMAGE MANAGEMENT -->
+        <div id="imageManagement" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:gold; display:flex; align-items:center; gap:6px;">
+              <span>📸</span> Image Library <span id="imageLibraryCount" style="font-size:12px; color:#ffd54d;">(0)</span>
+            </h3>
+            <div style="display:flex; gap:6px;">
+              <button id="refreshImagesBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄</button>
+              <button id="toggleImageLibraryBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;"><span id="imageLibraryArrow">▲</span></button>
+            </div>
+          </div>
+          <label style="display:none;">Images</label>
+          <div style="margin-top:10px;">
+            <label for="imageUploadBatch" style="font-size:12px; color:#ffd54d; font-weight:700; display:block; margin-bottom:4px;">Upload Image(s)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="file" id="imageUploadBatch" accept="image/*" multiple style="font-size:12px; color:#b8c7db; flex:1;">
+              <button id="uploadImagesBtn" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px; white-space:nowrap;">⬆ Upload</button>
+            </div>
+            <div id="uploadStatus" style="font-size:11px; margin-top:4px; min-height:16px;"></div>
+            <div id="imageProgressBarContainer" style="display:none; width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:4px; overflow:hidden;">
+              <div id="imageProgressBar" style="width:0%; height:100%; background:gold; transition:width 0.2s;"></div>
+            </div>
+          </div>
+          <div id="imageLibrary" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
+        </div>
 
-  <!-- Audio Management Section -->
-  <div id="audioManagement" style="background:rgba(38,170,130,.12); padding:15px; border-radius:10px; margin-top:15px; border:1px solid rgba(38,170,130,.35);">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <label style="color:#79e0bd; font-weight:bold; font-size:16px;">🎧 Audio Library & Host Preview</label>
-      <span id="audioLibraryCount" style="font-size:12px; background:rgba(38,170,130,0.25); color:#79e0bd; padding:2px 8px; border-radius:12px;">(0)</span>
-    </div>
+        <!-- VIDEO MANAGEMENT -->
+        <div id="videoManagement" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:#8ed0ff; display:flex; align-items:center; gap:6px;">
+              <span>🎬</span> Video Library <span id="videoLibraryCount" style="font-size:12px; color:#8ed0ff;">(0)</span>
+            </h3>
+            <button id="refreshVideosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄</button>
+          </div>
+          <label style="display:none;">Videos</label>
+          <div style="margin-top:10px;">
+            <label for="videoUploadBatch" style="font-size:12px; color:#8ed0ff; font-weight:700; display:block; margin-bottom:4px;">Upload Video(s)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="file" id="videoUploadBatch" accept="video/*" multiple style="font-size:12px; color:#b8c7db; flex:1;">
+              <button id="uploadVideosBtn" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px; white-space:nowrap;">⬆ Upload</button>
+            </div>
+            <div id="videoUploadStatus" style="font-size:11px; margin-top:4px; min-height:16px;"></div>
+            <div id="videoProgressBarContainer" style="display:none; width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:4px; overflow:hidden;">
+              <div id="videoProgressBar" style="width:0%; height:100%; background:#8ed0ff; transition:width 0.2s;"></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <video id="hostVideoPlayer" controls style="width:100%; max-height:160px; border-radius:8px; background:#000; display:none;"></video>
+          </div>
+          <div id="videoLibrary" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
+        </div>
 
-    <label for="audioUploadBatch" style="display:block; margin-top:10px; font-size:13px; color:#c4f3e3;">Select audio to upload (MP3, WAV, M4A, etc.):</label>
-    <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
-      <input id="audioUploadBatch" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm,.flac" multiple style="flex:1; min-width:180px;" />
-      <button id="uploadAudiosBtn" type="button" class="gold-btn" style="padding:8px 14px; font-size:13px;">⬆ Upload Audio</button>
-    </div>
-    <!-- Audio Progress Bar -->
-    <div id="audioProgressBarContainer" style="display:none; margin-top:8px; background:rgba(0,0,0,0.5); border-radius:6px; height:8px; overflow:hidden; border:1px solid rgba(38,170,130,0.45);">
-      <div id="audioProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #168b6b, #79e0bd); transition:width 0.15s ease;"></div>
-    </div>
-    <div id="audioUploadStatus" style="margin-top:6px; color:#a8f0a8; font-size:12px; font-weight:600;"></div>
-
-    <!-- Audio Player Preview on Host -->
-    <div id="hostAudioPreviewContainer" style="display:none; margin-top:12px; background:rgba(0,0,0,0.55); padding:12px; border-radius:8px; border:1px solid rgba(38,170,130,0.45);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:13px; font-weight:bold; color:#ffd54d;" id="hostAudioPreviewTitle">🎧 Host Audio Player</span>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <span id="hostAudioPlaybackBadge" style="font-size:11px; background:#168b6b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">Ready</span>
-          <button type="button" id="clearAudioBtn" title="Remove / Unselect Audio" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;">✕ Remove</button>
+        <!-- AUDIO MANAGEMENT -->
+        <div id="audioManagement" class="host-card">
+          <div class="host-card-header">
+            <h3 style="margin:0; font-size:15px; color:#79e0bd; display:flex; align-items:center; gap:6px;">
+              <span>🎧</span> Audio Library <span id="audioLibraryCount" style="font-size:12px; color:#79e0bd;">(0)</span>
+            </h3>
+            <div style="display:flex; gap:6px;">
+              <button id="syncAudioVaultBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;" title="Sync and restore all uploaded audio files from browser cache">⚡ Sync Vault</button>
+              <button id="refreshAudiosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;" title="Refresh library">🔄</button>
+            </div>
+          </div>
+          <label style="display:none;">Audios</label>
+          <div style="margin-top:10px;">
+            <label for="audioUploadBatch" style="font-size:12px; color:#79e0bd; font-weight:700; display:block; margin-bottom:4px;">Upload Audio(s)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="file" id="audioUploadBatch" accept="audio/*" multiple style="font-size:12px; color:#b8c7db; flex:1;">
+              <button id="uploadAudiosBtn" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px; white-space:nowrap;">⬆ Upload</button>
+            </div>
+            <div id="audioUploadStatus" style="font-size:11px; margin-top:4px; min-height:16px;"></div>
+            <div id="audioProgressBarContainer" style="display:none; width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:4px; overflow:hidden;">
+              <div id="audioProgressBar" style="width:0%; height:100%; background:#79e0bd; transition:width 0.2s;"></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <audio id="hostAudioPlayer" controls style="width:100%; display:none;"></audio>
+          </div>
+          <div id="audioLibrary" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
         </div>
       </div>
-      <audio id="hostAudioPlayer" controls style="width:100%; display:block;"></audio>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-        <button id="playAudioBtn" type="button" class="gold-btn" style="background:#168b6b; color:white; font-size:13px; padding:8px 10px;">▶ Broadcast Audio</button>
-        <button id="markAudioReadyBtn" type="button" class="gold-btn" style="background:#28a745; color:white; font-size:13px; padding:8px 10px;">✅ Mark Audio Finished</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: ACTIVE PLAYERS & LEADERBOARD -->
+  <div id="panel_players" class="host-tab-panel">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div id="playerSide" class="host-card">
+        <div class="host-card-header">
+          <h3 style="margin:0; font-size:16px; color:gold;">👥 Connected Players</h3>
+          <div style="display:flex; gap:6px;">
+            <button id="refreshPlayerRosterBtn" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px;">🔄 Refresh Players</button>
+            <button id="resetPlayersGameBtn" type="button" style="background:#e67e22; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer;" title="Reset score and restart all players">⚡ Reset Game</button>
+          </div>
+        </div>
+        <div id="players" style="margin-top:12px; min-height:120px;"></div>
       </div>
-      <div id="audioReadyNotice" style="display:none; margin-top:6px; font-size:12px; color:#45e27a; text-align:center; font-weight:bold;">✅ Audio finished! Question is unlocked and ready to send.</div>
-    </div>
 
-    <!-- Audio Library List -->
-    <div style="margin-top:12px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:13px; color:#79e0bd; font-weight:600;">Uploaded Audio in Library:</span>
-        <button id="refreshAudiosBtn" type="button" class="gold-btn" style="padding:4px 8px; font-size:11px;">🔄 Refresh</button>
-      </div>
-      <div id="audioLibrary" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,.35); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="color:#999; text-align:center; margin:10px 0;">No audio uploaded yet</p>
+      <div id="leaderboardSide" class="host-card">
+        <div class="host-card-header">
+          <h3 style="margin:0; font-size:16px; color:gold;">🏆 Leaderboard</h3>
+          <button id="refreshLeaderboardBtn" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px;">🔄 Refresh</button>
+        </div>
+        <div id="leaderboardList" style="margin-top:12px; min-height:120px;"></div>
       </div>
     </div>
-
-    <div id="selectedAudioLabel" style="font-size:12px; color:#b8e8ff; margin-top:8px;"></div>
   </div>
 
-  <!-- Image Preview Container -->
-  <div id="imagePreviewContainer" style="display:none; margin-top:10px; background:rgba(0,0,0,0.45); padding:10px; border-radius:8px; border:1px solid rgba(255,215,0,0.3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <span id="imagePreviewTitle" style="font-size:13px; font-weight:bold; color:#ffd54d;">📸 Question Image</span>
-      <button type="button" id="clearImageBtn" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; font-weight:bold;" title="Remove / Unselect Image">✕ Remove Image</button>
-    </div>
-    <img id="imagePreview" style="display:none; max-width:100%; max-height:280px; border-radius:6px; display:block; margin:0 auto;" alt="Question Image"/>
-  </div>
-  
-  <div id="imageFileField">
-    <label for="imageFile" style="font-size:12px; color:#ffd54d; font-weight:bold; display:block; margin-top:8px;">Or Upload Single Image:</label>
-    <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
-      <input id="imageFile" type="file" accept="image/*" style="flex:1; margin:0;" />
-      <button type="button" id="clearImageFileBtn" title="Clear file" style="background:#c93b4a; color:white; border:none; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; display:none;">✕ Clear</button>
-    </div>
-    <div id="selectedImageLabel" style="font-size:12px; color:#b8e8ff; margin-top:5px;"></div>
-  </div>
-  
-  <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-top: 10px; border: 1px solid rgba(255,215,0,0.3);">
-    <label>Set Options & Correct Answer:</label>
-    <div class="option-inputs-row">
-      <input id="optA" value="A" placeholder="Option A"> 
-      <input id="optB" value="B" placeholder="Option B">
-      <input id="optC" value="C" placeholder="Option C"> 
-      <input id="optD" value="D" placeholder="Option D">
-    </div>
-    <div style="margin-top: 10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span style="font-weight:bold; color:#ffd54d; font-size:14px;">Correct Option:</span> 
-      <select id="correctAns" style="width:140px; margin:0;">
-        <option>A</option><option>B</option><option>C</option><option>D</option>
-      </select>
+  <!-- TAB 4: LIVE SYSTEM LOGS -->
+  <div id="panel_logs" class="host-tab-panel">
+    <div id="eventSide" class="host-card">
+      <div class="host-card-header">
+        <h3 style="margin:0; font-size:16px; color:gold;">📜 Live Event Stream & Logs</h3>
+        <button type="button" class="gold-btn" style="padding:4px 10px; font-size:12px;" onclick="document.getElementById('events').innerHTML=''">Clear Logs</button>
+      </div>
+      <div id="events" style="margin-top:12px; max-height:480px; overflow-y:auto; font-family:monospace; font-size:12px; background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);"></div>
     </div>
   </div>
 
-  <div id="hostAnswerControls" style="background:rgba(255,215,0,.10); padding:15px; border-radius:10px; margin-top:12px; border:2px solid rgba(255,215,0,.45);">
-    <label>🎙️ Host Answer Control</label>
-    <p style="font-size:13px; margin:6px 0; color:#d7e6ff;">Listen to the player’s verbal answer, select it here, then lock it.</p>
-    <label for="activePlayer">Player:</label>
-    <select id="activePlayer" style="margin:5px 0 10px;"><option value="">Select a connected player</option></select>
-    <div id="hostAnswerChoices" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
-      <button type="button" class="host-answer-btn" data-answer="A">A</button>
-      <button type="button" class="host-answer-btn" data-answer="B">B</button>
-      <button type="button" class="host-answer-btn" data-answer="C">C</button>
-      <button type="button" class="host-answer-btn" data-answer="D">D</button>
-    </div>
-    <button id="lockAnswerBtn" type="button" class="gold-btn" style="width:100%; margin-top:10px; font-size:17px;" disabled>🔒 LOCK ANSWER</button>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-      <button id="markCorrectBtn" type="button" style="background:#28a745; color:white; font-size:17px;" disabled>✅ CORRECT</button>
-      <button id="markWrongBtn" type="button" style="background:#c93b4a; color:white; font-size:17px;" disabled>❌ WRONG</button>
-    </div>
-    <div id="hostAnswerStatus" style="margin-top:10px; text-align:center; font-weight:bold; color:#ffeaa7;">Send a question to begin.</div>
-  </div>
-  
-  <label for="timeLimit">Time Limit:</label>
-  <select id="timeLimit">
-    <option value="30">30 Seconds</option>
-    <option value="60">60 Seconds</option>
-    <option value="120">120 Seconds</option>
-  </select>
-  
-  <button id="sendQ" type="button" class="gold-btn" style="width: 100%; font-size: 20px; margin-top: 15px; border: 2px solid #000;">
-    SEND QUESTION TO ALL 
-  </button>
-</div>
-  </div><script>
+<script>
   let ws;
   let presenceState = { host: false, player: false };
   let reconnectTimer = null;
@@ -770,8 +961,22 @@
   let hostTimerLeft;
   let hostTimerTotal;
   let hostTimerPaused = false;
-  let imageLibrary = []; // Store image library
-  let selectedImageId = null; // Currently selected image for question
+  let hostQuestionLevel = 1;
+
+  function resolveQuestionTimeLimit(timeLimitChoice, level) {
+    if (timeLimitChoice === 'auto' || timeLimitChoice === undefined || timeLimitChoice === null || timeLimitChoice === '') {
+      const lvl = Number(level) || 1;
+      if (lvl <= 4) return 30;
+      if (lvl <= 7) return 45;
+      return 60;
+    }
+    const val = Number(timeLimitChoice);
+    if (val === 45) return 45;
+    if (val === 60) return 60;
+    return 30;
+  }
+  let imageLibrary = [];
+  let selectedImageId = null;
   let videoLibrary = [];
   let audioLibrary = [];
   let selectedVideoId = null;
@@ -794,81 +999,72 @@
     presenceState = { ...presenceState, ...status };
     ['host', 'player'].forEach(role => {
       const connected = Boolean(presenceState[role]);
-      document.getElementById(`${role}Presence`).textContent = connected ? 'Connected' : 'Not connected';
-      document.getElementById(`${role}PresenceItem`).dataset.connected = String(connected);
+      const el = document.getElementById(`${role}Presence`);
+      if (el) el.textContent = connected ? 'Connected' : 'Not connected';
+      const item = document.getElementById(`${role}PresenceItem`);
+      if (item) item.dataset.connected = String(connected);
     });
   }
 
-  // Arrange the host dashboard into live-quiz control zones without changing existing IDs or handlers.
-  (() => {
-    const mainLayout = document.querySelector('.main-layout');
-    const eventSide = document.getElementById('eventSide');
-    const questionSide = document.getElementById('questionSide');
-    const answerControls = document.getElementById('hostAnswerControls');
-    const imageManagement = document.getElementById('imageManagement');
-    const videoManagement = document.getElementById('videoManagement');
-    const audioManagement = document.getElementById('audioManagement');
-    const sendQuestionButton = document.getElementById('sendQ');
-    const playVideoButton = document.getElementById('playVideoBtn');
-    const playAudioButton = document.getElementById('playAudioBtn');
-    if (!mainLayout || !eventSide || !questionSide || !answerControls || !imageManagement || !videoManagement || !audioManagement || !sendQuestionButton || !playVideoButton || !playAudioButton) return;
-
-    const answerSide = document.createElement('div');
-    answerSide.id = 'hostAnswerSide';
-    answerSide.className = 'side-panel';
-    answerSide.innerHTML = '<h3 style="border-bottom:2px solid gold; padding-bottom:5px;">🎙️ Host Answer Control</h3>';
-    answerControls.querySelector('label').style.display = 'none';
-    answerSide.appendChild(answerControls);
-    answerSide.appendChild(sendQuestionButton);
-    answerSide.appendChild(playVideoButton);
-    answerSide.appendChild(playAudioButton);
-    mainLayout.insertBefore(answerSide, eventSide);
-
-    const imageSide = document.createElement('div');
-    imageSide.id = 'imageSide';
-    imageSide.className = 'side-panel';
-    imageSide.innerHTML = '<h3 style="border-bottom:2px solid gold; padding-bottom:5px;">📸 Image Management</h3>';
-    imageManagement.querySelector('label').style.display = 'none';
-    imageSide.appendChild(imageManagement);
-
-    const videoSide = document.createElement('div');
-    videoSide.id = 'videoSide';
-    videoSide.className = 'side-panel';
-    videoSide.innerHTML = '<h3 style="border-bottom:2px solid #8ed0ff; padding-bottom:5px;">🎬 Video Management</h3>';
-    videoManagement.querySelector('label').style.display = 'none';
-    videoSide.appendChild(videoManagement);
-
-    const audioSide = document.createElement('div');
-    audioSide.id = 'audioSide';
-    audioSide.className = 'side-panel';
-    audioSide.innerHTML = '<h3 style="border-bottom:2px solid #79e0bd; padding-bottom:5px;">🎧 Audio Management</h3>';
-    audioManagement.querySelector('label').style.display = 'none';
-    audioSide.appendChild(audioManagement);
-
-    const bottomLayout = document.createElement('div');
-    bottomLayout.className = 'bottom-layout';
-    bottomLayout.appendChild(imageSide);
-    bottomLayout.appendChild(videoSide);
-    bottomLayout.appendChild(audioSide);
-    bottomLayout.appendChild(eventSide);
-    mainLayout.insertAdjacentElement('afterend', bottomLayout);
-
-    const pdfLabel = document.querySelector('label[for="pdfFile"]');
-    const pdfFile = document.getElementById('pdfFile');
-    const imageFileField = document.getElementById('imageFileField');
-    if (pdfLabel && pdfFile && imageFileField) {
-      const uploadRow = document.createElement('div');
-      uploadRow.className = 'question-upload-row';
-      const pdfGroup = document.createElement('div');
-      pdfLabel.insertAdjacentElement('beforebegin', uploadRow);
-      pdfGroup.appendChild(pdfLabel);
-      pdfGroup.appendChild(pdfFile);
-      uploadRow.appendChild(pdfGroup);
-      uploadRow.appendChild(imageFileField);
+  function switchHostTab(tabName) {
+    document.querySelectorAll('.host-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.host-tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.id === `panel_${tabName}`);
+    });
+    if (tabName === 'media') {
+      if (typeof refreshImageLibrary === 'function') refreshImageLibrary();
+      if (typeof refreshVideoLibrary === 'function') refreshVideoLibrary();
+      if (typeof refreshAudioLibrary === 'function') refreshAudioLibrary();
+    } else if (tabName === 'players') {
+      if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'list_players' }));
+      }
     }
-  })();
+  }
 
-  if (window.pdfjsLib) {
+  // Active question card display updater for host live monitoring
+  function updateHostActiveQuestionDisplay(qText, choice = null) {
+    const qSnippet = document.getElementById('hostLiveQuestionSnippet');
+    if (qSnippet) {
+      if (qText) {
+        qSnippet.textContent = qText;
+      } else if (qText === '') {
+        qSnippet.textContent = 'No active question yet. Compose on the left and click "Send Question".';
+      }
+    }
+    const statusBadge = document.getElementById('hostActiveStatusBadge');
+    if (statusBadge) {
+      if (qText && qText !== '') {
+        statusBadge.textContent = 'Live on Hotseat';
+        statusBadge.style.color = '#39ff14';
+        statusBadge.style.borderColor = 'rgba(57, 255, 20, 0.4)';
+        statusBadge.style.background = 'rgba(57, 255, 20, 0.15)';
+      } else if (qText === '') {
+        statusBadge.textContent = 'Ready';
+        statusBadge.style.color = '#2ecc71';
+        statusBadge.style.borderColor = 'rgba(46,204,113,0.3)';
+        statusBadge.style.background = 'rgba(46,204,113,0.12)';
+      }
+    }
+    const choiceBadge = document.getElementById('hostLiveChoiceBadge');
+    if (choiceBadge) {
+      const activeChoice = choice !== null ? choice : hostSelectedAnswer;
+      if (activeChoice) {
+        choiceBadge.textContent = hostAnswerLocked ? `Option ${activeChoice} (LOCKED 🔒)` : `Option ${activeChoice}`;
+        choiceBadge.style.color = hostAnswerLocked ? '#ff9800' : '#ffd54d';
+        choiceBadge.style.background = hostAnswerLocked ? 'rgba(255, 152, 0, 0.25)' : 'rgba(255,215,0,0.2)';
+      } else {
+        choiceBadge.textContent = 'None';
+        choiceBadge.style.color = '#fff';
+        choiceBadge.style.background = 'rgba(255,215,0,0.15)';
+      }
+    }
+  }
+
+if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
     
@@ -893,7 +1089,7 @@
   }
   window.alert = function(msg) { showNotification(msg); };
 
-  function showAppConfirm(message, onConfirm) {
+  function showAppConfirm(message, onConfirm, okText = 'Confirm', okColor = '#c93b4a') {
     let modal = document.getElementById('appConfirmModal');
     if (!modal) {
       modal = document.createElement('div');
@@ -905,7 +1101,7 @@
           <div id="appConfirmMsg" style="font-size:15px; margin-bottom:20px; line-height:1.5; color:#f0f4f8;"></div>
           <div style="display:flex; gap:12px; justify-content:center;">
             <button id="appConfirmCancel" type="button" style="padding:9px 20px; border-radius:6px; background:#4a5568; color:white; border:none; cursor:pointer; font-weight:bold; font-size:14px;">Cancel</button>
-            <button id="appConfirmOk" type="button" style="padding:9px 20px; border-radius:6px; background:#c93b4a; color:white; border:none; cursor:pointer; font-weight:bold; font-size:14px;">Delete ✕</button>
+            <button id="appConfirmOk" type="button" style="padding:9px 20px; border-radius:6px; background:#c93b4a; color:white; border:none; cursor:pointer; font-weight:bold; font-size:14px;">Confirm</button>
           </div>
         </div>
       `;
@@ -915,6 +1111,10 @@
     const okBtn = modal.querySelector('#appConfirmOk');
     const cancelBtn = modal.querySelector('#appConfirmCancel');
     msgEl.textContent = message;
+    if (okBtn) {
+      okBtn.textContent = okText;
+      okBtn.style.background = okColor;
+    }
     modal.style.display = 'flex';
     
     const cleanup = () => {
@@ -938,16 +1138,30 @@
   function updateHostTimerDisplay(timeLeft, totalTime) {
     const timerDisplay = document.getElementById('hostTimerValue');
     if (timerDisplay) {
-      timerDisplay.textContent = timeLeft;
+      if (hostTimerPaused) {
+        timerDisplay.textContent = (timeLeft != null && !isNaN(timeLeft) ? `${timeLeft}s (PAUSED)` : 'PAUSED');
+        timerDisplay.style.color = '#ffd54d';
+      } else if (timeLeft === 0 || timeLeft === '0') {
+        timerDisplay.textContent = '0s (TIME UP)';
+        timerDisplay.style.color = '#e74c3c';
+      } else if (timeLeft != null && !isNaN(Number(timeLeft))) {
+        timerDisplay.textContent = `${timeLeft}s`;
+        timerDisplay.style.color = Number(timeLeft) <= 5 ? '#e74c3c' : '#ffd54d';
+      } else {
+        timerDisplay.textContent = '--s';
+        timerDisplay.style.color = '#ffd54d';
+      }
     }
   }
 
   function startHostTimer(totalTime) {
     clearInterval(hostTimerInterval);
-    hostTimerTotal = totalTime;
-    hostTimerLeft = totalTime;
+    const validTotal = Number(totalTime) || 30;
+    hostTimerTotal = validTotal;
+    hostTimerLeft = validTotal;
     hostTimerPaused = false;
-    document.getElementById('timerPanel').style.display = 'block';
+    const timerPanel = document.getElementById('timerPanel');
+    if (timerPanel) timerPanel.style.display = 'block';
     updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
     updateHostTimerButtons();
     runHostTimerCountdown();
@@ -956,15 +1170,14 @@
   function runHostTimerCountdown() {
     clearInterval(hostTimerInterval);
     hostTimerInterval = setInterval(() => {
-      if (hostTimerPaused) return;
+      if (hostTimerPaused || hostAnswerLocked) return;
       hostTimerLeft--;
       if (hostTimerLeft <= 0) {
         clearInterval(hostTimerInterval);
+        hostTimerLeft = 0;
         updateHostTimerDisplay(0, hostTimerTotal);
+        updateHostTimerButtons();
         log('⏰ HOST TIMER: Time is UP!');
-        setTimeout(() => {
-          document.getElementById('timerPanel').style.display = 'none';
-        }, 2000);
         return;
       }
       updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
@@ -972,20 +1185,37 @@
   }
 
   function updateHostTimerButtons() {
-    document.getElementById('pauseHostTimerBtn').disabled = hostTimerPaused;
-    document.getElementById('resumeHostTimerBtn').disabled = !hostTimerPaused;
+    const pauseBtn = document.getElementById('pauseHostTimerBtn');
+    const resumeBtn = document.getElementById('resumeHostTimerBtn');
+    const isRunning = !hostTimerPaused && hostTimerLeft > 0 && !hostAnswerLocked;
+    const isPaused = hostTimerPaused && hostTimerLeft > 0 && !hostAnswerLocked;
+    if (pauseBtn) {
+      pauseBtn.disabled = !isRunning;
+      pauseBtn.style.opacity = isRunning ? '1' : '0.5';
+    }
+    if (resumeBtn) {
+      resumeBtn.disabled = !isPaused;
+      resumeBtn.style.opacity = isPaused ? '1' : '0.5';
+    }
   }
 
   function controlHostTimer(action, sync = true) {
     if (action === 'pause') {
       hostTimerPaused = true;
       clearInterval(hostTimerInterval);
-    } else if (action === 'resume' && hostTimerPaused) {
+      updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
+      log('⏸️ HOST: Timer paused.');
+    } else if (action === 'resume') {
+      if (hostTimerLeft <= 0) return;
       hostTimerPaused = false;
+      updateHostTimerDisplay(hostTimerLeft, hostTimerTotal);
       runHostTimerCountdown();
+      log('▶️ HOST: Timer resumed.');
     }
     updateHostTimerButtons();
-    if (sync && ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'host_timer_control', payload: { action } }));
+    if (sync && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'host_timer_control', payload: { action } }));
+    }
   }
 
   document.getElementById('pauseHostTimerBtn').onclick = () => controlHostTimer('pause');
@@ -1030,12 +1260,28 @@
       if (msg.type === 'scoreboard') {
         renderPlayers(msg.payload);
       }
+      if (msg.type === 'joined') {
+        if (msg.payload?.questionLevel) {
+          hostQuestionLevel = Number(msg.payload.questionLevel) || 1;
+        }
+      }
       if (msg.type === 'question') {
-        const timeLimit = String(msg.payload.timeLimitSec);
-        document.getElementById('timeLimit').value = timeLimit;
-        startHostTimer(Number(timeLimit));
+        if (msg.payload.level) {
+          hostQuestionLevel = Number(msg.payload.level) || 1;
+        }
+        const timeLimit = Number(msg.payload.timeLimitSec) || 30;
+        if (msg.payload.text) {
+          updateHostActiveQuestionDisplay(msg.payload.text, msg.payload.hostSelectedAnswer || null);
+        }
+        startHostTimer(timeLimit);
       }
       if (msg.type === 'question_sent') {
+        if (msg.payload?.level) {
+          hostQuestionLevel = Number(msg.payload.level) || 1;
+        }
+        if (msg.payload?.text) {
+          updateHostActiveQuestionDisplay(msg.payload.text, null);
+        }
         log(`✅ Question sent successfully (format: ${msg.payload.format}, videoId: ${msg.payload.videoId || 'none'}, audioId: ${msg.payload.audioId || 'none'}).`);
       }
       if (msg.type === 'player_joined' || msg.type === 'player_reconnected' || msg.type === 'player_left' || msg.type === 'joined' || msg.type === 'players') {
@@ -1051,55 +1297,94 @@
         }
       }
       if (msg.type === 'timer_started') {
-        const totalTime = msg.payload.totalTime;
-        if (totalTime !== 'infinite') {
-          startHostTimer(totalTime);
-          log(`⏱️ TIMER STARTED: ${totalTime} seconds`);
-        } else {
-          log(`⏳ INFINITE TIME ENABLED`);
-        }
+        const totalTime = Number(msg.payload.totalTime) || 30;
+        startHostTimer(totalTime);
+        log(`⏱️ TIMER STARTED: ${totalTime} seconds`);
       }
       if (msg.type === 'timer_update') {
-        if (msg.payload.status === 'running') {
-          updateHostTimerDisplay(msg.payload.timeLeft, msg.payload.totalTime);
-        } else if (msg.payload.status === 'ended') {
-          log(`⏰ TIMER ENDED`);
+        if (!hostTimerPaused && !hostAnswerLocked) {
+          if (msg.payload.status === 'running') {
+            hostTimerLeft = Number(msg.payload.timeLeft);
+            updateHostTimerDisplay(msg.payload.timeLeft, msg.payload.totalTime);
+            updateHostTimerButtons();
+          } else if (msg.payload.status === 'ended') {
+            hostTimerLeft = 0;
+            updateHostTimerDisplay(0, msg.payload.totalTime);
+            updateHostTimerButtons();
+            log(`⏰ TIMER ENDED`);
+          }
         }
       }
       if (msg.type === 'host_answer_selected') {
         hostSelectedAnswer = msg.payload.answer;
         updateHostAnswerControls();
+        updateHostActiveQuestionDisplay(null, hostSelectedAnswer);
         log(`🎙️ Host selected answer ${hostSelectedAnswer}.`);
       }
       if (msg.type === 'timer_control') {
         controlHostTimer(msg.payload.action, false);
       }
       if (msg.type === 'video_ended') {
-        const endedVideoId = msg.payload?.videoId || '';
-        if (!activeVideoPlaybackId || !endedVideoId || endedVideoId === activeVideoPlaybackId) {
-          videoReadyForQuestion = true;
-          syncVideoQuestionControls();
-          showHostVideoEndedNotification();
-          log('✅ Video finished. You can now send the question.');
-        }
+        videoReadyForQuestion = true;
+        syncVideoQuestionControls();
+        const pName = msg.payload?.playerName ? `Player "${msg.payload.playerName}"` : 'Player';
+        const msgText = `🎬 ${pName} screen par video khatm ho gaya! Ab question bhej sakte hain.`;
+        showHostVideoEndedNotification(msgText);
+        log(`✅ ${msgText}`);
       }
       if (msg.type === 'audio_ended') {
-        const endedAudioId = msg.payload?.audioId || '';
-        if (!activeAudioPlaybackId || !endedAudioId || endedAudioId === activeAudioPlaybackId) {
-          audioReadyForQuestion = true;
-          syncVideoQuestionControls();
-          showHostAudioEndedNotification();
-          log('✅ Audio finished. You can now send the question.');
-        }
+        audioReadyForQuestion = true;
+        syncVideoQuestionControls();
+        const pName = msg.payload?.playerName ? `Player "${msg.payload.playerName}"` : 'Player';
+        const msgText = `🎧 ${pName} screen par audio khatm ho gaya! Ab question bhej sakte hain.`;
+        showHostAudioEndedNotification(msgText);
+        log(`✅ ${msgText}`);
       }
       if (msg.type === 'answer_locked') {
         hostSelectedAnswer = msg.payload.answer;
         hostAnswerLocked = true;
+        controlHostTimer('pause', false);
         updateHostAnswerControls();
+        updateHostActiveQuestionDisplay(null, hostSelectedAnswer);
         log(`🔒 Answer ${hostSelectedAnswer} locked for ${msg.payload.playerName}.`);
       }
+      if (msg.type === 'lifeline_5050') {
+        const removeList = msg.payload?.remove || [];
+        removeList.forEach(optChar => {
+          const btn = document.getElementById('choice' + optChar);
+          if (btn) {
+            btn.style.opacity = '0.35';
+            btn.style.textDecoration = 'line-through';
+            btn.title = 'Eliminated by 50:50';
+          }
+        });
+        const auto50 = document.getElementById('auto5050');
+        if (auto50) { auto50.disabled = true; auto50.style.opacity = '0.5'; }
+        log(`✨ Lifeline 50:50 removed options: ${removeList.join(', ')}`);
+      }
+      if (msg.type === 'lifeline_call') {
+        const callBtn = document.getElementById('callFriendBtn');
+        if (callBtn) { callBtn.disabled = true; callBtn.style.opacity = '0.5'; }
+        log('📞 Phone a Friend lifeline was used.');
+      }
       if (msg.type === 'answer_result') {
+        clearInterval(hostTimerInterval);
+        hostTimerLeft = 0;
+        hostTimerPaused = false;
+        if (msg.payload.result === 'wrong') {
+          hostQuestionLevel = 1;
+        } else if (msg.payload.level) {
+          hostQuestionLevel = Math.min(10, Number(msg.payload.level) + 1);
+        }
+        updateHostTimerDisplay('--', null);
+        updateHostTimerButtons();
+
         document.getElementById('hostAnswerStatus').textContent = msg.payload.result === 'correct' ? '✅ Correct result sent.' : '❌ Wrong result sent.';
+        const statusBadge = document.getElementById('hostActiveStatusBadge');
+        if (statusBadge) {
+          statusBadge.textContent = msg.payload.result === 'correct' ? '✅ Correct Answer' : '❌ Wrong Answer';
+          statusBadge.style.color = msg.payload.result === 'correct' ? '#2ecc71' : '#e74c3c';
+        }
         document.getElementById('markCorrectBtn').disabled = true;
         document.getElementById('markWrongBtn').disabled = true;
         if (msg.payload.result === 'wrong') fetchLeaderboard();
@@ -1140,11 +1425,39 @@
 
   document.getElementById('connectBtn').onclick = connectToServer;
     
-  document.getElementById('qFormat').onchange = () => {
-    const isImage = document.getElementById('qFormat').value === 'image';
-    const field = document.getElementById('imageFileField');
-    if (field) field.style.display = isImage ? 'block' : 'none';
-  };
+  const qFormatSelect = document.getElementById('qFormat');
+  if (qFormatSelect) {
+    qFormatSelect.onchange = () => {
+      const format = qFormatSelect.value;
+      const optA = document.getElementById('optA');
+      const optB = document.getElementById('optB');
+      const optC = document.getElementById('optC');
+      const optD = document.getElementById('optD');
+      const choiceC = document.getElementById('choiceC');
+      const choiceD = document.getElementById('choiceD');
+      const correctSelect = document.getElementById('correctAns');
+
+      if (format === 'rapid') {
+        if (optA && !optA.value) optA.value = 'हाँ / Yes';
+        if (optB && !optB.value) optB.value = 'नहीं / No';
+        if (optC) { optC.value = 'N/A'; optC.disabled = true; }
+        if (optD) { optD.value = 'N/A'; optD.disabled = true; }
+        if (choiceC) { choiceC.disabled = true; choiceC.style.opacity = '0.35'; }
+        if (choiceD) { choiceD.disabled = true; choiceD.style.opacity = '0.35'; }
+        if (correctSelect) {
+          correctSelect.innerHTML = '<option value="A">Option A (हाँ / Yes)</option><option value="B">Option B (नहीं / No)</option>';
+        }
+      } else {
+        if (optC && optC.value === 'N/A') { optC.value = ''; optC.disabled = false; }
+        if (optD && optD.value === 'N/A') { optD.value = ''; optD.disabled = false; }
+        if (choiceC && !hostAnswerLocked) { choiceC.disabled = false; choiceC.style.opacity = '1'; }
+        if (choiceD && !hostAnswerLocked) { choiceD.disabled = false; choiceD.style.opacity = '1'; }
+        if (correctSelect && correctSelect.options.length < 4) {
+          correctSelect.innerHTML = '<option value="A">Option A</option><option value="B">Option B</option><option value="C">Option C</option><option value="D">Option D</option>';
+        }
+      }
+    };
+  }
 
   const imageFileInputEl = document.getElementById('imageFile');
   if (imageFileInputEl) {
@@ -1171,6 +1484,11 @@
         }
         const clearFileBtn = document.getElementById('clearImageFileBtn');
         if (clearFileBtn) clearFileBtn.style.display = 'inline-block';
+        const qFormatEl = document.getElementById('qFormat');
+        if (qFormatEl) {
+          qFormatEl.value = 'image';
+          qFormatEl.dispatchEvent(new Event('change'));
+        }
         refreshImageLibrary();
       }
     };
@@ -1178,29 +1496,98 @@
 
   function updateHostAnswerControls() {
     document.querySelectorAll('.host-answer-btn').forEach(button => {
-      const selected = button.dataset.answer === hostSelectedAnswer;
-      button.style.background = selected ? '#ffd54d' : '#24385d';
-      button.style.color = selected ? '#111' : '#fff';
+      const btnAnswer = button.dataset.answer || button.textContent.trim();
+      const isSelected = Boolean(hostSelectedAnswer) && btnAnswer === hostSelectedAnswer;
+      button.style.background = isSelected ? '#ffd54d' : '#24385d';
+      button.style.color = isSelected ? '#111' : '#fff';
+      button.style.boxShadow = isSelected ? '0 0 12px rgba(255,215,0,0.7)' : 'none';
+      button.style.borderColor = isSelected ? '#ffd54d' : 'rgba(255, 215, 0, 0.3)';
       button.disabled = hostAnswerLocked;
     });
     const lockButton = document.getElementById('lockAnswerBtn');
     lockButton.disabled = !hostSelectedAnswer || hostAnswerLocked;
     lockButton.textContent = hostAnswerLocked ? '🔒 ANSWER LOCKED' : '🔒 LOCK ANSWER';
     document.getElementById('activePlayer').disabled = hostAnswerLocked;
-    document.getElementById('markCorrectBtn').disabled = !hostAnswerLocked;
-    document.getElementById('markWrongBtn').disabled = !hostAnswerLocked;
-    const expectedResult = hostSelectedAnswer === currentCorrectAnswer ? 'correct' : 'wrong';
-    document.getElementById('markCorrectBtn').style.display = hostAnswerLocked && expectedResult === 'correct' ? 'block' : 'none';
-    document.getElementById('markWrongBtn').style.display = hostAnswerLocked && expectedResult === 'wrong' ? 'block' : 'none';
+
+    const correctBtn = document.getElementById('markCorrectBtn');
+    const wrongBtn = document.getElementById('markWrongBtn');
+    correctBtn.disabled = !hostAnswerLocked;
+    wrongBtn.disabled = !hostAnswerLocked;
+    correctBtn.style.display = 'block';
+    wrongBtn.style.display = 'block';
+
+    if (hostAnswerLocked) {
+      const isExpectedCorrect = currentCorrectAnswer && hostSelectedAnswer === currentCorrectAnswer;
+      const isExpectedWrong = currentCorrectAnswer && hostSelectedAnswer !== currentCorrectAnswer;
+      if (isExpectedCorrect) {
+        correctBtn.style.border = '2px solid #ffd54d';
+        correctBtn.style.boxShadow = '0 0 12px rgba(40,167,69,0.7)';
+        correctBtn.textContent = '✅ Correct (Expected)';
+        wrongBtn.style.border = 'none';
+        wrongBtn.style.boxShadow = 'none';
+        wrongBtn.textContent = '❌ Wrong';
+      } else if (isExpectedWrong) {
+        wrongBtn.style.border = '2px solid #ffd54d';
+        wrongBtn.style.boxShadow = '0 0 12px rgba(201,59,74,0.7)';
+        wrongBtn.textContent = '❌ Wrong (Expected)';
+        correctBtn.style.border = 'none';
+        correctBtn.style.boxShadow = 'none';
+        correctBtn.textContent = '✅ Correct';
+      } else {
+        correctBtn.style.border = 'none';
+        correctBtn.style.boxShadow = 'none';
+        correctBtn.textContent = '✅ Correct';
+        wrongBtn.style.border = 'none';
+        wrongBtn.style.boxShadow = 'none';
+        wrongBtn.textContent = '❌ Wrong';
+      }
+    } else {
+      correctBtn.style.border = 'none';
+      correctBtn.style.boxShadow = 'none';
+      correctBtn.textContent = '✅ Correct';
+      wrongBtn.style.border = 'none';
+      wrongBtn.style.boxShadow = 'none';
+      wrongBtn.textContent = '❌ Wrong';
+    }
+
     const status = document.getElementById('hostAnswerStatus');
     if (hostAnswerLocked) status.textContent = `🔒 Answer ${hostSelectedAnswer} is locked. Mark the result.`;
     else if (hostSelectedAnswer) status.textContent = `Selected: ${hostSelectedAnswer}. Click Lock Answer.`;
+    else status.textContent = 'Choose the verbal answer when the player tells you.';
+    updateHostActiveQuestionDisplay(null, hostSelectedAnswer);
   }
 
   function syncVideoQuestionControls() {
     const videoId = getQuestionVideoId();
     const audioId = getQuestionAudioId();
-    document.getElementById('sendQ').disabled = (Boolean(videoId) && !videoReadyForQuestion) || (Boolean(audioId) && !audioReadyForQuestion);
+    const sendQBtn = document.getElementById('sendQ');
+    if (sendQBtn) {
+      sendQBtn.disabled = (Boolean(videoId) && !videoReadyForQuestion) || (Boolean(audioId) && !audioReadyForQuestion);
+    }
+    const pvBtn = document.getElementById('playVideoBtn');
+    if (pvBtn) pvBtn.style.display = videoId ? 'block' : 'none';
+    const paBtn = document.getElementById('playAudioBtn');
+    if (paBtn) paBtn.style.display = audioId ? 'block' : 'none';
+
+    const jStatus = document.getElementById('judgementMediaActiveStatus');
+    if (jStatus) {
+      if (activeVideoPlaybackId) {
+        jStatus.textContent = '🎬 Playing Video';
+        jStatus.style.color = '#52b7ff';
+      } else if (activeAudioPlaybackId) {
+        jStatus.textContent = '🎧 Playing Audio';
+        jStatus.style.color = '#79e0bd';
+      } else if (videoId) {
+        jStatus.textContent = videoReadyForQuestion ? '✅ Video Ready' : '🎬 Video Attached';
+        jStatus.style.color = videoReadyForQuestion ? '#2ecc71' : '#ffd54d';
+      } else if (audioId) {
+        jStatus.textContent = audioReadyForQuestion ? '✅ Audio Ready' : '🎧 Audio Attached';
+        jStatus.style.color = audioReadyForQuestion ? '#2ecc71' : '#ffd54d';
+      } else {
+        jStatus.textContent = 'Ready';
+        jStatus.style.color = '#8ed0ff';
+      }
+    }
   }
 
   function showNextVideoNotification() {
@@ -1215,14 +1602,24 @@
     }, 2000);
   }
 
-  function showHostVideoEndedNotification() {
+  function showHostVideoEndedNotification(customMsg) {
+    const text = customMsg || '🎬 Player screen par Video khatm ho gaya! Ab question bhej sakte hain.';
     const notification = document.getElementById('hostVideoEndedNotification');
-    if (!notification) return;
-    clearTimeout(hostVideoEndedNotificationTimer);
-    notification.style.display = 'block';
-    hostVideoEndedNotificationTimer = setTimeout(() => {
-      notification.style.display = 'none';
-    }, 4000);
+    if (notification) {
+      notification.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:22px;">🎬</span>
+        <div>
+          <strong style="color:#ffd54d; font-size:14px; text-transform:uppercase; letter-spacing:0.5px;">Video Finished</strong>
+          <div style="font-size:13px; color:#fff; margin-top:3px;">${text}</div>
+        </div>
+      </div>`;
+      clearTimeout(hostVideoEndedNotificationTimer);
+      notification.style.display = 'block';
+      hostVideoEndedNotificationTimer = setTimeout(() => {
+        notification.style.display = 'none';
+      }, 6000);
+    }
+    showNotification(text, false);
   }
 
   function getQuestionVideoId() {
@@ -1243,15 +1640,25 @@
     return rawId.toLowerCase().replace(/\s+/g, '').replace('_', '-');
   }
 
-  function showHostAudioEndedNotification() {
+  function showHostAudioEndedNotification(customMsg) {
+    const text = customMsg || '🎧 Player screen par Audio khatm ho gaya! Ab question bhej sakte hain.';
     const notification = document.getElementById('hostAudioEndedNotification');
-    if (!notification) return;
-    clearTimeout(hostAudioEndedNotificationTimer);
-    clearTimeout(hostAudioEndedNotificationHideTimer);
-    notification.style.display = 'block';
-    hostAudioEndedNotificationTimer = setTimeout(() => {
-      notification.style.display = 'none';
-    }, 4000);
+    if (notification) {
+      notification.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:22px;">🎧</span>
+        <div>
+          <strong style="color:#79e0bd; font-size:14px; text-transform:uppercase; letter-spacing:0.5px;">Audio Finished</strong>
+          <div style="font-size:13px; color:#fff; margin-top:3px;">${text}</div>
+        </div>
+      </div>`;
+      clearTimeout(hostAudioEndedNotificationTimer);
+      clearTimeout(hostAudioEndedNotificationHideTimer);
+      notification.style.display = 'block';
+      hostAudioEndedNotificationTimer = setTimeout(() => {
+        notification.style.display = 'none';
+      }, 6000);
+    }
+    showNotification(text, false);
   }
 
   function showNextAudioNotification() {
@@ -1324,7 +1731,9 @@
   document.querySelectorAll('.host-answer-btn').forEach(button => {
     button.onclick = () => {
       if (hostAnswerLocked) return;
-      hostSelectedAnswer = button.dataset.answer;
+      const ans = button.dataset.answer || button.textContent.trim();
+      if (!ans || !['A', 'B', 'C', 'D'].includes(ans)) return;
+      hostSelectedAnswer = ans;
       updateHostAnswerControls();
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         document.getElementById('hostAnswerStatus').textContent = 'Connect the server before locking an answer.';
@@ -1338,9 +1747,10 @@
     if (!ws || !hostSelectedAnswer) return;
     const playerId = document.getElementById('activePlayer').value;
     hostAnswerLocked = true;
-    clearInterval(hostTimerInterval);
+    controlHostTimer('pause', true);
     updateHostAnswerControls();
     ws.send(JSON.stringify({ type: 'host_lock_answer', payload: { playerId, answer: hostSelectedAnswer } }));
+    log(`🔒 Answer ${hostSelectedAnswer} locked.`);
   };
 
   function markHostResult(result) {
@@ -1388,7 +1798,7 @@
       if (!response.ok) throw new Error('Could not load image library');
       const data = await response.json();
       imageLibrary = data.images || [];
-      document.getElementById('imageLibraryCount').textContent = `(${imageLibrary.length})`;
+      const _imgCnt = document.getElementById('imageLibraryCount'); if (_imgCnt) _imgCnt.textContent = `(${imageLibrary.length})`;
       if (!imageLibrary.length) {
         library.innerHTML = '<p style="color:#999; text-align:center;">No images uploaded yet</p>';
         return;
@@ -1413,24 +1823,36 @@
   }
 
   // Firebase Media Sync handlers
+  async function triggerRestoreAllFiles(invokedBtn = null) {
+    const topBtn = document.getElementById('hostTopRestoreFilesBtn');
+    const syncBtn = document.getElementById('syncFirebaseBtn');
+    if (topBtn) { topBtn.disabled = true; topBtn.textContent = '⏳ Restoring…'; }
+    if (syncBtn) { syncBtn.disabled = true; syncBtn.textContent = '⏳ Restoring…'; }
+    showNotification('🔄 Firebase se sabhi purani files restore ki ja rahi hain...', false);
+    try {
+      const res = await fetch('/api/media/sync');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      await Promise.all([refreshImageLibrary(), refreshVideoLibrary(), refreshAudioLibrary()]);
+      const imgCount = data.counts?.images ?? 0;
+      const vidCount = data.counts?.videos ?? 0;
+      const audCount = data.counts?.audios ?? 0;
+      showNotification(`✅ Sabhi files restore ho gayi! Images: ${imgCount}, Videos: ${vidCount}, Audio: ${audCount}`, false);
+    } catch (err) {
+      showNotification(`❌ Restore error: ${err.message}`, true);
+    } finally {
+      if (topBtn) { topBtn.disabled = false; topBtn.textContent = '🔄 Restore All Files'; }
+      if (syncBtn) { syncBtn.disabled = false; syncBtn.textContent = '🔄 Sync Firebase'; }
+    }
+  }
+
   const syncFirebaseBtn = document.getElementById('syncFirebaseBtn');
   if (syncFirebaseBtn) {
-    syncFirebaseBtn.onclick = async () => {
-      syncFirebaseBtn.disabled = true;
-      syncFirebaseBtn.textContent = '⏳ Syncing…';
-      try {
-        const res = await fetch('/api/media/sync');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Sync failed');
-        await Promise.all([refreshImageLibrary(), refreshVideoLibrary(), refreshAudioLibrary()]);
-        showNotification(`Synced with Firebase! Images: ${data.counts.images}, Videos: ${data.counts.videos}, Audio: ${data.counts.audios}`, false);
-      } catch (err) {
-        showNotification(`Sync error: ${err.message}`, true);
-      } finally {
-        syncFirebaseBtn.disabled = false;
-        syncFirebaseBtn.textContent = '🔄 Sync with Firebase';
-      }
-    };
+    syncFirebaseBtn.onclick = () => triggerRestoreAllFiles(syncFirebaseBtn);
+  }
+  const hostTopRestoreBtn = document.getElementById('hostTopRestoreFilesBtn');
+  if (hostTopRestoreBtn) {
+    hostTopRestoreBtn.onclick = () => triggerRestoreAllFiles(hostTopRestoreBtn);
   }
 
   const toggleAddUrlBtn = document.getElementById('toggleAddUrlBtn');
@@ -1692,7 +2114,7 @@
     xhr.send(formData);
   }
 
-  document.getElementById('uploadImagesBtn').onclick = uploadSelectedImages;
+  const uploadImagesBtn = document.getElementById('uploadImagesBtn'); if (uploadImagesBtn) uploadImagesBtn.onclick = uploadSelectedImages;
   document.getElementById('imageUploadBatch').onchange = (e) => {
     const input = e.target;
     const status = document.getElementById('uploadStatus');
@@ -1706,7 +2128,7 @@
     }
   };
 
-  document.getElementById('refreshImagesBtn').onclick = refreshImageLibrary;
+  const refreshImagesBtn = document.getElementById('refreshImagesBtn'); if (refreshImagesBtn) refreshImagesBtn.onclick = refreshImageLibrary;
   document.getElementById('toggleImageLibraryBtn').onclick = () => {
     const library = document.getElementById('imageLibrary');
     const isOpen = library.style.display !== 'none';
@@ -1725,6 +2147,12 @@
   // --- Video Library & Host Preview Logic ---
   const hostVideoPlayer = document.getElementById('hostVideoPlayer');
   if (hostVideoPlayer) {
+    hostVideoPlayer.muted = true;
+    hostVideoPlayer.volume = 0;
+    hostVideoPlayer.addEventListener('volumechange', () => {
+      hostVideoPlayer.muted = true;
+      hostVideoPlayer.volume = 0;
+    });
     hostVideoPlayer.onended = () => {
       videoReadyForQuestion = true;
       syncVideoQuestionControls();
@@ -1786,7 +2214,7 @@
       if (!response.ok) throw new Error('Could not load video library');
       const data = await response.json();
       videoLibrary = data.videos || [];
-      document.getElementById('videoLibraryCount').textContent = `(${videoLibrary.length})`;
+      const _vidCnt = document.getElementById('videoLibraryCount'); if (_vidCnt) _vidCnt.textContent = `(${videoLibrary.length})`;
       if (!videoLibrary.length) {
         library.innerHTML = '<p style="color:#999; text-align:center; padding:10px 0;">No videos uploaded yet. Choose a video above to upload.</p>';
         return;
@@ -1851,6 +2279,8 @@
 
     if (player) {
       player.src = video.url;
+      player.muted = true;
+      player.volume = 0;
       player.load();
       if (autoPlay) {
         player.play().catch(() => {});
@@ -1991,7 +2421,7 @@
     xhr.send(formData);
   }
 
-  document.getElementById('uploadVideosBtn').onclick = uploadSelectedVideos;
+  const uploadVideosBtn = document.getElementById('uploadVideosBtn'); if (uploadVideosBtn) uploadVideosBtn.onclick = uploadSelectedVideos;
   document.getElementById('videoUploadBatch').onchange = (e) => {
     const input = e.target;
     const status = document.getElementById('videoUploadStatus');
@@ -2004,7 +2434,7 @@
       }
     }
   };
-  document.getElementById('refreshVideosBtn').onclick = refreshVideoLibrary;
+  const refreshVideosBtn = document.getElementById('refreshVideosBtn'); if (refreshVideosBtn) refreshVideosBtn.onclick = refreshVideoLibrary;
 
   const markVideoReadyBtn = document.getElementById('markVideoReadyBtn');
   if (markVideoReadyBtn) {
@@ -2020,18 +2450,33 @@
     };
   }
 
-  document.getElementById('playVideoBtn').onclick = () => {
-    const videoId = getQuestionVideoId() || currentQuestionVideoId || selectedVideoId;
-    if (!videoId) return alert('No video selected. Choose a video from the library first.');
-    const video = videoLibrary.find(item => item.videoId === videoId);
+  async function triggerBroadcastVideo(specificVideoId = null) {
+    let videoId = specificVideoId || getQuestionVideoId() || currentQuestionVideoId || selectedVideoId;
+    if (!videoId) {
+      if (!videoLibrary || !videoLibrary.length) {
+        showNotification('No video uploaded yet. Please upload a video in the Media Library tab first.', true);
+        return;
+      }
+      if (videoLibrary.length === 1) {
+        videoId = videoLibrary[0].videoId;
+        selectLibraryVideo(videoId);
+      } else {
+        showJudgementMediaPicker('video');
+        return;
+      }
+    }
+
+    const video = videoLibrary.find(item => item.videoId === videoId) || videoLibrary[0];
     if (!video) return alert(`Video ID not found: ${videoId}`);
 
     if (video.isAvailable === false) {
-      return alert(`⚠️ Video file "${video.name}" is missing from server storage (likely cleared on restart). Please upload this video again using the "Upload Video" button above.`);
+      return alert(`⚠️ Video file "${video.name}" is missing from server storage (likely cleared on restart). Please upload this video again using the "Upload Video" button in Media Library.`);
     }
 
-    currentQuestionVideoId = videoId;
-    activeVideoPlaybackId = videoId;
+    if (!(await waitForHostConnection())) return alert('Connection lost. Please reconnect to server.');
+
+    currentQuestionVideoId = video.videoId;
+    activeVideoPlaybackId = video.videoId;
     videoReadyForQuestion = false;
     syncVideoQuestionControls();
 
@@ -2042,25 +2487,135 @@
         player.src = video.url;
         player.load();
       }
+      player.muted = true;
+      player.volume = 0;
       player.play().catch(e => console.warn('Host video autoplay note:', e));
     }
-    if (badge) badge.textContent = '▶ Broadcasting Video';
+    if (badge) badge.textContent = '▶ Broadcasting Video (Player)';
+
+    const jStatus = document.getElementById('judgementMediaActiveStatus');
+    if (jStatus) {
+      jStatus.textContent = `🎬 Playing: ${video.name}`;
+      jStatus.style.color = '#52b7ff';
+    }
 
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'video_preview', payload: { url: video.url, name: video.name, videoId } }));
-      log(`🎬 Broadcasting video for players: ${video.name}`);
+      ws.send(JSON.stringify({ type: 'video_preview', payload: { url: video.url, name: video.name, videoId: video.videoId } }));
+      log(`🎬 Broadcasting video for players: ${video.name} (${video.videoId})`);
+      showNotification(`🎬 Broadcasting video "${video.name}" to player!`, false);
     } else {
-      log(`🎬 Playing video on host: ${video.name} (connect to server to broadcast to players).`);
+      log(`🎬 Video broadcast queued: ${video.name}`);
     }
-  };
+  }
+
+  const playVideoBtnEl = document.getElementById('playVideoBtn');
+  if (playVideoBtnEl) playVideoBtnEl.onclick = () => triggerBroadcastVideo();
+  const broadcastVideoBtnEl = document.getElementById('broadcastVideoBtn');
+  if (broadcastVideoBtnEl) broadcastVideoBtnEl.onclick = () => triggerBroadcastVideo();
   refreshVideoLibrary();
 
   // --- Audio Library & Host Preview Logic ---
+  // --- Audio Library & Host Preview Logic with IndexedDB Vault & Persistent Selection ---
+  function openAudioVaultDB() {
+    return new Promise((resolve, reject) => {
+      try {
+        const req = indexedDB.open('KBH_Audio_Vault', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('audios')) {
+            db.createObjectStore('audios', { keyPath: 'name' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  async function saveAudioToVault(file) {
+    try {
+      const db = await openAudioVaultDB();
+      const tx = db.transaction('audios', 'readwrite');
+      tx.objectStore('audios').put({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        blob: file,
+        savedAt: Date.now()
+      });
+      return new Promise((res) => {
+        tx.oncomplete = () => res(true);
+        tx.onerror = () => res(false);
+      });
+    } catch (e) {
+      console.warn('[Audio Vault] Save error:', e);
+      return false;
+    }
+  }
+
+  async function deleteAudioFromVault(name) {
+    try {
+      const db = await openAudioVaultDB();
+      const tx = db.transaction('audios', 'readwrite');
+      tx.objectStore('audios').delete(name);
+    } catch (e) {
+      console.warn('[Audio Vault] Delete error:', e);
+    }
+  }
+
+  let isSyncingAudioVault = false;
+
+  async function syncIndexedDBAudios(userTriggered = false) {
+    if (isSyncingAudioVault) return;
+    try {
+      const db = await openAudioVaultDB();
+      const tx = db.transaction('audios', 'readonly');
+      const store = tx.objectStore('audios');
+      const req = store.getAll();
+      const cached = await new Promise((res) => {
+        req.onsuccess = () => res(req.result || []);
+        req.onerror = () => res([]);
+      });
+
+      if (!cached || !cached.length) {
+        if (userTriggered) showNotification('Audio Vault is clean. Upload new audio anytime!', false);
+        return;
+      }
+
+      const serverNames = new Set(audioLibrary.map(a => a.name));
+      const missing = cached.filter(item => !serverNames.has(item.name) && item.blob);
+
+      if (missing.length > 0) {
+        isSyncingAudioVault = true;
+        if (userTriggered) showNotification(`⚡ Restoring ${missing.length} audio file(s) from local vault…`, false);
+        const formData = new FormData();
+        missing.forEach(item => {
+          formData.append('audios', item.blob, item.name);
+        });
+        const uploadRes = await fetch('/api/audio/upload', { method: 'POST', body: formData });
+        if (uploadRes.ok) {
+          await refreshAudioLibrary(false);
+          showNotification(`✅ Successfully restored ${missing.length} audio file(s) from vault!`, false);
+        }
+        isSyncingAudioVault = false;
+      } else if (userTriggered) {
+        showNotification(`✅ All ${cached.length} audio file(s) are already synchronized with server!`, false);
+      }
+    } catch (err) {
+      isSyncingAudioVault = false;
+      if (userTriggered) showNotification('Could not sync local audio vault: ' + err.message, true);
+    }
+  }
+
   function clearAudioSelection(notify = true) {
     selectedAudioId = null;
     currentQuestionAudioId = '';
     activeAudioPlaybackId = '';
     audioReadyForQuestion = false;
+    try { localStorage.removeItem('kbh_selected_audio_id'); } catch (e) {}
+
     const qAudioInput = document.getElementById('questionAudioId');
     if (qAudioInput) qAudioInput.value = '';
     const clearBtn = document.getElementById('clearQuestionAudioIdBtn');
@@ -2080,12 +2635,18 @@
     const badge = document.getElementById('hostAudioPlaybackBadge');
     if (badge) badge.textContent = 'Ready';
     syncVideoQuestionControls();
-    refreshAudioLibrary();
+    refreshAudioLibrary(false);
     if (notify) showNotification('Audio unselected / removed', false);
   }
 
   const hostAudioPlayer = document.getElementById('hostAudioPlayer');
   if (hostAudioPlayer) {
+    hostAudioPlayer.muted = true;
+    hostAudioPlayer.volume = 0;
+    hostAudioPlayer.addEventListener('volumechange', () => {
+      hostAudioPlayer.muted = true;
+      hostAudioPlayer.volume = 0;
+    });
     hostAudioPlayer.onended = () => {
       audioReadyForQuestion = true;
       syncVideoQuestionControls();
@@ -2098,43 +2659,56 @@
     };
   }
 
-  async function refreshAudioLibrary() {
+  async function refreshAudioLibrary(shouldCheckVault = true) {
     const library = document.getElementById('audioLibrary');
     try {
       const response = await fetch('/api/audio/list?refresh=1');
       if (!response.ok) throw new Error('Could not load audio library');
       const data = await response.json();
       audioLibrary = data.audios || [];
-      document.getElementById('audioLibraryCount').textContent = `(${audioLibrary.length})`;
+      const _audCnt = document.getElementById('audioLibraryCount'); if (_audCnt) _audCnt.textContent = `(${audioLibrary.length})`;
+
+      // Auto-restore previous selection across reloads
+      try {
+        const savedAudioId = localStorage.getItem('kbh_selected_audio_id');
+        if (savedAudioId && !selectedAudioId && audioLibrary.some(a => a.audioId === savedAudioId)) {
+          selectLibraryAudio(savedAudioId, false);
+        }
+      } catch (e) {}
+
       if (!audioLibrary.length) {
         library.innerHTML = '<p style="color:#999; text-align:center; padding:10px 0;">No audio uploaded yet. Choose an audio file above to upload.</p>';
-        return;
-      }
-      library.innerHTML = audioLibrary.map(audio => {
-        const isSelected = selectedAudioId === audio.audioId;
-        return `
-          <div style="display:flex; gap:8px; align-items:center; padding:8px; margin-bottom:6px; border-radius:6px; background:${isSelected ? 'rgba(38,170,130,0.22)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${isSelected ? '#79e0bd' : 'rgba(255,255,255,0.1)'};">
-            <div style="font-size:22px; flex-shrink:0;">🎧</div>
-            <div style="flex:1; min-width:0; overflow:hidden;">
-              <div style="font-weight:bold; color:#fff; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(audio.name)}</div>
-              <div style="font-size:11px; color:#79e0bd; margin-top:2px;">
-                <span style="background:rgba(22,139,107,0.5); padding:1px 6px; border-radius:4px; font-weight:bold;">${audio.audioId}</span>
-                ${audio.size ? `<span style="color:#a8e7d4; margin-left:6px;">${formatFileSize(audio.size)}</span>` : ''}
+      } else {
+        library.innerHTML = audioLibrary.map(audio => {
+          const isSelected = selectedAudioId === audio.audioId;
+          return `
+            <div style="display:flex; gap:8px; align-items:center; padding:8px; margin-bottom:6px; border-radius:6px; background:${isSelected ? 'rgba(38,170,130,0.22)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${isSelected ? '#79e0bd' : 'rgba(255,255,255,0.1)'};">
+              <div style="font-size:22px; flex-shrink:0;">🎧</div>
+              <div style="flex:1; min-width:0; overflow:hidden;">
+                <div style="font-weight:bold; color:#fff; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(audio.name)}</div>
+                <div style="font-size:11px; color:#79e0bd; margin-top:2px;">
+                  <span style="background:rgba(22,139,107,0.5); padding:1px 6px; border-radius:4px; font-weight:bold;">${audio.audioId}</span>
+                  ${audio.size ? `<span style="color:#a8e7d4; margin-left:6px;">${formatFileSize(audio.size)}</span>` : ''}
+                </div>
+              </div>
+              <div style="display:flex; gap:4px; flex-shrink:0;">
+                <button type="button" data-audio-id="${audio.audioId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#168b6b'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px; cursor:pointer;">${isSelected ? '✓ Loaded (Click to Unselect)' : '▶ Select for Question'}</button>
+                <button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Delete audio from library">✕</button>
               </div>
             </div>
-            <div style="display:flex; gap:4px; flex-shrink:0;">
-              <button type="button" data-audio-id="${audio.audioId}" style="padding:6px 10px; font-size:12px; background:${isSelected ? '#ffd54d' : '#168b6b'}; color:${isSelected ? '#111' : '#fff'}; font-weight:bold; border-radius:6px; cursor:pointer;">${isSelected ? '✓ Loaded (Click to Unselect)' : '▶ Preview & Use'}</button>
-              <button type="button" data-delete-audio-id="${audio.audioId}" style="background:#9d2636; color:white; padding:6px 8px; font-size:12px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Delete audio from library">✕</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-      library.querySelectorAll('[data-audio-id]').forEach(button => {
-        button.onclick = () => selectLibraryAudio(button.dataset.audioId);
-      });
-      library.querySelectorAll('[data-delete-audio-id]').forEach(button => {
-        button.onclick = () => deleteLibraryAudio(button.dataset.deleteAudioId);
-      });
+          `;
+        }).join('');
+        library.querySelectorAll('[data-audio-id]').forEach(button => {
+          button.onclick = () => selectLibraryAudio(button.dataset.audioId);
+        });
+        library.querySelectorAll('[data-delete-audio-id]').forEach(button => {
+          button.onclick = () => deleteLibraryAudio(button.dataset.deleteAudioId);
+        });
+      }
+
+      if (shouldCheckVault) {
+        syncIndexedDBAudios(false);
+      }
     } catch (error) {
       library.innerHTML = `<p style="color:#ff8a8a; text-align:center;">${escapeHtml(error.message)}</p>`;
     }
@@ -2148,6 +2722,8 @@
     const audio = audioLibrary.find(item => item.audioId === audioId);
     if (!audio) return;
     selectedAudioId = audioId;
+    try { localStorage.setItem('kbh_selected_audio_id', audioId); } catch (e) {}
+
     const qAudioInput = document.getElementById('questionAudioId');
     if (qAudioInput) qAudioInput.value = audioId;
     const clearBtn = document.getElementById('clearQuestionAudioIdBtn');
@@ -2169,6 +2745,8 @@
 
     if (player) {
       player.src = audio.url;
+      player.muted = true;
+      player.volume = 0;
       player.load();
       if (autoPlay) {
         player.play().catch(() => {});
@@ -2185,7 +2763,7 @@
       `;
     }
     syncVideoQuestionControls();
-    refreshAudioLibrary();
+    refreshAudioLibrary(false);
   }
 
   function deleteLibraryAudio(audioId) {
@@ -2193,12 +2771,15 @@
     const displayName = audio ? audio.name : audioId;
     showAppConfirm(`Are you sure you want to delete audio "${displayName}" from the library?`, async () => {
       try {
+        if (audio && audio.name) {
+          deleteAudioFromVault(audio.name);
+        }
         const response = await fetch(`/api/audio/${encodeURIComponent(audioId)}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Could not delete audio.');
         if (selectedAudioId === audioId || currentQuestionAudioId === audioId) {
           clearAudioSelection(false);
         }
-        await refreshAudioLibrary();
+        await refreshAudioLibrary(false);
         showNotification('Audio deleted from library', false);
       } catch (error) {
         showNotification(error.message, true);
@@ -2232,14 +2813,16 @@
 
     const formData = new FormData();
     let totalBytes = 0;
-    Array.from(input.files).forEach(file => {
+    const filesToUpload = Array.from(input.files);
+    filesToUpload.forEach(file => {
       formData.append('audios', file);
       totalBytes += file.size;
+      saveAudioToVault(file);
     });
 
     if (status) {
       status.style.color = '#79e0bd';
-      status.textContent = `Uploading ${input.files.length} audio file(s) (${formatFileSize(totalBytes)})…`;
+      status.textContent = `Uploading ${filesToUpload.length} audio file(s) (${formatFileSize(totalBytes)})…`;
     }
 
     const xhr = new XMLHttpRequest();
@@ -2271,14 +2854,14 @@
         input.value = '';
         if (status) {
           status.style.color = '#45e27a';
-          status.textContent = data.message || '✅ Audio uploaded successfully!';
+          status.textContent = data.message || '✅ Audio uploaded and saved to vault successfully!';
         }
         setTimeout(() => {
           if (progressContainer) progressContainer.style.display = 'none';
           if (progressBar) progressBar.style.width = '0%';
         }, 2500);
 
-        await refreshAudioLibrary();
+        await refreshAudioLibrary(false);
         if (data.audios && data.audios.length) {
           selectLibraryAudio(data.audios[0].audioId);
           showNotification(`Audio "${data.audios[0].name}" uploaded & selected!`, false);
@@ -2309,7 +2892,8 @@
     xhr.send(formData);
   }
 
-  document.getElementById('uploadAudiosBtn').onclick = uploadSelectedAudios;
+  const uploadAudiosBtn = document.getElementById('uploadAudiosBtn'); if (uploadAudiosBtn) uploadAudiosBtn.onclick = uploadSelectedAudios;
+  const syncAudioVaultBtn = document.getElementById('syncAudioVaultBtn'); if (syncAudioVaultBtn) syncAudioVaultBtn.onclick = () => syncIndexedDBAudios(true);
   document.getElementById('audioUploadBatch').onchange = (e) => {
     const input = e.target;
     const status = document.getElementById('audioUploadStatus');
@@ -2322,7 +2906,7 @@
       }
     }
   };
-  document.getElementById('refreshAudiosBtn').onclick = refreshAudioLibrary;
+  const refreshAudiosBtn = document.getElementById('refreshAudiosBtn'); if (refreshAudiosBtn) refreshAudiosBtn.onclick = () => refreshAudioLibrary(true);
 
   const markAudioReadyBtn = document.getElementById('markAudioReadyBtn');
   if (markAudioReadyBtn) {
@@ -2338,14 +2922,29 @@
     };
   }
 
-  document.getElementById('playAudioBtn').onclick = () => {
-    const audioId = getQuestionAudioId() || currentQuestionAudioId || selectedAudioId;
-    if (!audioId) return alert('No audio selected. Choose an audio file from the library first.');
-    const audio = audioLibrary.find(item => item.audioId === audioId);
+  async function triggerBroadcastAudio(specificAudioId = null) {
+    let audioId = specificAudioId || getQuestionAudioId() || currentQuestionAudioId || selectedAudioId;
+    if (!audioId) {
+      if (!audioLibrary || !audioLibrary.length) {
+        showNotification('No audio uploaded yet. Please upload an audio file in the Media Library tab first.', true);
+        return;
+      }
+      if (audioLibrary.length === 1) {
+        audioId = audioLibrary[0].audioId;
+        selectLibraryAudio(audioId);
+      } else {
+        showJudgementMediaPicker('audio');
+        return;
+      }
+    }
+
+    const audio = audioLibrary.find(item => item.audioId === audioId) || audioLibrary[0];
     if (!audio) return alert(`Audio ID not found: ${audioId}`);
 
-    currentQuestionAudioId = audioId;
-    activeAudioPlaybackId = audioId;
+    if (!(await waitForHostConnection())) return alert('Connection lost. Please reconnect to server.');
+
+    currentQuestionAudioId = audio.audioId;
+    activeAudioPlaybackId = audio.audioId;
     audioReadyForQuestion = false;
     syncVideoQuestionControls();
 
@@ -2355,17 +2954,75 @@
       if (!player.src || !player.src.includes(audio.url)) {
         player.src = audio.url;
       }
+      player.muted = true;
+      player.volume = 0;
       player.play().catch(e => console.warn('Host audio autoplay note:', e));
     }
-    if (badge) badge.textContent = '▶ Broadcasting Audio';
+    if (badge) badge.textContent = '▶ Broadcasting (Playing on Player)';
+
+    const jStatus = document.getElementById('judgementMediaActiveStatus');
+    if (jStatus) {
+      jStatus.textContent = `🎧 Playing: ${audio.name}`;
+      jStatus.style.color = '#79e0bd';
+    }
 
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'audio_preview', payload: { url: audio.url, name: audio.name, audioId } }));
-      log(`🎧 Broadcasting audio for players: ${audio.name}`);
+      ws.send(JSON.stringify({ type: 'audio_preview', payload: { url: audio.url, name: audio.name, audioId: audio.audioId } }));
+      log(`🎧 Broadcasting audio to player: ${audio.name} (${audio.audioId})`);
+      showNotification(`🎧 Broadcasting audio "${audio.name}" to player!`, false);
     } else {
-      log(`🎧 Playing audio on host: ${audio.name} (connect to server to broadcast to players).`);
+      log(`🎧 Audio broadcast queued: ${audio.name}`);
     }
-  };
+  }
+
+  const playAudioBtnEl = document.getElementById('playAudioBtn');
+  if (playAudioBtnEl) playAudioBtnEl.onclick = () => triggerBroadcastAudio();
+  const broadcastAudioBtnEl = document.getElementById('broadcastAudioBtn');
+  if (broadcastAudioBtnEl) broadcastAudioBtnEl.onclick = () => triggerBroadcastAudio();
+
+  function showJudgementMediaPicker(type) {
+    const row = document.getElementById('judgementMediaPickerRow');
+    const select = document.getElementById('judgementMediaSelect');
+    if (!row || !select) return;
+
+    if (type === 'video') {
+      if (!videoLibrary.length) return alert('No videos available in library.');
+      select.innerHTML = videoLibrary.map(v => `<option value="${v.videoId}">🎬 ${escapeHtml(v.name)}</option>`).join('');
+      select.dataset.mediaType = 'video';
+    } else {
+      if (!audioLibrary.length) return alert('No audio available in library.');
+      select.innerHTML = audioLibrary.map(a => `<option value="${a.audioId}">🎧 ${escapeHtml(a.name)}</option>`).join('');
+      select.dataset.mediaType = 'audio';
+    }
+    row.style.display = 'block';
+  }
+
+  const judgementPlayMediaBtn = document.getElementById('judgementPlaySelectedMediaBtn');
+  if (judgementPlayMediaBtn) {
+    judgementPlayMediaBtn.onclick = () => {
+      const select = document.getElementById('judgementMediaSelect');
+      const val = select.value;
+      const type = select.dataset.mediaType;
+      if (!val) return;
+      if (type === 'video') {
+        selectLibraryVideo(val);
+        triggerBroadcastVideo(val);
+      } else {
+        selectLibraryAudio(val);
+        triggerBroadcastAudio(val);
+      }
+      const row = document.getElementById('judgementMediaPickerRow');
+      if (row) row.style.display = 'none';
+    };
+  }
+
+  const judgementCloseMediaBtn = document.getElementById('judgementCloseMediaPickerBtn');
+  if (judgementCloseMediaBtn) {
+    judgementCloseMediaBtn.onclick = () => {
+      const row = document.getElementById('judgementMediaPickerRow');
+      if (row) row.style.display = 'none';
+    };
+  }
   refreshAudioLibrary();
 
   const bindMediaBtn = (id, fn) => {
@@ -2411,29 +3068,100 @@
 
   function fixDevanagariMatras(text) {
     if (!text) return '';
-    let s = text.normalize('NFC');
-    const baseChar = '[\\u0904-\\u0939\\u0958-\\u0961]';
-    const combiningMark = '[\\u0901-\\u0903\\u093A-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+    let s = String(text).normalize('NFC');
+    const baseChar = '[\\u0915-\\u0939\\u0958-\\u095F]';
     const halant = '\\u094D';
+    const nukta = '\\u093C';
+    const postMatras = '[\\u0901-\\u0903\\u093A-\\u093E\\u0940-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+    const vowelSigns = '[\\u093E-\\u094C]';
+    const cluster = '(?:' + baseChar + nukta + '?(?:' + halant + baseChar + nukta + '?)*)';
+    const devStart = '(^|[^\\u0900-\\u097F])';
+    const devEnd = '(?=[^\\u0900-\\u097F]|$)';
 
-    // 1. Remove artificial spaces between consonants and following matras/combining marks
-    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + combiningMark + ')', 'g'), '$1$2');
+    // 1. Remove zero-width spaces and BOM
+    s = s.replace(/[\u200B\uFEFF]/g, '');
 
-    // 2. Remove artificial spaces between half-consonants (with halant) and next consonant
-    s = s.replace(new RegExp('(' + baseChar + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+    // 2. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
+    s = s.replace(/प\s*्\s*र\s*ि\s*य\s*ा/gu, 'प्रिया');
+    s = s.replace(/प\s*्\s*र\s*ि\s*य/gu, 'प्रिय');
+    s = s.replace(/प\s*्\s*र\s+य\s*ा/gu, 'प्रिया');
+    s = s.replace(/प\s*्\s*र\s+य(?=[^\u0900-\u097F]|$)/gu, 'प्रिय');
 
-    // 3. Remove spaces between vowel signs and anusvara/visarga/candrabindu
+    // 3. Remove artificial spaces around halant (e.g. "प ् र" -> "प्र", "प् र" -> "प्र", "प ्" -> "प्")
+    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + halant + ')', 'g'), '$1$2');
+    s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+
+    // 4. Pre-base matra reordering: visual "ि" (\u093F) appearing BEFORE a consonant cluster
+    // Handles: "िप्रया" -> "प्रिया", "बहुत िप्रय" -> "बहुत प्रिय", "बहुत ि  प्रय" -> "बहुत प्रिय"
+    const nonConsonantBefore = '(^|[\\s\\p{P}\\u0901-\\u0914\\u093E\\u0940-\\u094C\\u0966-\\u096F।॥])\\s*';
+    s = s.replace(new RegExp(nonConsonantBefore + '\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+
+    // 5. Remove spaces between consonant/cluster and following POST-BASE matras / marks
+    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + postMatras + ')', 'g'), '$1$2');
+
+    // 6. Remove spaces between vowel signs and anusvara/visarga/candrabindu
     s = s.replace(new RegExp('([\\u093E-\\u094C])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
 
-    // 4. Pre-base matra reordering: "ि" (\u093F) appearing before consonant
-    s = s.replace(new RegExp('\\u093F(' + baseChar + '(?:' + halant + baseChar + ')*)', 'g'), '$1\u093F');
+    // 7. Repair displaced matra sequence: cluster1 + cluster2 + \u093F + vowelSign (e.g. "प्रयिा" -> "प्रिया", "कतिाब" -> "किताब")
+    s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
 
-    // 5. Clean up any lingering zero-width spaces or non-breaking spaces
-    s = s.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    // 8. Repair accidental space between cluster + \u093F and next syllable in single words (e.g. "प्रि या" -> "प्रिया", "प्रि य" -> "प्रिय")
+    s = s.replace(new RegExp('(' + cluster + '\\u093F)\\s+(' + cluster + '[\\u093E-\\u094C]?)', 'g'), '$1$2');
 
-    // 6. Normalize multiple horizontal spaces
+    // 9. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc. where \u093F was dropped or lost
+    s = s.replace(new RegExp(devStart + 'प्र\\s+य' + devEnd, 'gu'), '$1प्रिय');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+या' + devEnd, 'gu'), '$1प्रिया');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+ये' + devEnd, 'gu'), '$1प्रिये');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यों' + devEnd, 'gu'), '$1प्रियों');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यतम' + devEnd, 'gu'), '$1प्रियतम');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यता' + devEnd, 'gu'), '$1प्रियता');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यजन' + devEnd, 'gu'), '$1प्रियजन');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यंका' + devEnd, 'gu'), '$1प्रियंका');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यंक' + devEnd, 'gu'), '$1प्रियंक');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यदर्शी' + devEnd, 'gu'), '$1प्रियदर्शी');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+येक' + devEnd, 'gu'), '$1प्रत्येक');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+त' + devEnd, 'gu'), '$1प्रति');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+ति' + devEnd, 'gu'), '$1प्रति');
+
+    // Handle words where "प्रय" is standalone or preceded by prefixes/modifiers
+    s = s.replace(new RegExp('(^|\\s)प्रय' + devEnd, 'gu'), '$1प्रिय');
+    s = s.replace(new RegExp(devStart + 'अप्रय' + devEnd, 'gu'), '$1अप्रिय');
+    s = s.replace(new RegExp(devStart + 'सर्वप्रय' + devEnd, 'gu'), '$1सर्वप्रिय');
+    s = s.replace(new RegExp(devStart + 'प्राणप्रय' + devEnd, 'gu'), '$1प्राणप्रिय');
+
+    // Handle known Hindi words where \u093F is dropped from PDF extraction
+    s = s.replace(new RegExp(devStart + 'क्रोधत' + devEnd, 'gu'), '$1क्रोधित');
+    s = s.replace(new RegExp(devStart + 'हर्षत' + devEnd, 'gu'), '$1हर्षित');
+    s = s.replace(new RegExp(devStart + 'समर्पत' + devEnd, 'gu'), '$1समर्पित');
+    s = s.replace(new RegExp(devStart + 'आकर्शत' + devEnd, 'gu'), '$1आकर्षित');
+    s = s.replace(new RegExp(devStart + 'स्थत' + devEnd, 'gu'), '$1स्थित');
+    s = s.replace(new RegExp(devStart + 'स्थति' + devEnd, 'gu'), '$1स्थिति');
+    s = s.replace(new RegExp(devStart + 'प्रतियोगता' + devEnd, 'gu'), '$1प्रतियोगिता');
+    s = s.replace(new RegExp(devStart + 'ऐतहासिक' + devEnd, 'gu'), '$1ऐतिहासिक');
+    s = s.replace(new RegExp(devStart + 'प्राथमक' + devEnd, 'gu'), '$1प्राथमिक');
+    s = s.replace(new RegExp(devStart + 'सामाजक' + devEnd, 'gu'), '$1सामाजिक');
+    s = s.replace(new RegExp(devStart + 'धार्मक' + devEnd, 'gu'), '$1धार्मिक');
+    s = s.replace(new RegExp(devStart + 'आर्थक' + devEnd, 'gu'), '$1आर्थिक');
+
+    // 10. Reconnect detached "प्र" prefix when followed by common words
+    s = s.replace(new RegExp(devStart + 'प्र\\s+(कार|श्न|श|थम|योग|भाव|सिद्ध|सिद्द|सिद्धि|देश|बंध|माण|वेश|हार|सार|कृति|कति|गति|काश|तष्ठित|तिष्ठित|मुख|तभा|तिभा|क्रिया|क्रया|णाम|यास)' + devEnd, 'gu'), (m, p0, p1) => {
+      let word = p1;
+      if (p1 === 'श') word = 'श्न';
+      else if (p1 === 'सिद्द') word = 'सिद्ध';
+      else if (p1 === 'कति') word = 'कृति';
+      else if (p1 === 'तष्ठित') word = 'तिष्ठित';
+      else if (p1 === 'तभा') word = 'तिभा';
+      else if (p1 === 'क्रया') word = 'क्रिया';
+      return (p0 || '') + 'प्र' + word;
+    });
+
+    // 11. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
+    s = s.replace(/(\u093F)+/g, '$1');
+    s = s.replace(/([\u093E-\u094C])\1+/g, '$1');
+
+    // 12. Normalize multiple horizontal spaces
     s = s.replace(/[ \t]+/g, ' ');
-    return s;
+    return s.trim();
   }
 
   async function extractPdfQuestions(file) {
@@ -2482,22 +3210,43 @@
           if (i > 0) {
             const prev = line.items[i - 1];
             const gap = cur.x - (prev.x + prev.width);
-            const isMatra = /^[\u0901-\u0903\u093A-\u094F\u0951-\u0957\u0962-\u0963]/.test(cur.str);
+            const isPrevDevanagari = /[\u0900-\u097F]/.test(prev.str);
+            const isCurDevanagari = /[\u0900-\u097F]/.test(cur.str);
+            const isPrevCombining = /[\u0901-\u0903\u093A-\u094F\u0951-\u0957\u0962-\u0963]$/.test(prev.str);
+            const isCurCombining = /^[\u0901-\u0903\u093A-\u094F\u0951-\u0957\u0962-\u0963]/.test(cur.str);
             const prevIsHalant = /[\u094D]$/.test(prev.str);
+            const curIsHalant = /^[\u094D]/.test(cur.str);
             const charHeight = Math.max(prev.height, cur.height, 10);
-            const spaceThreshold = Math.max(charHeight * 0.22, 2.8);
 
-            if (!isMatra && !prevIsHalant && gap > spaceThreshold) {
+            let shouldInsertSpace = false;
+            if (!isCurCombining && !isPrevCombining && !prevIsHalant && !curIsHalant) {
+              if (isPrevDevanagari && isCurDevanagari) {
+                // In Devanagari script, inter-word space is larger than intra-word gaps
+                const devanagariSpaceThreshold = Math.max(charHeight * 0.45, 5.8);
+                // Never insert space if prev ends with 'प्र' and cur starts with 'य' / 'या' / 'ये'
+                const isPraYaSplit = /प्र$/.test(prev.str.trim()) && /^[ययाये]/.test(cur.str.trim());
+                if (gap > devanagariSpaceThreshold && !isPraYaSplit) {
+                  shouldInsertSpace = true;
+                }
+              } else {
+                const generalSpaceThreshold = Math.max(charHeight * 0.22, 3.2);
+                if (gap > generalSpaceThreshold) {
+                  shouldInsertSpace = true;
+                }
+              }
+            }
+
+            if (shouldInsertSpace) {
               lineStr += ' ';
             }
           }
           lineStr += cur.str;
         }
 
-        pageText += lineStr + '\n';
+        pageText += fixDevanagariMatras(lineStr) + '\n';
       });
 
-      text += fixDevanagariMatras(pageText) + '\n';
+      text += pageText + '\n';
       
       // Extract images from page
       try {
@@ -2600,13 +3349,15 @@
       const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
       const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
       
-      const options = optionMatches.map(m => (m[3] || '').replace(/\s+/g, ' ').trim());
+      const options = optionMatches.map(m => fixDevanagariMatras((m[3] || '').replace(/\s+/g, ' ').trim()));
 
       let correct = 'A';
       if (answerMatch) {
         const rawAns = answerMatch[1].trim();
         correct = optionCharMap[rawAns] || optionCharMap[rawAns.toUpperCase()] || 'A';
       }
+
+      cleanQuestionText = fixDevanagariMatras(cleanQuestionText);
 
       if (cleanQuestionText && options.length >= 2) {
         while (options.length < 4) options.push('-');
@@ -2643,7 +3394,7 @@
       document.getElementById('qFormat').dispatchEvent(new Event('change'));
     }
     
-    document.getElementById('qText').value = question.text;
+    document.getElementById('qText').value = fixDevanagariMatras(question.text || '');
     document.getElementById('questionVideoId').value = question.videoId || '';
     document.getElementById('questionAudioId').value = question.audioId || '';
     currentQuestionVideoId = question.videoId || '';
@@ -2665,7 +3416,7 @@
 
     syncVideoQuestionControls();
     ['A', 'B', 'C', 'D'].forEach((letter, index) => {
-      document.getElementById(`opt${letter}`).value = question.options[index];
+      document.getElementById(`opt${letter}`).value = fixDevanagariMatras(question.options[index] || '');
     });
     document.getElementById('correctAns').value = question.correct;
     
@@ -2697,7 +3448,7 @@
 
   document.getElementById('sendQ').onclick = async () => {
     if (!(await waitForHostConnection())) return alert('Could not connect to the server. Check that it is running and try again.');
-    const format = document.getElementById('qFormat').value;
+    let format = document.getElementById('qFormat').value;
     const videoId = getQuestionVideoId();
     const audioId = getQuestionAudioId();
     let dataUrl = '';
@@ -2718,54 +3469,86 @@
       return alert(`Audio ID not found: ${audioId}`);
     }
 
-    if (format === 'image') {
-        // Check if current PDF question has an image
+    const fileInput = document.getElementById('imageFile');
+    const imageFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+    if (format === 'image' || selectedImageId || (currentPdfQuestion && currentPdfQuestion.image) || imageFile) {
         if (currentPdfQuestion && currentPdfQuestion.image) {
             dataUrl = currentPdfQuestion.image;
+            format = 'image';
         } else if (selectedImageId) {
             const image = imageLibrary.find(item => item.imageId === selectedImageId);
             if (!image) return alert('The selected library image is no longer available.');
             dataUrl = image.url;
-        } else {
-            // Otherwise, use uploaded image file
-            const fileInput = document.getElementById('imageFile');
-            const imageFile = fileInput && fileInput.files ? fileInput.files[0] : null;
-            if (!imageFile) return alert("Select an image from the library or choose an image file first!");
+            format = 'image';
+        } else if (imageFile) {
             try {
               dataUrl = await readFileAsDataUrl(imageFile);
+              format = 'image';
             } catch (error) {
               return alert(error.message);
             }
         }
     }
 
+    const questionText = getQuestionTextWithoutVideoId();
+    const timeLimitRaw = document.getElementById('timeLimit').value;
+    const timeLimitSec = resolveQuestionTimeLimit(timeLimitRaw, hostQuestionLevel);
+
+    const videoItem = videoId ? videoLibrary.find(v => v.videoId === videoId) : null;
+    const videoUrl = videoItem ? videoItem.url : '';
+    const audioItem = audioId ? audioLibrary.find(a => a.audioId === audioId) : null;
+    const audioUrl = audioItem ? audioItem.url : '';
+
+    const cleanedQuestionText = fixDevanagariMatras(questionText);
     const payload = {
         format,
-        text: getQuestionTextWithoutVideoId(),
+        text: cleanedQuestionText,
         dataUrl,
+        image: dataUrl,
+        imageUrl: dataUrl,
         videoId,
+        videoUrl,
         audioId,
-        timeLimitSec: document.getElementById('timeLimit').value,
+        audioUrl,
+        timeLimitSec: timeLimitSec,
         metadata: { 
             options: [
-                document.getElementById('optA').value || "Option A", 
-                document.getElementById('optB').value || "Option B", 
-                document.getElementById('optC').value || "Option C", 
-                document.getElementById('optD').value || "Option D"
+                fixDevanagariMatras(document.getElementById('optA').value || "Option A"), 
+                fixDevanagariMatras(document.getElementById('optB').value || "Option B"), 
+                fixDevanagariMatras(document.getElementById('optC').value || "Option C"), 
+                fixDevanagariMatras(document.getElementById('optD').value || "Option D")
             ],
             correct: document.getElementById('correctAns').value 
         }
     };
-      if (!(await waitForHostConnection())) return alert('Connection lost. The question was not sent. Please try again.');
-      currentQuestionVideoId = payload.videoId;
-      currentQuestionAudioId = payload.audioId;
-      activeVideoPlaybackId = '';
-      activeAudioPlaybackId = '';
-      currentCorrectAnswer = payload.metadata.correct;
-      hostSelectedAnswer = null;
-      hostAnswerLocked = false;
-      document.getElementById('hostAnswerStatus').textContent = 'Choose the verbal answer when the player tells you.';
-      updateHostAnswerControls();
+    if (!(await waitForHostConnection())) return alert('Connection lost. The question was not sent. Please try again.');
+    currentQuestionVideoId = payload.videoId;
+    currentQuestionAudioId = payload.audioId;
+    activeVideoPlaybackId = '';
+    activeAudioPlaybackId = '';
+    const hostPlayer = document.getElementById('hostVideoPlayer');
+    if (hostPlayer) hostPlayer.pause();
+    const hostAudioPlayer = document.getElementById('hostAudioPlayer');
+    if (hostAudioPlayer) hostAudioPlayer.pause();
+    currentCorrectAnswer = payload.metadata.correct;
+    hostSelectedAnswer = null;
+    hostAnswerLocked = false;
+    ['A', 'B', 'C', 'D'].forEach(optChar => {
+      const btn = document.getElementById('choice' + optChar);
+      if (btn) {
+        btn.style.opacity = '1';
+        btn.style.textDecoration = 'none';
+        btn.removeAttribute('title');
+      }
+    });
+    document.getElementById('hostAnswerStatus').textContent = 'Choose the verbal answer when the player tells you.';
+    updateHostAnswerControls();
+    
+    // Immediately update Host Active Question Card & start host timer!
+    updateHostActiveQuestionDisplay(questionText, null);
+    startHostTimer(timeLimitSec);
+
     log(`📤 Sending question (format: ${payload.format}, videoId: ${payload.videoId || 'none'}, audioId: ${payload.audioId || 'none'}).`);
     try {
       ws.send(JSON.stringify({ type:'send_question', payload }));
@@ -2912,7 +3695,7 @@
 
   function refreshPlayers() {
     if(!ws || ws.readyState !== WebSocket.OPEN) {
-        alert("Server not connected!");
+        showNotification("Server not connected! Click 'CONNECT SERVER' above.", true);
         return;
     }
     ws.send(JSON.stringify({
@@ -2923,12 +3706,51 @@
     hostAnswerLocked = false;
     document.getElementById('hostAnswerStatus').textContent = 'Send a question to begin.';
     updateHostAnswerControls();
+    updateHostActiveQuestionDisplay('', null);
+    clearInterval(hostTimerInterval);
+    hostTimerLeft = 0;
+    hostTimerPaused = false;
+    updateHostTimerDisplay('--', null);
+    updateHostTimerButtons();
     ws.send(JSON.stringify({ type: 'list_players' }));
-    document.getElementById('auto5050').disabled = false;
-    document.getElementById('auto5050').style.opacity = "1";
-    document.getElementById('callFriendBtn').disabled = false;
-    document.getElementById('callFriendBtn').style.opacity = "1";
+    const a50 = document.getElementById('auto5050');
+    if (a50) { a50.disabled = false; a50.style.opacity = "1"; }
+    const callBtn = document.getElementById('callFriendBtn');
+    if (callBtn) { callBtn.disabled = false; callBtn.style.opacity = "1"; }
   }
+
+  function triggerRefreshPlayerList() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectToServer();
+      showNotification('Connecting to server...', false);
+      return;
+    }
+    ws.send(JSON.stringify({ type: 'list_players' }));
+    fetchLeaderboard();
+    showNotification('🔄 Player roster refreshed!', false);
+  }
+
+  function triggerResetPlayersGame() {
+    showAppConfirm('Are you sure you want to reset all players, cash score, and lifelines to start fresh?', () => {
+      refreshPlayers();
+      showNotification('⚡ Game & all players have been reset to Q1!', false);
+    }, 'Reset Game ⚡', '#e67e22');
+  }
+
+  const hostTopRefreshBtn = document.getElementById('hostTopRefreshPlayersBtn');
+  if (hostTopRefreshBtn) hostTopRefreshBtn.onclick = triggerRefreshPlayerList;
+
+  const quickRefreshBtn = document.getElementById('quickRefreshPlayersBtn');
+  if (quickRefreshBtn) quickRefreshBtn.onclick = triggerRefreshPlayerList;
+
+  const refreshRosterBtn = document.getElementById('refreshPlayerRosterBtn');
+  if (refreshRosterBtn) refreshRosterBtn.onclick = triggerRefreshPlayerList;
+
+  const quickResetBtn = document.getElementById('quickResetGameBtn');
+  if (quickResetBtn) quickResetBtn.onclick = triggerResetPlayersGame;
+
+  const resetPlayersBtn = document.getElementById('resetPlayersGameBtn');
+  if (resetPlayersBtn) resetPlayersBtn.onclick = triggerResetPlayersGame;
 
   function updatePlayerUrlDisplay() {
     const playerUrl = window.location.origin + '/player';

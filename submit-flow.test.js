@@ -149,11 +149,17 @@ async function sendQuestion(host, player, payload) {
   host.socket.send(JSON.stringify({ type: 'audio_preview', payload: { url: '/audio/audio-1.mp3', audioId: 'audio-1' } }));
   await waitFor(player.messages, 'audio_preview');
   player.socket.send(JSON.stringify({ type: 'audio_ended', payload: { audioId: 'audio-1' } }));
-  await waitFor(host.messages, 'audio_ended');
+  const audioEndedMsg = await waitFor(host.messages, 'audio_ended');
+  assert.equal(audioEndedMsg.payload.audioId, 'audio-1');
+  assert.ok(audioEndedMsg.payload.playerName, 'audio_ended must include playerName');
   await sendQuestion(host, player, { ...base, format: 'text', text: 'Audio question', audioId: 'audio-1' });
 
   host.socket.send(JSON.stringify({ type: 'video_preview', payload: { url: '/videos/video-1.mp4', videoId: 'video-2' } }));
   await waitFor(player.messages, 'video_preview');
+  player.socket.send(JSON.stringify({ type: 'video_ended', payload: { videoId: 'video-2' } }));
+  const videoEndedMsg = await waitFor(host.messages, 'video_ended');
+  assert.equal(videoEndedMsg.payload.videoId, 'video-2');
+  assert.ok(videoEndedMsg.payload.playerName, 'video_ended must include playerName');
   await sendQuestion(host, player, { ...base, format: 'text', text: 'Question after video playback', videoId: 'video-2' });
   await sendQuestion(host, player, { ...base, format: 'text', text: 'Second video question', videoId: 'video-3' });
 

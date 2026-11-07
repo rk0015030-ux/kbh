@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -16,8 +15,22 @@ const {
   getDocs,
   collection,
   deleteDoc,
-  getDocFromServer
+  getDocFromServer,
+  setLogLevel
 } = require('firebase/firestore');
+
+// Silence internal Firestore gRPC idle stream warnings in Node
+try {
+  setLogLevel('silent');
+} catch (e) {}
+
+// Global safety error handlers to ensure robust deployment in Cloud Run
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('[Safety] Unhandled Rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Safety] Uncaught Exception:', err?.message || err);
+});
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
@@ -34,12 +47,111 @@ app.use((req, res, next) => {
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 50 * 1024 * 1024 });
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const PRIZE_LADDER = [100, 200, 300, 400, 500, 700, 900, 1100, 1500, 2000];
+const PRIZE_LADDER = [100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
 
 function getQuestionTimeLimit(level) {
-  if (level <= 5) return 30;
-  if (level <= 8) return 60;
-  return 120;
+  const lvl = Number(level) || 1;
+  if (lvl <= 4) return 30;
+  if (lvl <= 7) return 45;
+  return 60;
+}
+
+function fixDevanagariMatras(text) {
+  if (!text) return '';
+  let s = String(text).normalize('NFC');
+  const baseChar = '[\\u0915-\\u0939\\u0958-\\u095F]';
+  const halant = '\\u094D';
+  const nukta = '\\u093C';
+  const postMatras = '[\\u0901-\\u0903\\u093A-\\u093E\\u0940-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+  const vowelSigns = '[\\u093E-\\u094C]';
+  const cluster = '(?:' + baseChar + nukta + '?(?:' + halant + baseChar + nukta + '?)*)';
+  const devStart = '(^|[^\\u0900-\\u097F])';
+  const devEnd = '(?=[^\\u0900-\\u097F]|$)';
+
+  // 1. Remove zero-width spaces and BOM
+  s = s.replace(/[\u200B\uFEFF]/g, '');
+
+  // 2. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
+  s = s.replace(/प\s*्\s*र\s*ि\s*य\s*ा/gu, 'प्रिया');
+  s = s.replace(/प\s*्\s*र\s*ि\s*य/gu, 'प्रिय');
+  s = s.replace(/प\s*्\s*र\s+य\s*ा/gu, 'प्रिया');
+  s = s.replace(/प\s*्\s*र\s+य(?=[^\u0900-\u097F]|$)/gu, 'प्रिय');
+
+  // 3. Remove artificial spaces around halant (e.g. "प ् र" -> "प्र", "प् र" -> "प्र", "प ्" -> "प्")
+  s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + halant + ')', 'g'), '$1$2');
+  s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+
+  // 4. Pre-base matra reordering: visual "ि" (\u093F) appearing BEFORE a consonant cluster
+  // Handles: "िप्रया" -> "प्रिया", "बहुत िप्रय" -> "बहुत प्रिय", "बहुत ि  प्रय" -> "बहुत प्रिय"
+  const nonConsonantBefore = '(^|[\\s\\p{P}\\u0901-\\u0914\\u093E\\u0940-\\u094C\\u0966-\\u096F।॥])\\s*';
+  s = s.replace(new RegExp(nonConsonantBefore + '\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+
+  // 5. Remove spaces between consonant/cluster and following POST-BASE matras / marks
+  s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + postMatras + ')', 'g'), '$1$2');
+
+  // 6. Remove spaces between vowel signs and anusvara/visarga/candrabindu
+  s = s.replace(new RegExp('([\\u093E-\\u094C])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
+
+  // 7. Repair displaced matra sequence: cluster1 + cluster2 + \u093F + vowelSign (e.g. "प्रयिा" -> "प्रिया", "कतिाब" -> "किताब")
+  s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
+
+  // 8. Repair accidental space between cluster + \u093F and next syllable in single words (e.g. "प्रि या" -> "प्रिया", "प्रि य" -> "प्रिय")
+  s = s.replace(new RegExp('(' + cluster + '\\u093F)\\s+(' + cluster + '[\\u093E-\\u094C]?)', 'g'), '$1$2');
+
+  // 9. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc. where \u093F was dropped or lost
+  s = s.replace(new RegExp(devStart + 'प्र\\s+य' + devEnd, 'gu'), '$1प्रिय');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+या' + devEnd, 'gu'), '$1प्रिया');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+ये' + devEnd, 'gu'), '$1प्रिये');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यों' + devEnd, 'gu'), '$1प्रियों');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यतम' + devEnd, 'gu'), '$1प्रियतम');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यता' + devEnd, 'gu'), '$1प्रियता');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यजन' + devEnd, 'gu'), '$1प्रियजन');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यंका' + devEnd, 'gu'), '$1प्रियंका');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यंक' + devEnd, 'gu'), '$1प्रियंक');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+यदर्शी' + devEnd, 'gu'), '$1प्रियदर्शी');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+येक' + devEnd, 'gu'), '$1प्रत्येक');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+त' + devEnd, 'gu'), '$1प्रति');
+  s = s.replace(new RegExp(devStart + 'प्र\\s+ति' + devEnd, 'gu'), '$1प्रति');
+
+  // Handle words where "प्रय" is standalone or preceded by prefixes/modifiers
+  s = s.replace(new RegExp('(^|\\s)प्रय' + devEnd, 'gu'), '$1प्रिय');
+  s = s.replace(new RegExp(devStart + 'अप्रय' + devEnd, 'gu'), '$1अप्रिय');
+  s = s.replace(new RegExp(devStart + 'सर्वप्रय' + devEnd, 'gu'), '$1सर्वप्रिय');
+  s = s.replace(new RegExp(devStart + 'प्राणप्रय' + devEnd, 'gu'), '$1प्राणप्रिय');
+
+  // Handle known Hindi words where \u093F is dropped from PDF extraction
+  s = s.replace(new RegExp(devStart + 'क्रोधत' + devEnd, 'gu'), '$1क्रोधित');
+  s = s.replace(new RegExp(devStart + 'हर्षत' + devEnd, 'gu'), '$1हर्षित');
+  s = s.replace(new RegExp(devStart + 'समर्पत' + devEnd, 'gu'), '$1समर्पित');
+  s = s.replace(new RegExp(devStart + 'आकर्शत' + devEnd, 'gu'), '$1आकर्षित');
+  s = s.replace(new RegExp(devStart + 'स्थत' + devEnd, 'gu'), '$1स्थित');
+  s = s.replace(new RegExp(devStart + 'स्थति' + devEnd, 'gu'), '$1स्थिति');
+  s = s.replace(new RegExp(devStart + 'प्रतियोगता' + devEnd, 'gu'), '$1प्रतियोगिता');
+  s = s.replace(new RegExp(devStart + 'ऐतहासिक' + devEnd, 'gu'), '$1ऐतिहासिक');
+  s = s.replace(new RegExp(devStart + 'प्राथमक' + devEnd, 'gu'), '$1प्राथमिक');
+  s = s.replace(new RegExp(devStart + 'सामाजक' + devEnd, 'gu'), '$1सामाजिक');
+  s = s.replace(new RegExp(devStart + 'धार्मक' + devEnd, 'gu'), '$1धार्मिक');
+  s = s.replace(new RegExp(devStart + 'आर्थक' + devEnd, 'gu'), '$1आर्थिक');
+
+  // 10. Reconnect detached "प्र" prefix when followed by common words
+  s = s.replace(new RegExp(devStart + 'प्र\\s+(कार|श्न|श|थम|योग|भाव|सिद्ध|सिद्द|सिद्धि|देश|बंध|माण|वेश|हार|सार|कृति|कति|गति|काश|तष्ठित|तिष्ठित|मुख|तभा|तिभा|क्रिया|क्रया|णाम|यास)' + devEnd, 'gu'), (m, p0, p1) => {
+    let word = p1;
+    if (p1 === 'श') word = 'श्न';
+    else if (p1 === 'सिद्द') word = 'सिद्ध';
+    else if (p1 === 'कति') word = 'कृति';
+    else if (p1 === 'तष्ठित') word = 'तिष्ठित';
+    else if (p1 === 'तभा') word = 'तिभा';
+    else if (p1 === 'क्रया') word = 'क्रिया';
+    return (p0 || '') + 'प्र' + word;
+  });
+
+  // 11. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
+  s = s.replace(/(\u093F)+/g, '$1');
+  s = s.replace(/([\u093E-\u094C])\1+/g, '$1');
+
+  // 12. Normalize multiple horizontal spaces
+  s = s.replace(/[ \t]+/g, ' ');
+  return s.trim();
 }
 
 // Image storage configuration
@@ -83,21 +195,56 @@ try {
 
   if (firebaseConfig && firebaseConfig.projectId) {
     firebaseApp = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
-    console.log('[Firebase] Initialized Firestore successfully');
+    firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId || '(default)');
+    console.log('[Firebase] Initialized Firestore successfully for', firebaseConfig.projectId);
   }
 } catch (err) {
   console.warn('[Firebase] Config load error:', err.message);
 }
 
-async function testFirebaseConnection() {
-  if (!firestoreDb) return;
+function getOrCreateFirestore() {
+  if (firestoreDb) return firestoreDb;
   try {
-    await getDocFromServer(doc(firestoreDb, 'test', 'connection'));
+    const configPath = path.join(__dirname, 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      try {
+        delete require.cache[require.resolve('./firebase-applet-config.json')];
+      } catch (e) {}
+      firebaseConfig = require('./firebase-applet-config.json');
+      if (firebaseConfig && firebaseConfig.projectId) {
+        firebaseApp = initializeApp(firebaseConfig);
+        firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId || '(default)');
+        console.log('[Firebase] Dynamically connected Firestore for', firebaseConfig.projectId);
+      }
+    }
+  } catch (e) {
+    console.warn('[Firebase] Dynamic connect error:', e.message);
+  }
+  return firestoreDb;
+}
+
+let firebaseConnectionVerified = false;
+
+async function testFirebaseConnection() {
+  if (firebaseConnectionVerified || firestoreQuotaExhausted) return;
+  const db = getOrCreateFirestore();
+  if (!db) return;
+  try {
+    await Promise.race([
+      getDocFromServer(doc(db, 'test', 'connection')),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase connection timeout')), 2000))
+    ]);
+    firebaseConnectionVerified = true;
     console.log('[Firebase] Connection to Firestore verified.');
   } catch (error) {
     if (error && error.message && error.message.includes('the client is offline')) {
       console.warn('Firebase Firestore client is offline.');
+    } else if (error && error.message && (error.message.includes('Quota') || error.message.includes('RESOURCE_EXHAUSTED'))) {
+      firestoreQuotaExhausted = true;
+      lastQuotaExhaustedTime = Date.now();
+      console.warn('[Firebase] Firestore quota limit reached on connection test.');
+    } else {
+      console.warn('[Firebase] Connection check:', error?.message || error);
     }
   }
 }
@@ -110,11 +257,12 @@ let remoteScoresPromise = null;
 let firestoreQuotaExhausted = false;
 
 async function saveRemoteMedia(mediaId, item, localFilePath = null) {
-  if (!firestoreDb || firestoreQuotaExhausted) return;
+  const db = getOrCreateFirestore();
+  if (!db || firestoreQuotaExhausted) return;
   try {
     // 1. Immediately persist media metadata record with a fast 3-second safety timeout
     await Promise.race([
-      setDoc(doc(firestoreDb, 'media', mediaId), {
+      setDoc(doc(db, 'media', mediaId), {
         id: mediaId,
         name: item.name || '',
         url: item.url || '',
@@ -139,13 +287,13 @@ async function saveRemoteMedia(mediaId, item, localFilePath = null) {
           const totalChunks = Math.ceil(base64Str.length / CHUNK_SIZE);
           for (let i = 0; i < totalChunks; i++) {
             const chunkData = base64Str.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-            await setDoc(doc(firestoreDb, 'media', mediaId, 'chunks', String(i)), {
+            await setDoc(doc(db, 'media', mediaId, 'chunks', String(i)), {
               index: i,
               total: totalChunks,
               data: chunkData
             });
           }
-          await setDoc(doc(firestoreDb, 'media', mediaId), {
+          await setDoc(doc(db, 'media', mediaId), {
             hasChunks: true,
             totalChunks: totalChunks
           }, { merge: true });
@@ -170,22 +318,24 @@ async function saveRemoteMedia(mediaId, item, localFilePath = null) {
 }
 
 async function deleteRemoteMedia(mediaId) {
-  if (!firestoreDb) return;
+  const db = getOrCreateFirestore();
+  if (!db) return;
   try {
     try {
-      const chunksSnap = await getDocs(collection(firestoreDb, 'media', mediaId, 'chunks'));
+      const chunksSnap = await getDocs(collection(db, 'media', mediaId, 'chunks'));
       await Promise.all(chunksSnap.docs.map(chunkDoc => deleteDoc(chunkDoc.ref).catch(() => {})));
     } catch (e) {
       // Ignore if no chunks
     }
-    await deleteDoc(doc(firestoreDb, 'media', mediaId));
+    await deleteDoc(doc(db, 'media', mediaId));
   } catch (error) {
     console.warn(`[Firebase] Could not delete media ${mediaId} from Firestore:`, error.message);
   }
 }
 
 async function rehydrateMediaFile(type, filename) {
-  if (!firestoreDb || !filename) return false;
+  const db = getOrCreateFirestore();
+  if (!db || !filename) return false;
   try {
     let targetDir = imagesDir;
     let dbMap = imageDatabase;
@@ -198,7 +348,7 @@ async function rehydrateMediaFile(type, filename) {
     const item = Array.from(dbMap.values()).find(m => m.filename === filename);
     if (!item || !item.id) return false;
 
-    const chunksSnap = await getDocs(collection(firestoreDb, 'media', item.id, 'chunks'));
+    const chunksSnap = await getDocs(collection(db, 'media', item.id, 'chunks'));
     if (chunksSnap.empty) return false;
 
     const chunks = [];
@@ -254,19 +404,26 @@ function normalizeMediaUrl(rawUrl) {
   return url;
 }
 
+let lastQuotaExhaustedTime = 0;
+
 async function loadRemoteIndexes(force = false) {
+  if (firestoreQuotaExhausted && (Date.now() - lastQuotaExhaustedTime < 10 * 60 * 1000)) {
+    remoteIndexesLoaded = true;
+    return;
+  }
   await testFirebaseConnection();
-  if (!firestoreDb) {
+  const db = getOrCreateFirestore();
+  if (!db) {
     remoteIndexesLoaded = true;
     return;
   }
   try {
-    const collectionsToCheck = ['media', 'images', 'videos', 'audio', 'audios', 'files', 'uploads'];
+    const collectionsToCheck = ['media'];
     let totalDocsLoaded = 0;
 
     for (const colName of collectionsToCheck) {
       try {
-        const snap = await getDocs(collection(firestoreDb, colName));
+        const snap = await getDocs(collection(db, colName));
         snap.forEach((docSnap) => {
           const data = docSnap.data() || {};
           const docId = docSnap.id;
@@ -274,10 +431,7 @@ async function loadRemoteIndexes(force = false) {
           
           let type = String(data.type || data.fileType || data.mediaType || '').toLowerCase();
           if (!['image', 'video', 'audio'].includes(type)) {
-            if (colName === 'videos' || colName === 'video') type = 'video';
-            else if (['audio', 'audios', 'sound', 'sounds', 'music'].includes(colName)) type = 'audio';
-            else if (['images', 'image'].includes(colName)) type = 'image';
-            else type = inferMediaType(data.name, data.filename, data.url);
+            type = inferMediaType(data.name, data.filename, data.url);
           }
 
           const name = String(data.name || data.fileName || data.filename || data.title || data.originalName || id);
@@ -322,6 +476,14 @@ async function loadRemoteIndexes(force = false) {
             } catch (inlineErr) {
               console.warn('[Firebase] Could not write inline base64 for', id, inlineErr.message);
             }
+          } else if (data.hasChunks) {
+            const targetDir = type === 'video' ? videosDir : type === 'audio' ? audioDir : imagesDir;
+            const targetPath = path.join(targetDir, filename);
+            if (!fs.existsSync(targetPath)) {
+              rehydrateMediaFile(type, filename).catch(err => {
+                console.warn(`[Firebase] Auto-rehydrate background notice for ${filename}:`, err.message);
+              });
+            }
           }
 
           if (type === 'video') {
@@ -334,7 +496,12 @@ async function loadRemoteIndexes(force = false) {
           totalDocsLoaded++;
         });
       } catch (colErr) {
-        // Individual collection might not exist or error, continue
+        if (colErr.message && (colErr.message.includes('Quota') || colErr.message.includes('RESOURCE_EXHAUSTED'))) {
+          firestoreQuotaExhausted = true;
+          lastQuotaExhaustedTime = Date.now();
+          console.warn('[Firebase] Read quota limit reached on Firestore. Using local storage.');
+          break;
+        }
       }
     }
 
@@ -342,16 +509,24 @@ async function loadRemoteIndexes(force = false) {
     saveVideoIndex();
     saveAudioIndex();
     lastRemoteIndexesFetchTime = Date.now();
-    console.log(`[Firebase] Loaded ${totalDocsLoaded} total media records across Firestore collections`);
+    if (totalDocsLoaded > 0) {
+      console.log(`[Firebase] Loaded ${totalDocsLoaded} total media records from Firestore`);
+    }
   } catch (error) {
-    console.warn('[Firebase] Could not load media indexes:', error.message);
+    if (error.message && (error.message.includes('Quota') || error.message.includes('RESOURCE_EXHAUSTED'))) {
+      firestoreQuotaExhausted = true;
+      lastQuotaExhaustedTime = Date.now();
+      console.warn('[Firebase] Read quota limit reached. Using local media cache.');
+    } else {
+      console.warn('[Firebase] Could not load media indexes:', error.message);
+    }
   } finally {
     remoteIndexesLoaded = true;
   }
 }
 
 function ensureRemoteIndexesLoaded(force = false) {
-  const isStale = (Date.now() - lastRemoteIndexesFetchTime) > 3000;
+  const isStale = (Date.now() - lastRemoteIndexesFetchTime) > 60000;
   if (!force && remoteIndexesLoaded && !isStale) {
     return Promise.resolve();
   }
@@ -477,12 +652,13 @@ loadAudioIndex();
 
 const defaultKbcAudioFiles = [
   { file: '30 sec timer.mp3', id: 'audio-30-sec-timer', name: '30 Sec Timer' },
-  { file: '50 50.mp3', id: 'audio-50-50', name: '50-50 Lifeline Sound' },
+  { file: '45 sec audio.mp3', id: 'audio-45-sec-timer', name: '45 Sec Timer' },
   { file: '60 sec timer.mp3', id: 'audio-60-sec-timer', name: '60 Sec Timer' },
-  { file: 'Infinite timer.mp3', id: 'audio-infinite-timer', name: 'Infinite Timer' },
+  { file: '50 50.mp3', id: 'audio-50-50', name: '50-50 Lifeline Sound' },
   { file: 'kbc timer real.mp3', id: 'audio-kbc-timer-real', name: 'KBC Timer Real' },
   { file: 'question lock sound.mp3', id: 'audio-question-lock', name: 'Question Lock Sound' },
-  { file: 'wrong buzzer.mp3', id: 'audio-wrong-buzzer', name: 'Wrong Buzzer' }
+  { file: 'wrong buzzer.mp3', id: 'audio-wrong-buzzer', name: 'Wrong Buzzer' },
+  { file: 'correct answer.wav', id: 'audio-correct-answer', name: 'Correct Answer Bell' }
 ];
 
 async function seedDefaultAudioFiles() {
@@ -536,12 +712,13 @@ function loadScoreDatabase() {
 }
 
 async function loadRemoteScores() {
-  if (!firestoreDb) {
+  const db = getOrCreateFirestore();
+  if (!db) {
     remoteScoresLoaded = true;
     return;
   }
   try {
-    const snap = await getDocs(collection(firestoreDb, 'scores'));
+    const snap = await getDocs(collection(db, 'scores'));
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       if (data && data.playerId) {
@@ -1012,7 +1189,10 @@ app.post('/api/audio/upload', (req, res, next) => {
 });
 
 app.get('/api/audio/list', async (req, res) => {
-  await ensureRemoteIndexesLoaded(Boolean(req.query.refresh));
+  if (req.query.refresh) {
+    loadAudioIndex();
+  }
+  ensureRemoteIndexesLoaded(Boolean(req.query.refresh)).catch(() => {});
   res.json({
     audios: Array.from(audioDatabase.entries()).map(([audioId, data]) => ({
       audioId,
@@ -1177,21 +1357,65 @@ wss.on('connection', (ws) => {
       room.roomId = roomId;
 
       if (role === 'host') {
+        const isReconnect = Boolean(room.host);
         room.host = ws;
-        room.currentQuestion = null;
-        room.currentVideo = null;
-        room.currentAudio = null;
-        room.questionLevel = 1;
-        room.lifelines = { callUsed: false, fiftyFiftyUsed: false, fiftyFiftyRemove: null };
-        for (const [, player] of room.players.entries()) {
-          player.cash = 0;
-          player.score = 0;
-          player.clearedLevel = 0;
-          player.eliminated = false;
-          persistScoreSnapshot({ playerId: player.ws?.id || player.id, name: player.name, roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
-          if (player.ws) send(player.ws, { type: 'refresh' });
+
+        send(ws, { 
+          type: 'joined', 
+          payload: { 
+            role: 'host', 
+            roomId, 
+            reconnected: isReconnect,
+            questionLevel: room.questionLevel || 1 
+          } 
+        });
+
+        // 1. Sync active question to the host if in progress
+        if (room.currentQuestion) {
+          send(ws, { type: 'question', payload: room.currentQuestion });
+          if (room.currentQuestion.hostSelectedAnswer) {
+            send(ws, { type: 'host_answer_selected', payload: { answer: room.currentQuestion.hostSelectedAnswer } });
+          }
+          if (room.currentQuestion.answerLocked) {
+            const activePlayer = room.currentQuestion.activePlayerId ? room.players.get(room.currentQuestion.activePlayerId) : null;
+            send(ws, {
+              type: 'answer_locked',
+              payload: {
+                answer: room.currentQuestion.hostSelectedAnswer,
+                playerId: room.currentQuestion.activePlayerId,
+                playerName: activePlayer?.name || 'Player'
+              }
+            });
+          }
         }
-        send(ws, { type: 'joined', payload: { role: 'host', roomId } });
+
+        // 2. Sync media preview if running
+        if (room.currentVideo) {
+          send(ws, { type: 'video_preview', payload: room.currentVideo });
+        } else if (room.currentAudio) {
+          send(ws, { type: 'audio_preview', payload: room.currentAudio });
+        }
+
+        // 3. Sync lifelines state
+        if (room.lifelines?.fiftyFiftyUsed) {
+          send(ws, { type: 'lifeline_5050', payload: { remove: room.lifelines.fiftyFiftyRemove || [] } });
+        }
+        if (room.lifelines?.callUsed) {
+          send(ws, { type: 'lifeline_call' });
+        }
+
+        // 4. Sync players and scoreboard
+        broadcastScoreboard(room);
+        const playersList = Array.from(room.players.entries()).map(([pid, p]) => ({
+          playerId: pid,
+          name: p.name,
+          score: p.score,
+          cash: p.cash,
+          clearedLevel: p.clearedLevel,
+          eliminated: Boolean(p.eliminated),
+          connected: Boolean(p.ws && p.ws.readyState === WebSocket.OPEN)
+        }));
+        send(ws, { type: 'players', payload: playersList });
       } else {
         const reqPlayerId = payload?.playerId;
         const normalizedName = String(ws.name || '').trim().toLowerCase();
@@ -1269,7 +1493,7 @@ wss.on('connection', (ws) => {
             const questionPayload = { ...room.currentQuestion };
             if (questionPayload.startedAt && questionPayload.timeLimitSec) {
               const elapsedSec = Math.floor((Date.now() - questionPayload.startedAt) / 1000);
-              questionPayload.remainingTimeSec = Math.max(0, questionPayload.timeLimitSec - elapsedSec);
+              questionPayload.remainingTimeSec = Math.max(0, Number(questionPayload.timeLimitSec) - elapsedSec);
             }
             send(ws, { type: 'question', payload: questionPayload });
 
@@ -1357,11 +1581,16 @@ wss.on('connection', (ws) => {
 
     if (type === 'host_mark_result') {
       const room = rooms.get(ws.roomId);
-      if (!room || ws.role !== 'host' || !room.currentQuestion?.answerLocked || room.currentQuestion.resultMarked) return;
       const correctAnswer = String(room.currentQuestion.metadata?.correct || '').toUpperCase();
-      const result = room.currentQuestion.hostSelectedAnswer === correctAnswer ? 'correct' : 'wrong';
-      const playerId = room.currentQuestion.activePlayerId || payload?.playerId;
-      const targetPlayer = playerId ? room.players.get(playerId) : null;
+      const hostJudgement = payload?.result;
+      const autoResult = room.currentQuestion.hostSelectedAnswer === correctAnswer ? 'correct' : 'wrong';
+      const result = (hostJudgement === 'correct' || hostJudgement === 'wrong') ? hostJudgement : autoResult;
+
+      const playerId = room.currentQuestion.activePlayerId || payload?.playerId || (room.players.size > 0 ? room.players.keys().next().value : null);
+      let targetPlayer = playerId ? room.players.get(playerId) : null;
+      if (!targetPlayer && room.players.size > 0) {
+        targetPlayer = room.players.values().next().value;
+      }
       const activeLevel = room.currentQuestion.level || 1;
 
       if (targetPlayer) {
@@ -1406,11 +1635,38 @@ wss.on('connection', (ws) => {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'host') return;
       const level = room.questionLevel;
+      let timeLimit = payload?.timeLimitSec;
+      if (timeLimit === 'auto' || timeLimit === undefined || timeLimit === null || timeLimit === '') {
+        timeLimit = getQuestionTimeLimit(level);
+      } else {
+        const val = Number(timeLimit);
+        timeLimit = [30, 45, 60].includes(val) ? val : getQuestionTimeLimit(level) || 30;
+      }
+      let videoUrl = payload?.videoUrl;
+      if (!videoUrl && payload?.videoId && videoDatabase.has(payload.videoId)) {
+        videoUrl = videoDatabase.get(payload.videoId)?.url;
+      }
+      let audioUrl = payload?.audioUrl;
+      if (!audioUrl && payload?.audioId && audioDatabase.has(payload.audioId)) {
+        audioUrl = audioDatabase.get(payload.audioId)?.url;
+      }
+      let cleanText = payload?.text ? fixDevanagariMatras(payload.text) : '';
+      let cleanOptions = Array.isArray(payload?.metadata?.options) 
+        ? payload.metadata.options.map(opt => fixDevanagariMatras(opt))
+        : (payload?.metadata?.options || []);
+
       room.currentQuestion = {
         ...payload,
+        text: cleanText,
+        metadata: {
+          ...(payload?.metadata || {}),
+          options: cleanOptions
+        },
         level,
         startedAt: Date.now(),
-        timeLimitSec: getQuestionTimeLimit(level),
+        timeLimitSec: timeLimit,
+        videoUrl: videoUrl || payload?.videoUrl || null,
+        audioUrl: audioUrl || payload?.audioUrl || null,
         hostSelectedAnswer: null,
         answerLocked: false,
         activePlayerId: null,
@@ -1429,7 +1685,9 @@ wss.on('connection', (ws) => {
           text: room.currentQuestion.text,
           videoId: room.currentQuestion.videoId || null,
           audioId: room.currentQuestion.audioId || null,
-          format: room.currentQuestion.format || 'text'
+          format: room.currentQuestion.format || 'text',
+          level,
+          timeLimitSec: timeLimit
         }
       });
       return;
@@ -1479,8 +1737,13 @@ wss.on('connection', (ws) => {
     // 7. LIFELINE
     if (type === 'video_preview') {
       const room = rooms.get(ws.roomId);
-      if (!room || ws.role !== 'host' || !payload?.url) return;
-      room.currentVideo = { url: payload.url, name: payload.name || 'Video question', videoId: payload.videoId || null };
+      if (!room || ws.role !== 'host') return;
+      let url = payload?.url;
+      if (!url && payload?.videoId && videoDatabase.has(payload.videoId)) {
+        url = videoDatabase.get(payload.videoId)?.url;
+      }
+      if (!url) return;
+      room.currentVideo = { url, name: payload.name || 'Video question', videoId: payload.videoId || null };
       room.currentAudio = null;
       broadcastToRoom(ws.roomId, { type: 'video_preview', payload: room.currentVideo });
       return;
@@ -1489,7 +1752,9 @@ wss.on('connection', (ws) => {
     if (type === 'video_ended') {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'player') return;
-      if (room.host) send(room.host, { type: 'video_ended', payload: { videoId: payload?.videoId || null, playerId: ws.id } });
+      const playerRecord = room.players.get(ws.id);
+      const playerName = ws.name || playerRecord?.name || payload?.playerName || 'Player';
+      if (room.host) send(room.host, { type: 'video_ended', payload: { videoId: payload?.videoId || null, playerId: ws.id, playerName } });
       return;
     }
 
@@ -1505,7 +1770,9 @@ wss.on('connection', (ws) => {
     if (type === 'audio_ended') {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'player') return;
-      if (room.host) send(room.host, { type: 'audio_ended', payload: { audioId: payload?.audioId || null, playerId: ws.id } });
+      const playerRecord = room.players.get(ws.id);
+      const playerName = ws.name || playerRecord?.name || payload?.playerName || 'Player';
+      if (room.host) send(room.host, { type: 'audio_ended', payload: { audioId: payload?.audioId || null, playerId: ws.id, playerName } });
       return;
     }
 
@@ -1574,15 +1841,20 @@ wss.on('connection', (ws) => {
         player.clearedLevel = 0;
         player.eliminated = false;
         persistScoreSnapshot({ playerId: player.ws?.id || player.id, name: player.name, roomId: ws.roomId, score: 0, cash: 0, clearedLevel: 0, eliminated: false });
-        if (player.ws) send(player.ws, { type: 'refresh' });
+        if (player.ws) {
+          send(player.ws, { type: 'refresh' });
+          player.ws.role = null;
+        }
       }
+      room.players.clear();
       room.currentQuestion = null;
       room.currentVideo = null;
       room.currentAudio = null;
       room.questionLevel = 1;
       room.lifelines = { callUsed: false, fiftyFiftyUsed: false, fiftyFiftyRemove: null };
       broadcastScoreboard(room);
-      console.log("Players refreshed");
+      broadcastConnectionStatus(ws.roomId);
+      console.log("Players refreshed and roster cleared");
       return;
     }
   });
@@ -1651,28 +1923,59 @@ app.get('/images/:filename', async (req, res, next) => {
 });
 
 app.get('/videos/:filename', async (req, res, next) => {
-  const filename = path.basename(req.params.filename);
-  const filePath = path.join(videosDir, filename);
-  if (fs.existsSync(filePath)) return next();
-  const restored = await rehydrateMediaFile('video', filename);
-  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
-  const item = Array.from(videoDatabase.values()).find(v => v.filename === filename);
-  if (item && item.url && item.url.startsWith('http')) {
-    return res.redirect(item.url);
+  const rawParam = req.params.filename || '';
+  const decodedName = decodeURIComponent(rawParam);
+  const filename = path.basename(decodedName);
+
+  // 1. Check if direct file exists on disk
+  let filePath = path.join(videosDir, filename);
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath, { acceptRanges: true });
   }
+
+  // 2. Check if requested by videoId or filename in database
+  const item = videoDatabase.get(filename) || Array.from(videoDatabase.values()).find(v => v.filename === filename || v.id === filename);
+  if (item) {
+    if (item.filename) {
+      filePath = path.join(videosDir, item.filename);
+      if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath, { acceptRanges: true });
+      }
+    }
+    if (item.url && item.url.startsWith('http')) {
+      return res.redirect(item.url);
+    }
+  }
+
+  // 3. Try rehydrating from remote
+  const restored = await rehydrateMediaFile('video', item?.filename || filename);
+  if (restored && fs.existsSync(filePath)) {
+    return res.sendFile(filePath, { acceptRanges: true });
+  }
+
   next();
 });
 
 app.get('/audio/:filename', async (req, res, next) => {
-  const filename = path.basename(req.params.filename);
-  const filePath = path.join(audioDir, filename);
-  if (fs.existsSync(filePath)) return next();
-  const restored = await rehydrateMediaFile('audio', filename);
-  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
-  const item = Array.from(audioDatabase.values()).find(a => a.filename === filename);
-  if (item && item.url && item.url.startsWith('http')) {
-    return res.redirect(item.url);
+  const rawParam = req.params.filename || '';
+  const decodedName = decodeURIComponent(rawParam);
+  const filename = path.basename(decodedName);
+  let filePath = path.join(audioDir, filename);
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath, { acceptRanges: true });
   }
+  const item = audioDatabase.get(filename) || Array.from(audioDatabase.values()).find(a => a.filename === filename || a.id === filename);
+  if (item) {
+    if (item.filename) {
+      filePath = path.join(audioDir, item.filename);
+      if (fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
+    }
+    if (item.url && item.url.startsWith('http')) {
+      return res.redirect(item.url);
+    }
+  }
+  const restored = await rehydrateMediaFile('audio', item?.filename || filename);
+  if (restored && fs.existsSync(filePath)) return res.sendFile(filePath, { acceptRanges: true });
   next();
 });
 
@@ -1689,9 +1992,16 @@ app.use('/videos', express.static(videosDir, {
   }
 }));
 app.use('/audio', express.static(audioDir, { acceptRanges: true }));
+
+// Healthcheck endpoints for Cloud Run and container readiness probes
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/healthz', (req, res) => res.status(200).send('OK'));
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', uptime: process.uptime() }));
+
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'host.html')));
 app.get('/player', (req, res) => res.sendFile(path.join(__dirname, 'Player.html')));
 app.use(express.static(__dirname));
+
 function getNetworkAddress() {
   const networkInterfaces = Object.values(os.networkInterfaces()).flat();
   const address = networkInterfaces.find((networkInterface) => (
@@ -1708,12 +2018,22 @@ function printServerUrls(message = 'Server running at') {
 }
 
 server.listen(PORT, '0.0.0.0', () => {
-  Promise.all([loadRemoteIndexes(), loadRemoteScores()])
-    .then(() => printServerUrls())
-    .catch(error => {
-      console.error('Could not load Firebase indexes/scores:', error.message);
-      printServerUrls();
-    });
+  printServerUrls();
+  // Asynchronously load remote indexes and scores without blocking healthchecks
+  Promise.all([
+    Promise.race([loadRemoteIndexes(), new Promise(r => setTimeout(r, 4000))]),
+    Promise.race([loadRemoteScores(), new Promise(r => setTimeout(r, 4000))])
+  ]).catch(error => {
+    console.warn('[Firebase] Non-blocking initial sync notice:', error?.message || error);
+  });
+});
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    printServerUrls('Server is already running at');
+    return;
+  }
+  console.error('HTTP server error:', error);
 });
 
 wss.on('error', (error) => {
@@ -1722,4 +2042,14 @@ wss.on('error', (error) => {
     return;
   }
   console.error('WebSocket server error:', error);
+});
+
+// Clean shutdown signals for container environments
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, closing gracefully');
+  server.close(() => process.exit(0));
+});
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, closing gracefully');
+  server.close(() => process.exit(0));
 });

@@ -118,19 +118,34 @@ function waitFor(messages, predicateOrType, timeout = 2500) {
   assert.equal(syncMsg.payload.cash, 100, 'Reconnected player must retain their cash won (₹100)');
   assert.equal(syncMsg.payload.clearedLevel, 1, 'Reconnected player must retain cleared level');
 
-  // 8. Verify active question was re-delivered upon reconnecting
+  // 8. Verify active question was re-delivered upon reconnecting with accurate time limit & remaining time
   const q2Restored = await waitFor(playerReconnect.messages, 'question');
   assert.equal(q2Restored.payload.text, 'Which planet is known as the Red Planet?', 'Active question must be restored on reconnect');
+  assert.equal(q2Restored.payload.timeLimitSec, 30, 'Q2 must have 30 second time limit');
+  assert.ok(typeof q2Restored.payload.remainingTimeSec === 'number', 'Q2 must have numeric remainingTimeSec on reconnect');
 
   // 9. Host receives player_reconnected notification
   const hostReconnectedMsg = await waitFor(host.messages, 'player_reconnected');
   assert.equal(hostReconnectedMsg.payload.playerId, player1.playerId);
   assert.equal(hostReconnectedMsg.payload.cash, 100);
 
-  playerReconnect.socket.close();
+  // 10. Test Host reconnecting during active game (must NOT reset player or cash!)
+  const initialRefreshCount = playerReconnect.messages.filter(m => m.type === 'refresh').length;
   host.socket.close();
+  await new Promise(r => setTimeout(r, 200));
+
+  const host2 = await connect('host', 'Host-1');
+  const hostRestoredQuestion = await waitFor(host2.messages, 'question');
+  assert.equal(hostRestoredQuestion.payload.text, 'Which planet is known as the Red Planet?');
+
+  await new Promise(r => setTimeout(r, 300));
+  const newRefreshCount = playerReconnect.messages.filter(m => m.type === 'refresh').length;
+  assert.equal(newRefreshCount, initialRefreshCount, 'Host reconnect must NEVER send refresh to active players');
+
+  playerReconnect.socket.close();
+  host2.socket.close();
   serverProcess.kill();
-  console.log('reconnect.test.js: all player reconnection and state recovery cases passed successfully!');
+  console.log('reconnect.test.js: all player & host reconnection and state recovery cases passed successfully!');
 })().catch(err => {
   serverProcess.kill();
   console.error(err.stack || err.message);

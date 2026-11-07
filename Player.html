@@ -56,6 +56,10 @@
         max-width: 95%;
         justify-content: center;
       }
+      #showStatusBtn {
+        position: static !important;
+        margin: 8px auto 4px !important;
+      }
     }
     .presence-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; color: #e2e5ee; }
     .presence-item strong { color: #ff8585; font-weight: 600; }
@@ -242,27 +246,20 @@
 
     /* Lifeline Responsive Indicators */
     .lifeline-status-container {
+      position: static;
       display: flex;
-      gap: 14px;
+      flex-direction: row;
+      gap: 16px;
       z-index: 2500;
       justify-content: center;
       align-items: center;
-      padding: 6px 10px;
+      padding: 4px 10px;
+      margin: 6px auto;
     }
-    @media (min-width: 1100px) {
+    @media (min-width: 992px) {
       .lifeline-status-container {
-        position: fixed;
-        top: 140px;
-        right: clamp(16px, 2.5vw, 36px);
-        flex-direction: column;
-        padding: 0;
-      }
-    }
-    @media (max-width: 1099px) {
-      .lifeline-status-container {
-        position: static;
-        flex-direction: row;
-        margin: 6px auto 2px;
+        margin: 6px auto 8px;
+        gap: 20px;
       }
     }
     .lifeline-indicator {
@@ -306,12 +303,12 @@
     }
     .game-layout {
       display: grid;
-      grid-template-columns: minmax(180px, 220px) minmax(0, 840px);
+      grid-template-columns: minmax(180px, 210px) minmax(0, 840px);
       justify-content: center;
       align-items: start;
-      gap: clamp(12px, 2vw, 22px);
-      max-width: 1160px;
-      margin: 14px auto 0;
+      gap: clamp(12px, 1.8vw, 20px);
+      max-width: 1100px;
+      margin: 10px auto 0;
       padding: 0 4px;
       width: 100%;
     }
@@ -339,13 +336,36 @@
 
     /* Prize Ladder */
     .prize-ladder {
-      padding: clamp(10px, 2vw, 14px);
+      padding: clamp(8px, 1.5vw, 12px);
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(255,215,0,0.05), rgba(0,0,0,0.5));
       border: 2px solid rgba(255,215,0,0.16);
       box-shadow: 0 8px 30px rgba(0,0,0,0.6);
       text-align: left;
       box-sizing: border-box;
+    }
+    @media (min-width: 768px) {
+      .prize-ladder {
+        padding: 8px 10px;
+      }
+      .prize-ladder h3 {
+        margin: 0 0 4px;
+        font-size: 15px;
+      }
+      .cash-won {
+        margin-bottom: 6px;
+        padding: 3px 4px;
+        font-size: 12px;
+      }
+      .cash-won strong {
+        font-size: 17px;
+      }
+      .ladder-level {
+        min-height: 25px;
+        padding: 2px 6px;
+        font-size: 12.5px;
+        margin: 1px 0;
+      }
     }
     .prize-ladder h3 {
       margin: 0 0 6px;
@@ -495,32 +515,7 @@
       text-shadow: 0 6px 18px rgba(255,80,80,0.5);
       transform: translate(-50%, -50%) scale(1.08);
     }
-    .timer-leds-top {
-      position: absolute;
-      top: 81px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 440px;
-      display: grid;
-      grid-template-columns: repeat(10, 27px) 191px repeat(10, 27px);
-      justify-content: space-between;
-      align-items: center;
-      pointer-events: none;
-      z-index: 6;
-    }
-    .timer-leds-top .led {
-      width: 9px;
-      height: 9px;
-      border: 1px solid gold;
-      border-radius: 50%;
-      background: transparent;
-      box-shadow: 0 0 6px rgba(255,215,0,0.35);
-      transition: background .3s ease, box-shadow .3s ease;
-    }
-    .timer-leds-top .timer-led-spacer { grid-column: 11; width: 191px; height: 1px; }
-    @media (max-width: 520px) {
-      .timer-leds-top { display: none !important; }
-    }
+
 
     /* Question & Text Styling */
     .question-wrapper {
@@ -529,6 +524,7 @@
       margin-top: 4px;
     }
     .question {
+      font-family: 'Noto Sans Devanagari', 'Poppins', 'Roboto', system-ui, Arial, sans-serif;
       border: 1px solid rgba(255,215,0,0.18);
       padding: clamp(14px, 3vw, 22px);
       border-radius: 14px;
@@ -573,6 +569,7 @@
       width: 100%;
     }
     .opt-btn {
+      font-family: 'Noto Sans Devanagari', 'Poppins', 'Roboto', system-ui, Arial, sans-serif;
       width: calc(50% - 6px);
       min-height: 64px;
       padding: 12px 14px;
@@ -815,13 +812,24 @@
     .win-popup-card h2 { margin: 0 0 10px; font-size: clamp(24px, 6vw, 36px); }
     .win-popup-card p { margin: 0; font-size: clamp(22px, 5vw, 32px); font-weight: 900; }
     @keyframes popupFadeIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+    @keyframes pulseAudio {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.04); box-shadow: 0 0 25px rgba(255,215,0,0.85); }
+    }
   </style>
 </head>
 <body>
-<div class="presence-indicator" role="status" aria-live="polite">
+<div id="audioUnlockBanner" style="display:none; position:fixed; top:42px; left:50%; transform:translateX(-50%); z-index:999999; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-weight:800; font-size:14px; padding:10px 24px; border-radius:30px; box-shadow:0 6px 25px rgba(0,0,0,0.7); cursor:pointer; border:2px solid #6ee7b7; text-align:center; animation:pulseAudio 1.5s infinite;" onclick="unlockAudio(true)" role="button" aria-label="Tap to enable sound">
+  🔊 Tap anywhere to enable sound & timer!
+</div>
+<div class="presence-indicator" id="playerPresenceIndicator" role="status" aria-live="polite">
   <span class="presence-item" id="hostPresenceItem" data-connected="false"><span class="presence-dot"></span>Host: <strong id="hostPresence">Not connected</strong></span>
   <span class="presence-item" id="playerPresenceItem" data-connected="false"><span class="presence-dot"></span>Player: <strong id="playerPresence">Not connected</strong></span>
+  <span class="presence-item" id="audioPresenceItem" data-connected="true" style="cursor:pointer;" onclick="unlockAudio(true)" title="Audio status - tap to unmute"><span class="presence-dot" style="background:#45d477;"></span><strong id="audioPresenceText" style="color:#75e39a;">🔊 Sound: ON</strong></span>
+  <button id="playerHeaderRefreshBtn" type="button" style="margin-left:6px; padding:3px 10px; font-size:11px; font-weight:800; border-radius:6px; cursor:pointer; background:linear-gradient(90deg, #ffd54d, #ffb800); color:#081028; border:none; display:inline-flex; align-items:center; gap:4px;" title="Tap to refresh connection and sync current game state">🔄 Refresh</button>
+  <button id="hideStatusBtn" type="button" style="margin-left:4px; padding:3px 8px; font-size:11px; font-weight:700; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.14); color:#e2e5ee; border:1px solid rgba(255,255,255,0.25); display:inline-flex; align-items:center; gap:3px;" title="Hide Status Bar">✖ Hide</button>
 </div>
+<button id="showStatusBtn" type="button" style="display:none; position:fixed; top:10px; right:12px; z-index:6000; padding:5px 12px; font-size:11px; font-weight:700; border-radius:8px; cursor:pointer; background:rgba(8,12,28,0.92); color:#ffd54d; border:1px solid rgba(255,215,0,0.35); backdrop-filter:blur(4px); box-shadow:0 4px 15px rgba(0,0,0,0.45); align-items:center; gap:5px;" title="Show Status Bar">📡 Show Status</button>
 
 <div id="reconnectBanner" class="reconnect-banner" style="display:none;" role="alert" aria-live="assertive">
   <div class="reconnect-content">
@@ -839,14 +847,15 @@
 <div id="joinBox">
   <h2>Join KBC Game</h2>
   <input id="roomId" value="room1" placeholder="Room ID" aria-label="Room ID" />
-  <input id="playerName" placeholder="Enter Your Name" value="player1" aria-label="Player Name" />
+  <input id="playerName" placeholder="Enter Your Name" value="" aria-label="Player Name" autocomplete="off" />
   <button id="connectBtn" type="button">JOIN NOW</button>
 </div>
 
 <div id="mainContent" style="display:none;">
-  <div class="tab-bar">
+  <div class="tab-bar" style="position:relative; display:flex; align-items:center; justify-content:center;">
     <div id="tabGame" class="tab active" onclick="switchTab('game')">🎮 PLAY</div>
     <div id="tabStats" class="tab" onclick="switchTab('stats')">📊 STATS</div>
+    <button id="playerTabBarRefreshBtn" type="button" style="margin-left:10px; padding:4px 10px; font-size:12px; font-weight:800; border-radius:6px; background:#1b325c; color:#ffd54d; border:1px solid rgba(255,215,0,0.35); cursor:pointer;" title="Refresh game screen and sync state">🔄 Refresh</button>
   </div>
 
   <div class="lifeline-status-container">
@@ -860,15 +869,15 @@
         <h3>PRIZE</h3>
         <div class="cash-won">Cash Won: <strong id="cashWon">₹0</strong></div>
         <div class="ladder-level active" data-level="1">Q1&nbsp;&nbsp;₹100</div>
-        <div class="ladder-level" data-level="2">Q2&nbsp;&nbsp;₹200</div>
-        <div class="ladder-level" data-level="3">Q3&nbsp;&nbsp;₹300</div>
-        <div class="ladder-level" data-level="4">Q4&nbsp;&nbsp;₹400</div>
-        <div class="ladder-level safe" data-level="5">Q5&nbsp;&nbsp;₹500</div>
-        <div class="ladder-level" data-level="6">Q6&nbsp;&nbsp;₹700</div>
-        <div class="ladder-level" data-level="7">Q7&nbsp;&nbsp;₹900</div>
-        <div class="ladder-level safe" data-level="8">Q8&nbsp;&nbsp;₹1,100</div>
-        <div class="ladder-level" data-level="9">Q9&nbsp;&nbsp;₹1,500</div>
-        <div class="ladder-level" data-level="10">Q10&nbsp;&nbsp;₹2,000</div>
+        <div class="ladder-level" data-level="2">Q2&nbsp;&nbsp;₹150</div>
+        <div class="ladder-level" data-level="3">Q3&nbsp;&nbsp;₹200</div>
+        <div class="ladder-level" data-level="4">Q4&nbsp;&nbsp;₹250</div>
+        <div class="ladder-level safe" data-level="5">Q5&nbsp;&nbsp;₹300</div>
+        <div class="ladder-level" data-level="6">Q6&nbsp;&nbsp;₹400</div>
+        <div class="ladder-level" data-level="7">Q7&nbsp;&nbsp;₹500</div>
+        <div class="ladder-level safe" data-level="8">Q8&nbsp;&nbsp;₹600</div>
+        <div class="ladder-level" data-level="9">Q9&nbsp;&nbsp;₹800</div>
+        <div class="ladder-level" data-level="10">Q10&nbsp;&nbsp;₹1,000</div>
       </aside>
 
       <div class="card">
@@ -887,7 +896,6 @@
               <path id="green-line" class="progress-arc" d="M 10,78 A 70,70 0 0 1 150,78" stroke="url(#timerGrad)" />
             </svg>
             <div id="timerLabel" class="timer-badge">30</div>
-            <div class="timer-leds-top" id="timerLedsTop" aria-hidden="true"></div>
           </div>
         </div>
 
@@ -977,10 +985,12 @@
   function savePlayerSession(updates = {}) {
     try {
       const existing = loadPlayerSession() || {};
+      const resolvedName = myName || document.getElementById('playerName')?.value?.trim() || existing.playerName || '';
+      if (!resolvedName) return;
       const session = {
         ...existing,
         roomId: document.getElementById('roomId')?.value?.trim() || existing.roomId || 'room1',
-        playerName: myName || document.getElementById('playerName')?.value?.trim() || existing.playerName || 'player1',
+        playerName: resolvedName,
         playerId: myId || existing.playerId || null,
         cash: stats.score ?? existing.cash ?? 0,
         clearedLevel: currentClearedLevel ?? existing.clearedLevel ?? 0,
@@ -1014,6 +1024,23 @@
       document.getElementById(`${role}PresenceItem`).dataset.connected = String(connected);
     });
   }
+
+  function toggleStatusIndicator(show) {
+    const indicator = document.getElementById('playerPresenceIndicator');
+    const showBtn = document.getElementById('showStatusBtn');
+    if (!indicator) return;
+    const isVisible = indicator.style.display !== 'none';
+    const shouldShow = show !== undefined ? show : !isVisible;
+    if (shouldShow) {
+      indicator.style.display = 'flex';
+      if (showBtn) showBtn.style.display = 'none';
+      try { localStorage.removeItem('kbh_hide_status'); } catch (e) {}
+    } else {
+      indicator.style.display = 'none';
+      if (showBtn) showBtn.style.display = 'inline-flex';
+      try { localStorage.setItem('kbh_hide_status', 'true'); } catch (e) {}
+    }
+  }
     
   function showNotification(message, isError = true) {
     let toast = document.getElementById('appPlayerNotificationToast');
@@ -1036,12 +1063,262 @@
   }
   window.alert = function(msg) { showNotification(msg); };
 
-  const sndCorrect = new Audio('dragon-studio-correct-472358.mp3');
-  const sndWrong = new Audio('wrong buzzer.mp3');
-  const sndTick = new Audio('Infinite timer.mp3');
-  const sndClick = new Audio('question lock sound.mp3'); 
-  const snd5050 = new Audio('50 50.mp3');
-  sndTick.loop = true;
+  // Audio Suite with absolute URLs and preloading
+  const sndTimer30 = new Audio('/audio/30%20sec%20timer.mp3');
+  const sndTimer45 = new Audio('/audio/45%20sec%20audio.mp3');
+  const sndTimer60 = new Audio('/audio/60%20sec%20timer.mp3');
+  const sndTimerReal = new Audio('/audio/kbc%20timer%20real.mp3');
+  const sndCorrect = new Audio('/audio/correct%20answer.wav');
+  const sndWrong = new Audio('/audio/wrong%20buzzer.mp3');
+  const sndClick = new Audio('/audio/question%20lock%20sound.mp3'); 
+  const snd5050 = new Audio('/audio/50%2050.mp3');
+
+  const allPlayerAudios = [sndTimer30, sndTimer45, sndTimer60, sndTimerReal, sndCorrect, sndWrong, sndClick, snd5050];
+  
+  function ensureMediaUnmuted() {
+    allPlayerAudios.forEach(a => {
+      try {
+        a.preload = 'auto';
+        a.muted = false;
+        a.defaultMuted = false;
+        a.volume = 1.0;
+      } catch (e) {}
+    });
+    const qv = document.getElementById('questionVideo');
+    if (qv) {
+      qv.muted = false;
+      qv.defaultMuted = false;
+      qv.volume = 1.0;
+    }
+    const qa = document.getElementById('questionAudio');
+    if (qa) {
+      qa.muted = false;
+      qa.defaultMuted = false;
+      qa.volume = 1.0;
+    }
+  }
+  ensureMediaUnmuted();
+
+  let sndTick = sndTimer30;
+  let isTimerSoundActive = false;
+  let audioUnlocked = false;
+  let audioCtxInstance = null;
+
+  function getAudioContext() {
+    if (!audioCtxInstance) {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass) {
+        audioCtxInstance = new AudioCtxClass();
+      }
+    }
+    return audioCtxInstance;
+  }
+
+  function updateAudioIndicator() {
+    const audioText = document.getElementById('audioPresenceText');
+    const audioItem = document.getElementById('audioPresenceItem');
+    const dot = audioItem ? audioItem.querySelector('.presence-dot') : null;
+    const isRunning = audioUnlocked || (audioCtxInstance && audioCtxInstance.state === 'running');
+    if (audioText) {
+      audioText.textContent = isRunning ? '🔊 Sound: ON' : '🔈 Tap to Unmute';
+      audioText.style.color = isRunning ? '#75e39a' : '#ffd54d';
+    }
+    if (dot) {
+      dot.style.background = isRunning ? '#45d477' : '#ffd54d';
+    }
+  }
+
+  function playWebAudioTick(isUrgent = false) {
+    if (!isTimerSoundActive || (sndTick && !sndTick.paused) || sndTick === sndTimer45) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx || ctx.state !== 'running') return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isUrgent ? 'sawtooth' : 'sine';
+      osc.frequency.setValueAtTime(isUrgent ? 900 : 480, ctx.currentTime);
+      gain.gain.setValueAtTime(0.09, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } catch (e) {}
+  }
+
+  function playCorrectSound() {
+    stopTimer(false);
+    isTimerSoundActive = false;
+    [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+      try { s.pause(); s.currentTime = 0; } catch (e) {}
+    });
+
+    try {
+      sndCorrect.muted = false;
+      sndCorrect.volume = 1.0;
+      sndCorrect.currentTime = 0;
+      const p = sndCorrect.play();
+      if (p !== undefined) {
+        p.catch(() => playWebAudioCorrectFanfare());
+      }
+    } catch (e) {
+      playWebAudioCorrectFanfare();
+    }
+  }
+
+  function playWrongSound() {
+    stopTimer(false);
+    isTimerSoundActive = false;
+    [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+      try { s.pause(); s.currentTime = 0; } catch (e) {}
+    });
+
+    try {
+      sndWrong.muted = false;
+      sndWrong.volume = 1.0;
+      sndWrong.currentTime = 0;
+      sndWrong.play().catch(() => {});
+    } catch (e) {}
+  }
+
+  function playWebAudioCorrectFanfare() {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx || ctx.state !== 'running') return;
+      const notes = [
+        { f: 523.25, start: 0.0, dur: 0.35 },
+        { f: 659.25, start: 0.14, dur: 0.38 },
+        { f: 783.99, start: 0.28, dur: 0.45 },
+        { f: 1046.50, start: 0.44, dur: 1.2 }
+      ];
+      notes.forEach(n => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.f, ctx.currentTime + n.start);
+        gain.gain.setValueAtTime(0.001, ctx.currentTime + n.start);
+        gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + n.start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.start + n.dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + n.start);
+        osc.stop(ctx.currentTime + n.start + n.dur);
+      });
+    } catch (e) {}
+  }
+
+  function unlockAudio(force = false) {
+    const banner = document.getElementById('audioUnlockBanner');
+    if (banner) banner.style.display = 'none';
+
+    ensureMediaUnmuted();
+
+    try {
+      const ctx = getAudioContext();
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        // Active silent buffer to prime Web Audio
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      }
+    } catch (e) {}
+
+    if (!audioUnlocked || force) {
+      audioUnlocked = true;
+      try {
+        // Prime HTML5 Audio with silent WAV
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+        silentAudio.volume = 1.0;
+        silentAudio.muted = false;
+        silentAudio.play().catch(() => {});
+      } catch (e) {}
+    }
+
+    // If video is currently visible/playing, ensure it's completely unmuted
+    const qv = document.getElementById('questionVideo');
+    if (qv && !qv.paused) {
+      qv.muted = false;
+      qv.volume = 1.0;
+      const unmuteBtn = document.getElementById('unmuteVideoBtn');
+      if (unmuteBtn) unmuteBtn.style.display = 'none';
+      const msg = document.getElementById('videoPlaybackMessage');
+      if (msg && msg.textContent.includes('Muted')) {
+        msg.textContent = '🎬 Playing video with sound!';
+      }
+    }
+
+    if (isTimerSoundActive && sndTick && sndTick.paused) {
+      playCurrentTimerSound();
+    }
+    updateAudioIndicator();
+  }
+
+  ['click', 'touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown', 'focus'].forEach(evt => {
+    window.addEventListener(evt, () => unlockAudio(), { passive: true });
+    document.addEventListener(evt, () => unlockAudio(), { passive: true });
+  });
+
+  function playCurrentTimerSound() {
+    if (!sndTick || !isTimerSoundActive) return;
+    try {
+      sndTick.muted = false;
+      sndTick.volume = 1.0;
+      const playPromise = sndTick.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          if (!isTimerSoundActive) {
+            try {
+              sndTick.pause();
+              sndTick.currentTime = 0;
+            } catch (e) {}
+            return;
+          }
+          const banner = document.getElementById('audioUnlockBanner');
+          if (banner) banner.style.display = 'none';
+          audioUnlocked = true;
+          updateAudioIndicator();
+        }).catch(err => {
+          if (!isTimerSoundActive) return;
+          console.warn('[Player Audio] Autoplay blocked by browser policy:', err.name, err.message);
+          const banner = document.getElementById('audioUnlockBanner');
+          if (banner && isTimerSoundActive) {
+            banner.style.display = 'block';
+            banner.innerHTML = `🔊 Tap to play audio (${Math.round(sndTick.currentTime || 0)}s)`;
+          }
+          if (sndTick !== sndTimer45) {
+            playWebAudioTick(true);
+          }
+        });
+      }
+    } catch (e) {
+      if (isTimerSoundActive) {
+        console.warn('[Player Audio] Error invoking play():', e);
+        if (sndTick !== sndTimer45) {
+          playWebAudioTick(true);
+        }
+      }
+    }
+  }
+
+  function getYouTubeEmbedUrl(url, autoplay = true) {
+    if (!url) return null;
+    const str = String(url).trim();
+    const match = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+    const autoParam = autoplay ? '1' : '0';
+    return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=${autoParam}&enablejsapi=1&rel=0` : null;
+  }
+
+  function getGoogleDriveEmbedUrl(url) {
+    if (!url) return null;
+    const str = String(url).trim();
+    const match = str.match(/drive\.google\.com\/file\/d\/([^\/\?]+)/i);
+    return match ? `https://drive.google.com/file/d/${match[1]}/preview` : null;
+  }
 
   function showVideoPopup(video) {
     const popup = document.getElementById('videoQuestionPopup');
@@ -1050,7 +1327,13 @@
     const unmuteBtn = document.getElementById('unmuteVideoBtn');
     const message = document.getElementById('videoPlaybackMessage');
 
-    if (!video || !video.url) return;
+    if (!video) return;
+    let rawUrl = video.url || '';
+    if (!rawUrl && video.videoId) {
+      rawUrl = `/videos/${encodeURIComponent(video.videoId)}`;
+    }
+    if (!rawUrl) return;
+
     currentVideoId = video.videoId || null;
 
     if (playFallbackBtn) playFallbackBtn.style.display = 'none';
@@ -1060,20 +1343,62 @@
       message.textContent = 'Host will send the question after the video.';
     }
 
-    const targetUrl = new URL(video.url, window.location.origin).href;
-    player.src = targetUrl;
-    popup.classList.add('visible');
-
     let videoEndedSent = false;
     const notifyVideoEnded = () => {
       if (videoEndedSent) return;
       videoEndedSent = true;
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'video_ended', payload: { videoId: currentVideoId } }));
+        ws.send(JSON.stringify({ type: 'video_ended', payload: { videoId: currentVideoId, playerName: myName } }));
       }
-      showVideoEndedNotification();
+      showVideoEndedNotification('🎬 Video khatm ho gaya! Host ab question bhejenge.');
     };
 
+    let iframeContainer = document.getElementById('videoIframeContainer');
+    const ytEmbed = getYouTubeEmbedUrl(rawUrl);
+    const driveEmbed = getGoogleDriveEmbedUrl(rawUrl);
+    const embedUrl = ytEmbed || driveEmbed;
+
+    if (embedUrl) {
+      player.style.display = 'none';
+      player.pause();
+      if (!iframeContainer) {
+        iframeContainer = document.createElement('div');
+        iframeContainer.id = 'videoIframeContainer';
+        iframeContainer.style.cssText = 'width:100%; max-width:920px; margin:0 auto;';
+        iframeContainer.innerHTML = `<iframe id="questionVideoIframe" src="${embedUrl}" style="width:100%; height:clamp(240px, 50vh, 480px); border:none; border-radius:12px; background:#000;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        player.parentNode.insertBefore(iframeContainer, player);
+      } else {
+        iframeContainer.style.display = 'block';
+        const ifr = iframeContainer.querySelector('iframe');
+        if (ifr) ifr.src = embedUrl;
+      }
+      popup.classList.add('visible');
+      if (playFallbackBtn) {
+        playFallbackBtn.style.display = 'inline-block';
+        playFallbackBtn.textContent = '✅ Video Finished / Continue';
+        playFallbackBtn.onclick = () => {
+          notifyVideoEnded();
+          if (message) message.textContent = 'Notified host. Waiting for question...';
+        };
+      }
+      const onYtMessage = (ev) => {
+        try {
+          let data = ev.data;
+          if (typeof data === 'string') data = JSON.parse(data);
+          if (data && (data.info === 0 || (data.event === 'onStateChange' && data.info === 0))) {
+            notifyVideoEnded();
+          }
+        } catch (e) {}
+      };
+      window.addEventListener('message', onYtMessage, { once: true });
+      return;
+    }
+
+    if (iframeContainer) iframeContainer.style.display = 'none';
+    player.style.display = 'block';
+
+    const targetUrl = new URL(rawUrl, window.location.origin).href;
+    player.src = targetUrl;
     player.onended = notifyVideoEnded;
 
     player.onerror = () => {
@@ -1081,13 +1406,13 @@
       const code = player.error ? player.error.code : 'unknown';
       let errText = '⚠️ Video could not be loaded from the server.';
       if (code === 4) {
-        errText = '⚠️ Video file not found or codec not supported by browser.';
+        errText = '⚠️ Video format or file not found on server.';
       } else if (code === 2) {
-        errText = '⚠️ Network error while streaming video.';
+        errText = '⚠️ Network streaming notice.';
       }
       if (message) {
         message.style.color = '#ff8a8a';
-        message.textContent = errText + ' Host will proceed with the question shortly.';
+        message.textContent = errText;
       }
       if (playFallbackBtn) {
         playFallbackBtn.style.display = 'inline-block';
@@ -1097,56 +1422,67 @@
           if (message) message.textContent = 'Notified host. Waiting for question...';
         };
       }
-      // Auto-notify host after 5 seconds if file is missing so game flow is never stuck
-      setTimeout(() => {
-        if (!videoEndedSent) notifyVideoEnded();
-      }, 5000);
     };
 
+    popup.classList.add('visible');
     player.load();
 
-    // 1. Try unmuted playback
-    player.muted = false;
+    const unmuteNow = () => {
+      try {
+        player.muted = false;
+        player.volume = 1.0;
+        if (unmuteBtn) unmuteBtn.style.display = 'none';
+        if (message) message.textContent = '🎬 Playing video with sound!';
+      } catch (e) {}
+    };
+
+    popup.onclick = unmuteNow;
+
+    // Start with muted autoplay (always permitted by modern browser security policies)
+    player.muted = true;
+    player.volume = 1.0;
     const playPromise = player.play();
     if (playPromise !== undefined) {
       playPromise.then(() => {
-        if (message) message.textContent = '🎬 Playing video...';
-      }).catch(err => {
-        console.warn('Unmuted autoplay prevented by browser policy:', err.name);
-        // 2. Try muted playback (allowed by all browsers without prior user gesture)
-        player.muted = true;
-        player.play().then(() => {
-          if (unmuteBtn) {
-            unmuteBtn.style.display = 'inline-block';
-            unmuteBtn.textContent = '🔊 Tap for Sound';
-            unmuteBtn.onclick = () => {
-              player.muted = false;
-              unmuteBtn.style.display = 'none';
-              if (message) message.textContent = '🎬 Playing video with sound!';
-            };
-          }
-          if (message) message.textContent = '🎬 Video is playing (Muted by browser). Tap button above for sound.';
-        }).catch(err2 => {
-          console.warn('Muted autoplay also blocked:', err2.name);
-          // 3. Fallback: prompt player with a big tap-to-play button
-          if (playFallbackBtn) {
-            playFallbackBtn.style.display = 'inline-block';
-            playFallbackBtn.textContent = '▶ Tap to Play Video';
-            playFallbackBtn.onclick = () => {
-              player.muted = false;
-              player.play().then(() => {
-                playFallbackBtn.style.display = 'none';
-                if (message) message.textContent = '🎬 Playing video!';
-              }).catch(() => {
-                player.muted = true;
-                player.play();
-                playFallbackBtn.style.display = 'none';
-                if (unmuteBtn) unmuteBtn.style.display = 'inline-block';
-              });
-            };
-          }
-          if (message) message.textContent = '⚠️ Tap button above to start the video.';
+        if (unmuteBtn) {
+          unmuteBtn.style.display = 'inline-block';
+          unmuteBtn.textContent = '🔊 Tap Anywhere to Unmute Sound!';
+          unmuteBtn.onclick = (e) => {
+            e.stopPropagation();
+            unmuteNow();
+          };
+        }
+        if (message) message.textContent = '🎬 Video is playing. Tap anywhere for sound!';
+        ['click', 'touchstart', 'pointerdown', 'keydown'].forEach(evt => {
+          window.addEventListener(evt, unmuteNow, { once: true, passive: true });
         });
+        // Auto-unmute if user has already interacted with the page
+        setTimeout(() => {
+          try {
+            player.muted = false;
+            if (!player.muted && unmuteBtn) unmuteBtn.style.display = 'none';
+          } catch (e) {}
+        }, 600);
+      }).catch(err => {
+        console.warn('Autoplay blocked by browser policy:', err);
+        if (playFallbackBtn) {
+          playFallbackBtn.style.display = 'inline-block';
+          playFallbackBtn.textContent = '▶ Tap to Play Video with Sound';
+          playFallbackBtn.onclick = () => {
+            player.muted = false;
+            player.volume = 1.0;
+            player.play().then(() => {
+              playFallbackBtn.style.display = 'none';
+              if (message) message.textContent = '🎬 Playing video with sound!';
+            }).catch(() => {
+              player.muted = true;
+              player.play();
+              playFallbackBtn.style.display = 'none';
+              if (unmuteBtn) unmuteBtn.style.display = 'inline-block';
+            });
+          };
+        }
+        if (message) message.textContent = '⚠️ Tap button above to start the video.';
       });
     }
   }
@@ -1154,12 +1490,19 @@
   function hideVideoPopup() {
     const popup = document.getElementById('videoQuestionPopup');
     const player = document.getElementById('questionVideo');
+    const iframeContainer = document.getElementById('videoIframeContainer');
+    if (iframeContainer) {
+      iframeContainer.style.display = 'none';
+      const ifr = iframeContainer.querySelector('iframe');
+      if (ifr) ifr.src = '';
+    }
     player.onended = null;
     player.onerror = null;
     player.pause();
     player.removeAttribute('src');
     player.load();
     popup.classList.remove('visible');
+    popup.onclick = null;
     currentVideoId = null;
     const playFallbackBtn = document.getElementById('playVideoFallback');
     const unmuteBtn = document.getElementById('unmuteVideoBtn');
@@ -1175,22 +1518,28 @@
     if (!audio || !audio.url) return;
     currentAudioId = audio.audioId || null;
     player.src = new URL(audio.url, window.location.origin).href;
+    player.muted = false;
+    player.defaultMuted = false;
+    player.volume = 1.0;
     popup.classList.add('visible');
     playButton.hidden = true;
     message.textContent = 'Host will send the question after the audio.';
     player.load();
     player.onended = () => {
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'audio_ended', payload: { audioId: currentAudioId } }));
+        ws.send(JSON.stringify({ type: 'audio_ended', payload: { audioId: currentAudioId, playerName: myName } }));
       }
-      showAudioEndedNotification();
+      showAudioEndedNotification('🎧 Audio khatm ho gaya! Host ab question bhejenge.');
     };
     const showPlayFallback = text => {
       message.textContent = text;
       playButton.hidden = false;
+      playButton.textContent = '🔊 Tap to Play Audio with Sound';
     };
     player.onerror = () => showPlayFallback('Audio could not be loaded. Check the connection or audio file format.');
     playButton.onclick = () => {
+      player.muted = false;
+      player.volume = 1.0;
       player.play().then(() => {
         playButton.hidden = true;
         message.textContent = 'Host will send the question after the audio.';
@@ -1199,9 +1548,7 @@
     player.play().then(() => {
       playButton.hidden = true;
     }).catch(error => {
-      showPlayFallback(error.name === 'NotAllowedError'
-        ? 'Your browser blocked autoplay. Tap below to start the audio.'
-        : 'Audio could not start automatically. Tap below to try again.');
+      showPlayFallback('Tap below to start listening to audio with sound.');
     });
   }
 
@@ -1219,30 +1566,46 @@
     currentAudioId = null;
   }
 
-  function showVideoEndedNotification() {
+  function showVideoEndedNotification(customMsg) {
+    const text = customMsg || '🎬 Video khatm ho gaya! Host ab sawal bhejenge.';
     const notification = document.getElementById('videoEndedNotification');
-    if (!notification) return;
-    clearTimeout(videoEndedNotificationTimer);
-    clearTimeout(videoEndedNotificationHideTimer);
-    notification.style.display = 'none';
-    videoEndedNotificationTimer = setTimeout(() => {
+    if (notification) {
+      notification.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:20px;">🎬</span>
+        <div>
+          <strong style="color:#ffd54d; font-size:13px; text-transform:uppercase;">Video Ended</strong>
+          <div style="font-size:12px; color:#fff; margin-top:2px;">${text}</div>
+        </div>
+      </div>`;
+      clearTimeout(videoEndedNotificationTimer);
+      clearTimeout(videoEndedNotificationHideTimer);
       notification.style.display = 'block';
       videoEndedNotificationHideTimer = setTimeout(() => {
         notification.style.display = 'none';
-      }, 4000);
-    }, 2000);
+      }, 5000);
+    }
+    showNotification(text, false);
   }
 
-  function showAudioEndedNotification() {
+  function showAudioEndedNotification(customMsg) {
+    const text = customMsg || '🎧 Audio khatm ho gaya! Host ab sawal bhejenge.';
     const notification = document.getElementById('audioEndedNotification');
-    if (!notification) return;
-    clearTimeout(audioEndedNotificationTimer);
-    clearTimeout(audioEndedNotificationHideTimer);
-    notification.style.display = 'none';
-    audioEndedNotificationTimer = setTimeout(() => {
+    if (notification) {
+      notification.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:20px;">🎧</span>
+        <div>
+          <strong style="color:#79e0bd; font-size:13px; text-transform:uppercase;">Audio Ended</strong>
+          <div style="font-size:12px; color:#fff; margin-top:2px;">${text}</div>
+        </div>
+      </div>`;
+      clearTimeout(audioEndedNotificationTimer);
+      clearTimeout(audioEndedNotificationHideTimer);
       notification.style.display = 'block';
-      audioEndedNotificationHideTimer = setTimeout(() => { notification.style.display = 'none'; }, 4000);
-    }, 2000);
+      audioEndedNotificationHideTimer = setTimeout(() => {
+        notification.style.display = 'none';
+      }, 5000);
+    }
+    showNotification(text, false);
   }
 
   function showWinPopup(amount) {
@@ -1277,6 +1640,15 @@
       myId = msg.payload.playerId;
       savePlayerSession({ playerId: myId, playerName: myName, roomId: msg.payload.roomId });
       if (msg.payload.reconnected) {
+        if (playerWasOffline && !sessionStorage.getItem(RECONNECT_REFRESH_FLAG)) {
+          playerWasOffline = false;
+          captureAudioOfflineState();
+          try {
+            sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
+          } catch (e) {}
+          window.location.reload();
+          return;
+        }
         showNotification('✅ Reconnected! Game state restored.', false);
       }
     }
@@ -1407,12 +1779,12 @@
     
       if (msg.payload.result === 'correct') {
         stats.correct++;
-        sndCorrect.play().catch(()=>{});
+        playCorrectSound();
         feedbackEl.innerText = "SAHI JAWAB! 🎉";
         feedbackEl.style.color = "#39ff14";
       } else {
         stats.wrong++;
-        sndWrong.play().catch(()=>{});
+        playWrongSound();
         feedbackEl.innerText = "GALAT JAWAB! ❌";
         feedbackEl.style.color = "#e74c3c";
       }
@@ -1425,46 +1797,84 @@
 
     if (msg.type === "refresh") {
       hideVideoPopup();
-      console.log("Host refreshed players. Returning to Join Screen");
-      stopTimer();
-      isIntentionallyClosed = true;
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-      isIntentionallyClosed = false;
+      hideAudioPopup();
+      clearSavedOfflineAudio();
+      const winPopup = document.getElementById('winPopup');
+      if (winPopup) winPopup.classList.remove('visible');
+      stopTimer(true);
+
+      console.log("Host reset players. Returning player to Join Screen.");
+
+      // 1. Wipe all player identity and session state completely
+      clearPlayerSession();
       myId = null;
+      myName = '';
       selectedOption = null;
       locked = false;
       currentActiveQuestion = null;
       currentClearedLevel = 0;
-      clearPlayerSession();
-      
+      stats = { asked: 0, correct: 0, wrong: 0, score: 0 };
+      updateCashWon(0);
+      updateLadder(1);
+      updateStatsUI();
+
+      // 2. Cancel any pending auto-reconnect timers
+      clearTimeout(autoReconnectTimer);
+      autoReconnectTimer = null;
+      reconnectAttempts = 0;
+
+      const banner = document.getElementById('reconnectBanner');
+      if (banner) banner.style.display = 'none';
+
+      // 3. Reset question box & option buttons for next game
       document.getElementById('status50').classList.remove('lifeline-off');
       document.getElementById('statusCall').classList.remove('lifeline-off');
       document.querySelectorAll('.opt-btn').forEach(b => {
         b.classList.remove('fifty-blur', 'selected', 'correct', 'wrong');
-        b.disabled = false;
+        b.disabled = true;
         b.style.opacity = "1";
+        b.innerText = b.id.replace('btn', '') + ' :';
       });
-      
+
+      const questionBox = document.getElementById('qBox');
+      if (questionBox) {
+        questionBox.innerText = "Waiting for Question 1...";
+        questionBox.classList.remove('question-active');
+      }
+      const feedback = document.getElementById('feedback');
+      if (feedback) {
+        feedback.innerText = "Please join to play.";
+        feedback.style.color = "#ffd54d";
+      }
+      document.getElementById('mediaArea').innerHTML = "";
+
+      // 4. Immediately return to the Main Screen Join Page
       document.getElementById('mainContent').style.display = 'none';
       document.getElementById('floatingTimer').style.display = 'none';
-      const banner = document.getElementById('reconnectBanner');
-      if (banner) banner.style.display = 'none';
       document.getElementById('joinBox').style.display = 'block';
+
+      // 5. Clear player name input so new player can type their name
+      const nameInput = document.getElementById('playerName');
+      if (nameInput) {
+        nameInput.value = '';
+        nameInput.placeholder = 'Enter Your Name';
+        nameInput.focus();
+      }
       const connectBtn = document.getElementById('connectBtn');
-      if (connectBtn) connectBtn.textContent = 'JOIN NOW';
-      
-      const questionBox = document.getElementById('qBox');
-      questionBox.innerText = "Waiting for Question...";
-      questionBox.classList.remove('question-active');
-      document.getElementById('feedback').innerText = "";
-      document.getElementById('mediaArea').innerHTML = "";
-      stats = { asked: 0, correct: 0, wrong: 0, score: 0 };
-      updateCashWon(0);
-      updateStatsUI();
-      updateLadder(1);
+      if (connectBtn) {
+        connectBtn.textContent = 'JOIN NOW';
+        connectBtn.disabled = false;
+      }
+
+      // 6. Intentionally close old socket so it does NOT auto-rejoin
+      isIntentionallyClosed = true;
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+        ws = null;
+      }
+      updatePresenceIndicator({ player: false });
+
+      showNotification('🔄 Game reset by host! Enter your name to join.', false);
     }
 
     if (msg.type === 'scoreboard') {
@@ -1478,6 +1888,129 @@
     }
   }
 
+  const OFFLINE_AUDIO_STORAGE_KEY = 'kbh_player_offline_audio';
+  const RECONNECT_REFRESH_FLAG = 'kbh_auto_refreshed_on_reconnect';
+  let playerWasOffline = false;
+
+  function getQuestionTimeLimit(level) {
+    const lvl = Number(level) || 1;
+    if (lvl <= 4) return 30;
+    if (lvl <= 7) return 45;
+    return 60;
+  }
+
+  function captureAudioOfflineState() {
+    let trackId = null;
+    let audioTime = 0;
+    let isPlaying = false;
+
+    if (sndTick && isTimerSoundActive) {
+      if (sndTick === sndTimer45) trackId = 'timer45';
+      else if (sndTick === sndTimer30) trackId = 'timer30';
+      else trackId = 'timer60';
+      audioTime = Math.max(0, sndTick.currentTime || 0);
+      isPlaying = !sndTick.paused;
+    }
+
+    const questionAudio = document.getElementById('questionAudio');
+    let audioPreviewUrl = null;
+    let audioPreviewTime = 0;
+    if (questionAudio && questionAudio.src) {
+      audioPreviewUrl = questionAudio.src;
+      audioPreviewTime = questionAudio.currentTime || 0;
+    }
+
+    const questionVideo = document.getElementById('questionVideo');
+    let videoPreviewUrl = null;
+    let videoPreviewTime = 0;
+    if (questionVideo && questionVideo.src) {
+      videoPreviewUrl = questionVideo.src;
+      videoPreviewTime = questionVideo.currentTime || 0;
+    }
+
+    const totalSec = Math.round(timerDurationMs / 1000) || (currentActiveQuestion ? getQuestionTimeLimit(currentActiveQuestion.level) : 30);
+    const remSec = timerPausedRemainingMs > 0 ? Math.ceil(timerPausedRemainingMs / 1000) : Math.max(0, totalSec - Math.floor(audioTime));
+
+    const state = {
+      trackId,
+      audioTime,
+      isPlaying,
+      timerDurationMs,
+      timerPausedRemainingMs,
+      remainingSec: Math.max(0, remSec),
+      totalSec,
+      questionText: currentActiveQuestion ? (currentActiveQuestion.text || '') : '',
+      questionLevel: currentActiveQuestion ? (currentActiveQuestion.level || 1) : 1,
+      audioPreviewUrl,
+      audioPreviewTime,
+      videoPreviewUrl,
+      videoPreviewTime,
+      savedAt: Date.now()
+    };
+
+    try {
+      localStorage.setItem(OFFLINE_AUDIO_STORAGE_KEY, JSON.stringify(state));
+      sessionStorage.setItem(OFFLINE_AUDIO_STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+
+    return state;
+  }
+
+  function getSavedOfflineAudio() {
+    try {
+      const raw = localStorage.getItem(OFFLINE_AUDIO_STORAGE_KEY) || sessionStorage.getItem(OFFLINE_AUDIO_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && (Date.now() - (parsed.savedAt || 0) < 15 * 60 * 1000)) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function clearSavedOfflineAudio() {
+    try {
+      localStorage.removeItem(OFFLINE_AUDIO_STORAGE_KEY);
+      sessionStorage.removeItem(OFFLINE_AUDIO_STORAGE_KEY);
+    } catch (e) {}
+  }
+
+  window.addEventListener('offline', () => {
+    console.log('[Player Network] Offline event detected. Freezing audio and timer.');
+    playerWasOffline = true;
+    captureAudioOfflineState();
+
+    if (timerRafId) {
+      cancelAnimationFrame(timerRafId);
+      timerRafId = null;
+    }
+    timerPaused = true;
+    isTimerSoundActive = false;
+    [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+      try { s.pause(); } catch (e) {}
+    });
+
+    updatePresenceIndicator({ player: false });
+    const banner = document.getElementById('reconnectBanner');
+    if (banner) banner.style.display = 'flex';
+    const reconnectStatus = document.getElementById('reconnectStatusText');
+    if (reconnectStatus) {
+      reconnectStatus.textContent = 'Aap offline hain. Connection aate hi page refresh ho kar audio resume hoga...';
+    }
+  });
+
+  window.addEventListener('online', () => {
+    console.log('[Player Network] Online event detected. Triggering auto-reconnect refresh.');
+    if (playerWasOffline || !ws || ws.readyState !== WebSocket.OPEN) {
+      playerWasOffline = false;
+      captureAudioOfflineState();
+      try {
+        sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
+      } catch (e) {}
+      window.location.reload();
+    }
+  });
+
   function connectToGame(isManual = false) {
     clearTimeout(autoReconnectTimer);
     autoReconnectTimer = null;
@@ -1485,13 +2018,17 @@
     const roomIdInput = document.getElementById('roomId');
     const nameInput = document.getElementById('playerName');
     const targetRoomId = (roomIdInput && roomIdInput.value.trim()) || 'room1';
-    const targetName = (nameInput && nameInput.value.trim()) || myName || 'player1';
+    const targetName = (nameInput && nameInput.value.trim()) || (isManual ? '' : myName);
 
-    if (!targetName && isManual) {
-      alert("Enter Name!");
+    if (!targetName) {
+      if (isManual) {
+        showNotification("Please enter your name to join!", true);
+        if (nameInput) nameInput.focus();
+      }
       return;
     }
     myName = targetName;
+    isIntentionallyClosed = false;
 
     const saved = loadPlayerSession();
     if (saved && saved.roomId === targetRoomId && saved.playerName === targetName && saved.playerId) {
@@ -1505,6 +2042,9 @@
       }));
       const banner = document.getElementById('reconnectBanner');
       if (banner) banner.style.display = 'none';
+      document.getElementById('joinBox').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+      document.getElementById('floatingTimer').style.display = 'flex';
       return;
     }
 
@@ -1513,9 +2053,7 @@
       reconnectStatus.textContent = isManual ? 'Connecting to server...' : `Reconnecting... (attempt ${reconnectAttempts + 1})`;
     }
 
-    [sndCorrect, sndWrong, sndTick, sndClick, snd5050].forEach(s => { 
-      s.play().then(()=>s.pause()).catch(()=>{}) 
-    });
+    unlockAudio();
 
     const hostAddr = location.host || "localhost:3000";
     ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + hostAddr);
@@ -1546,11 +2084,25 @@
       if (isIntentionallyClosed) return;
 
       if (myId || myName) {
+        playerWasOffline = true;
+        captureAudioOfflineState();
+
+        // Pause audio immediately so it freezes at current timestamp
+        if (timerRafId) {
+          cancelAnimationFrame(timerRafId);
+          timerRafId = null;
+        }
+        timerPaused = true;
+        isTimerSoundActive = false;
+        [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+          try { s.pause(); } catch (e) {}
+        });
+
         const banner = document.getElementById('reconnectBanner');
         if (banner) banner.style.display = 'flex';
         const reconnectStatus = document.getElementById('reconnectStatusText');
         if (reconnectStatus) {
-          reconnectStatus.textContent = 'Disconnected due to poor connection. Tap Reconnect / Join to resume.';
+          reconnectStatus.textContent = 'Disconnected. Auto-reconnecting... (reconnect hote hi page refresh ho jayega)';
         }
 
         clearTimeout(autoReconnectTimer);
@@ -1568,20 +2120,84 @@
   }
 
   document.getElementById('connectBtn').onclick = () => {
+    unlockAudio(true);
     connectToGame(true);
   };
+  const playerNameInput = document.getElementById('playerName');
+  if (playerNameInput) {
+    playerNameInput.addEventListener('keydown', (e) => {
+      unlockAudio(true);
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        connectToGame(true);
+      }
+    });
+    playerNameInput.addEventListener('focus', () => unlockAudio(true));
+    playerNameInput.addEventListener('input', () => unlockAudio(true));
+  }
   const reconnectBtn = document.getElementById('reconnectBtn');
   if (reconnectBtn) {
     reconnectBtn.onclick = () => {
-      connectToGame(true);
+      unlockAudio(true);
+      captureAudioOfflineState();
+      try {
+        sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
+      } catch (e) {}
+      window.location.reload();
     };
   }
 
+  function handlePlayerManualRefresh(btn) {
+    if (btn) {
+      btn.style.opacity = '0.6';
+    }
+    unlockAudio(true);
+    captureAudioOfflineState();
+    try {
+      sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
+    } catch (e) {}
+    window.location.reload();
+  }
+
+  const headerRefreshBtn = document.getElementById('playerHeaderRefreshBtn');
+  if (headerRefreshBtn) {
+    headerRefreshBtn.onclick = () => handlePlayerManualRefresh(headerRefreshBtn);
+  }
+
+  const tabBarRefreshBtn = document.getElementById('playerTabBarRefreshBtn');
+  if (tabBarRefreshBtn) {
+    tabBarRefreshBtn.onclick = () => handlePlayerManualRefresh(tabBarRefreshBtn);
+  }
+
+  const hideStatusBtn = document.getElementById('hideStatusBtn');
+  if (hideStatusBtn) {
+    hideStatusBtn.onclick = () => toggleStatusIndicator(false);
+  }
+
+  const showStatusBtn = document.getElementById('showStatusBtn');
+  if (showStatusBtn) {
+    showStatusBtn.onclick = () => toggleStatusIndicator(true);
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
+    ensureMediaUnmuted();
+    updateAudioIndicator();
+    const wasAutoRefreshed = sessionStorage.getItem(RECONNECT_REFRESH_FLAG) === '1';
+    if (wasAutoRefreshed) {
+      sessionStorage.removeItem(RECONNECT_REFRESH_FLAG);
+      showNotification('🔄 Reconnected! Page refreshed, audio restoring...', false);
+    }
+    try {
+      if (localStorage.getItem('kbh_hide_status') === 'true') {
+        toggleStatusIndicator(false);
+      }
+    } catch (e) {}
     const saved = loadPlayerSession();
-    if (saved) {
+    if (saved && saved.playerId && saved.playerName && saved.playerName.trim()) {
       if (saved.roomId && document.getElementById('roomId')) document.getElementById('roomId').value = saved.roomId;
-      if (saved.playerName && document.getElementById('playerName')) document.getElementById('playerName').value = saved.playerName;
+      if (document.getElementById('playerName')) document.getElementById('playerName').value = saved.playerName;
+      myName = saved.playerName;
+      myId = saved.playerId;
       if (Number.isFinite(saved.cash)) {
         stats.score = saved.cash;
         updateCashWon(saved.cash);
@@ -1591,14 +2207,129 @@
         updateLadder(currentClearedLevel + 1);
       }
       const connectBtn = document.getElementById('connectBtn');
-      if (connectBtn) connectBtn.textContent = 'JOIN / RECONNECT NOW';
+      if (connectBtn) connectBtn.textContent = 'RECONNECT NOW';
+      // Auto-reconnect ONLY if user had an active session before page reload
+      setTimeout(() => {
+        connectToGame(false);
+      }, 200);
+    } else {
+      // Default: Clean join page! Never auto-rejoin if there is no active session
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('floatingTimer').style.display = 'none';
+      document.getElementById('joinBox').style.display = 'block';
+      const nameInput = document.getElementById('playerName');
+      if (nameInput) {
+        nameInput.value = '';
+        nameInput.focus();
+      }
     }
   });
     
+  function fixDevanagariMatras(text) {
+    if (!text) return '';
+    let s = String(text).normalize('NFC');
+    const baseChar = '[\\u0915-\\u0939\\u0958-\\u095F]';
+    const halant = '\\u094D';
+    const nukta = '\\u093C';
+    const postMatras = '[\\u0901-\\u0903\\u093A-\\u093E\\u0940-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+    const vowelSigns = '[\\u093E-\\u094C]';
+    const cluster = '(?:' + baseChar + nukta + '?(?:' + halant + baseChar + nukta + '?)*)';
+    const devStart = '(^|[^\\u0900-\\u097F])';
+    const devEnd = '(?=[^\\u0900-\\u097F]|$)';
+
+    // 1. Remove zero-width spaces and BOM
+    s = s.replace(/[\u200B\uFEFF]/g, '');
+
+    // 2. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
+    s = s.replace(/प\s*्\s*र\s*ि\s*य\s*ा/gu, 'प्रिया');
+    s = s.replace(/प\s*्\s*र\s*ि\s*य/gu, 'प्रिय');
+    s = s.replace(/प\s*्\s*र\s+य\s*ा/gu, 'प्रिया');
+    s = s.replace(/प\s*्\s*र\s+य(?=[^\u0900-\u097F]|$)/gu, 'प्रिय');
+
+    // 3. Remove artificial spaces around halant (e.g. "प ् र" -> "प्र", "प् र" -> "प्र", "प ्" -> "प्")
+    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + halant + ')', 'g'), '$1$2');
+    s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+
+    // 4. Pre-base matra reordering: visual "ि" (\u093F) appearing BEFORE a consonant cluster
+    // Handles: "िप्रया" -> "प्रिया", "बहुत िप्रय" -> "बहुत प्रिय", "बहुत ि  प्रय" -> "बहुत प्रिय"
+    const nonConsonantBefore = '(^|[\\s\\p{P}\\u0901-\\u0914\\u093E\\u0940-\\u094C\\u0966-\\u096F।॥])\\s*';
+    s = s.replace(new RegExp(nonConsonantBefore + '\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+
+    // 5. Remove spaces between consonant/cluster and following POST-BASE matras / marks
+    s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + postMatras + ')', 'g'), '$1$2');
+
+    // 6. Remove spaces between vowel signs and anusvara/visarga/candrabindu
+    s = s.replace(new RegExp('([\\u093E-\\u094C])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
+
+    // 7. Repair displaced matra sequence: cluster1 + cluster2 + \u093F + vowelSign (e.g. "प्रयिा" -> "प्रिया", "कतिाब" -> "किताब")
+    s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
+
+    // 8. Repair accidental space between cluster + \u093F and next syllable in single words (e.g. "प्रि या" -> "प्रिया", "प्रि य" -> "प्रिय")
+    s = s.replace(new RegExp('(' + cluster + '\\u093F)\\s+(' + cluster + '[\\u093E-\\u094C]?)', 'g'), '$1$2');
+
+    // 9. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc. where \u093F was dropped or lost
+    s = s.replace(new RegExp(devStart + 'प्र\\s+य' + devEnd, 'gu'), '$1प्रिय');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+या' + devEnd, 'gu'), '$1प्रिया');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+ये' + devEnd, 'gu'), '$1प्रिये');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यों' + devEnd, 'gu'), '$1प्रियों');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यतम' + devEnd, 'gu'), '$1प्रियतम');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यता' + devEnd, 'gu'), '$1प्रियता');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यजन' + devEnd, 'gu'), '$1प्रियजन');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यंका' + devEnd, 'gu'), '$1प्रियंका');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यंक' + devEnd, 'gu'), '$1प्रियंक');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+यदर्शी' + devEnd, 'gu'), '$1प्रियदर्शी');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+येक' + devEnd, 'gu'), '$1प्रत्येक');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+त' + devEnd, 'gu'), '$1प्रति');
+    s = s.replace(new RegExp(devStart + 'प्र\\s+ति' + devEnd, 'gu'), '$1प्रति');
+
+    // Handle words where "प्रय" is standalone or preceded by prefixes/modifiers
+    s = s.replace(new RegExp('(^|\\s)प्रय' + devEnd, 'gu'), '$1प्रिय');
+    s = s.replace(new RegExp(devStart + 'अप्रय' + devEnd, 'gu'), '$1अप्रिय');
+    s = s.replace(new RegExp(devStart + 'सर्वप्रय' + devEnd, 'gu'), '$1सर्वप्रिय');
+    s = s.replace(new RegExp(devStart + 'प्राणप्रय' + devEnd, 'gu'), '$1प्राणप्रिय');
+
+    // Handle known Hindi words where \u093F is dropped from PDF extraction
+    s = s.replace(new RegExp(devStart + 'क्रोधत' + devEnd, 'gu'), '$1क्रोधित');
+    s = s.replace(new RegExp(devStart + 'हर्षत' + devEnd, 'gu'), '$1हर्षित');
+    s = s.replace(new RegExp(devStart + 'समर्पत' + devEnd, 'gu'), '$1समर्पित');
+    s = s.replace(new RegExp(devStart + 'आकर्शत' + devEnd, 'gu'), '$1आकर्षित');
+    s = s.replace(new RegExp(devStart + 'स्थत' + devEnd, 'gu'), '$1स्थित');
+    s = s.replace(new RegExp(devStart + 'स्थति' + devEnd, 'gu'), '$1स्थिति');
+    s = s.replace(new RegExp(devStart + 'प्रतियोगता' + devEnd, 'gu'), '$1प्रतियोगिता');
+    s = s.replace(new RegExp(devStart + 'ऐतहासिक' + devEnd, 'gu'), '$1ऐतिहासिक');
+    s = s.replace(new RegExp(devStart + 'प्राथमक' + devEnd, 'gu'), '$1प्राथमिक');
+    s = s.replace(new RegExp(devStart + 'सामाजक' + devEnd, 'gu'), '$1सामाजिक');
+    s = s.replace(new RegExp(devStart + 'धार्मक' + devEnd, 'gu'), '$1धार्मिक');
+    s = s.replace(new RegExp(devStart + 'आर्थक' + devEnd, 'gu'), '$1आर्थिक');
+
+    // 10. Reconnect detached "प्र" prefix when followed by common words
+    s = s.replace(new RegExp(devStart + 'प्र\\s+(कार|श्न|श|थम|योग|भाव|सिद्ध|सिद्द|सिद्धि|देश|बंध|माण|वेश|हार|सार|कृति|कति|गति|काश|तष्ठित|तिष्ठित|मुख|तभा|तिभा|क्रिया|क्रया|णाम|यास)' + devEnd, 'gu'), (m, p0, p1) => {
+      let word = p1;
+      if (p1 === 'श') word = 'श्न';
+      else if (p1 === 'सिद्द') word = 'सिद्ध';
+      else if (p1 === 'कति') word = 'कृति';
+      else if (p1 === 'तष्ठित') word = 'तिष्ठित';
+      else if (p1 === 'तभा') word = 'तिभा';
+      else if (p1 === 'क्रया') word = 'क्रिया';
+      return (p0 || '') + 'प्र' + word;
+    });
+
+    // 11. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
+    s = s.replace(/(\u093F)+/g, '$1');
+    s = s.replace(/([\u093E-\u094C])\1+/g, '$1');
+
+    // 12. Normalize multiple horizontal spaces
+    s = s.replace(/[ \t]+/g, ' ');
+    return s.trim();
+  }
+
   function showQ(q) {
     q = q || {};
     q.metadata = q.metadata || {};
-    q.metadata.options = Array.isArray(q.metadata.options) ? q.metadata.options : [];
+    q.metadata.options = Array.isArray(q.metadata.options) ? q.metadata.options.map(fixDevanagariMatras) : [];
+    if (q.text) {
+      q.text = fixDevanagariMatras(q.text);
+    }
     updateLadder(q.level || 1);
     const questionBox = document.getElementById('qBox');
     questionBox.innerText = q.text || "Question:";
@@ -1607,10 +2338,18 @@
     document.getElementById('feedback').style.color = '#ffd54d';
     const mediaArea = document.getElementById('mediaArea');
     mediaArea.innerHTML = "";
-    if (q.format === 'image' && q.dataUrl) {
+    const imgSource = q.dataUrl || q.image || q.imageUrl;
+    if (imgSource) {
       const image = document.createElement('img');
       image.alt = 'Question image';
-      image.src = q.dataUrl;
+      image.src = imgSource;
+      image.style.maxWidth = '100%';
+      image.style.maxHeight = '280px';
+      image.style.objectFit = 'contain';
+      image.style.borderRadius = '10px';
+      image.style.margin = '10px auto';
+      image.style.display = 'block';
+      image.style.boxShadow = '0 4px 18px rgba(0,0,0,0.6)';
       image.onerror = () => {
         document.getElementById('feedback').innerText = "Unable to load question image.";
         document.getElementById('feedback').style.color = "#ff0000";
@@ -1619,6 +2358,97 @@
     } else if (q.format === 'image') {
       document.getElementById('feedback').innerText = "Image data was not received from the host.";
       document.getElementById('feedback').style.color = "#ff0000";
+    }
+
+    // Video Reference Support in Question Card (Paused by default, NEVER autoplays with question)
+    const vidSource = q.videoUrl || (q.videoId ? `/videos/${encodeURIComponent(q.videoId)}` : null);
+    if (vidSource) {
+      const vidContainer = document.createElement('div');
+      vidContainer.style.cssText = 'max-width:100%; margin:8px auto; text-align:center;';
+      
+      const replayBtn = document.createElement('button');
+      replayBtn.type = 'button';
+      replayBtn.innerText = '🎬 Replay Video (Optional)';
+      replayBtn.style.cssText = 'padding:6px 14px; font-size:12px; font-weight:700; background:rgba(2,132,199,0.25); border:1px solid #38bdf8; color:#e0f2fe; border-radius:6px; cursor:pointer; margin-bottom:6px;';
+      
+      const playerWrapper = document.createElement('div');
+      playerWrapper.style.display = 'none';
+
+      replayBtn.onclick = () => {
+        const isHidden = playerWrapper.style.display === 'none';
+        playerWrapper.style.display = isHidden ? 'block' : 'none';
+        replayBtn.innerText = isHidden ? '✖ Hide Video' : '🎬 Replay Video (Optional)';
+        if (isHidden && !playerWrapper.hasChildNodes()) {
+          const ytEmbed = getYouTubeEmbedUrl(vidSource, false);
+          const driveEmbed = getGoogleDriveEmbedUrl(vidSource);
+          const embedUrl = ytEmbed || driveEmbed;
+          if (embedUrl) {
+            playerWrapper.innerHTML = `<iframe src="${embedUrl}" style="width:100%; max-width:640px; height:260px; border-radius:8px; border:2px solid #52b7ff; background:#000;" allow="encrypted-media" allowfullscreen></iframe>`;
+          } else {
+            const vidElem = document.createElement('video');
+            vidElem.src = new URL(vidSource, window.location.origin).href;
+            vidElem.controls = true;
+            vidElem.playsInline = true;
+            vidElem.autoplay = false;
+            vidElem.style.cssText = 'width:100%; max-width:640px; max-height:260px; border-radius:8px; border:2px solid #52b7ff; background:#000; box-shadow:0 4px 18px rgba(0,0,0,0.6); display:block; margin:0 auto;';
+            vidElem.onended = () => {
+              showNotification('🎬 Question video finished!', false);
+            };
+            playerWrapper.appendChild(vidElem);
+          }
+        } else if (!isHidden) {
+          const v = playerWrapper.querySelector('video');
+          if (v) v.pause();
+          const ifr = playerWrapper.querySelector('iframe');
+          if (ifr) ifr.src = ifr.src;
+        }
+      };
+
+      vidContainer.appendChild(replayBtn);
+      vidContainer.appendChild(playerWrapper);
+      mediaArea.appendChild(vidContainer);
+    } else if (q.format === 'video') {
+      document.getElementById('feedback').innerText = "Video data was not received from the host.";
+      document.getElementById('feedback').style.color = "#ff8a8a";
+    }
+
+    // Audio Reference Support in Question Card (Paused by default, NEVER autoplays with question)
+    const audSource = q.audioUrl || (q.audioId ? `/audio/${encodeURIComponent(q.audioId)}` : null);
+    if (audSource) {
+      const audContainer = document.createElement('div');
+      audContainer.style.cssText = 'max-width:100%; margin:8px auto; text-align:center;';
+      const replayAudBtn = document.createElement('button');
+      replayAudBtn.type = 'button';
+      replayAudBtn.innerText = '🎵 Replay Audio (Optional)';
+      replayAudBtn.style.cssText = 'padding:6px 14px; font-size:12px; font-weight:700; background:rgba(16,185,129,0.25); border:1px solid #34d399; color:#d1fae5; border-radius:6px; cursor:pointer;';
+      
+      const audWrapper = document.createElement('div');
+      audWrapper.style.display = 'none';
+      audWrapper.style.marginTop = '6px';
+      
+      replayAudBtn.onclick = () => {
+        const isHidden = audWrapper.style.display === 'none';
+        audWrapper.style.display = isHidden ? 'block' : 'none';
+        replayAudBtn.innerText = isHidden ? '✖ Hide Audio' : '🎵 Replay Audio (Optional)';
+        if (isHidden && !audWrapper.hasChildNodes()) {
+          const audElem = document.createElement('audio');
+          audElem.src = new URL(audSource, window.location.origin).href;
+          audElem.controls = true;
+          audElem.autoplay = false;
+          audElem.style.cssText = 'width:100%; max-width:480px; margin:0 auto; display:block;';
+          audElem.onended = () => {
+            showNotification('🎵 Question audio finished!', false);
+          };
+          audWrapper.appendChild(audElem);
+        } else if (!isHidden) {
+          const a = audWrapper.querySelector('audio');
+          if (a) a.pause();
+        }
+      };
+      
+      audContainer.appendChild(replayAudBtn);
+      audContainer.appendChild(audWrapper);
+      mediaArea.appendChild(audContainer);
     }
     
     selectedOption = q.hostSelectedAnswer || null;
@@ -1632,6 +2462,11 @@
     btns.forEach((b, i) => {
       b.disabled = true;
       b.style.opacity = "1";
+      if (q.format === 'rapid' && i >= 2) {
+        b.style.display = 'none';
+      } else {
+        b.style.display = 'flex';
+      }
       const optText = (q.metadata.options && q.metadata.options[i]) ? q.metadata.options[i] : String.fromCharCode(65+i);
       b.innerText = `${String.fromCharCode(65 + i)} : ${optText}`;
     });
@@ -1643,18 +2478,42 @@
 
     if (q.answerLocked) {
       stopTimer(false);
+      clearSavedOfflineAudio();
       document.getElementById('feedback').innerText = `Host locked option ${q.hostSelectedAnswer || ''}.`;
       document.getElementById('feedback').style.color = 'orange';
     } else if (q.resultMarked) {
       stopTimer(false);
+      clearSavedOfflineAudio();
     } else {
-      const timeToRun = q.remainingTimeSec !== undefined ? q.remainingTimeSec : (q.timeLimitSec || 30);
-      if (timeToRun > 0) {
-        startTimer(timeToRun);
+      const lvl = Number(q.level) || 1;
+      let totalTime = q.timeLimitSec;
+      if (!totalTime || totalTime === 'auto') {
+        if (lvl <= 4) totalTime = 30;
+        else if (lvl <= 7) totalTime = 45;
+        else totalTime = 60;
+      }
+      totalTime = Number(totalTime) || (lvl <= 4 ? 30 : (lvl <= 7 ? 45 : 60));
+
+      const savedOffline = getSavedOfflineAudio();
+      const isMatchingQuestion = savedOffline && savedOffline.questionText && savedOffline.questionText === q.text;
+
+      if (isMatchingQuestion && savedOffline.audioTime > 0) {
+        const resumeAudioTime = Number(savedOffline.audioTime);
+        const remainingTime = savedOffline.remainingSec > 0 ? Number(savedOffline.remainingSec) : Math.max(0, totalTime - Math.floor(resumeAudioTime));
+        console.log(`[Offline Resume] Resuming audio from ${resumeAudioTime.toFixed(2)}s on Q${lvl}`);
+        clearSavedOfflineAudio();
+        startTimer(totalTime, remainingTime, resumeAudioTime);
+        showNotification(`🔊 Audio resumed from ${Math.round(resumeAudioTime)}s`, false);
       } else {
-        stopTimer(false);
-        const timerDisplay = document.getElementById('timerLabel');
-        if (timerDisplay) timerDisplay.innerText = '0';
+        let remTime = q.remainingTimeSec !== undefined ? Number(q.remainingTimeSec) : totalTime;
+        if (remTime > 0) {
+          const audioOffset = remTime < totalTime ? (totalTime - remTime) : 0;
+          startTimer(totalTime, remTime, audioOffset);
+        } else {
+          stopTimer(false);
+          const timerDisplay = document.getElementById('timerLabel');
+          if (timerDisplay) timerDisplay.innerText = '0';
+        }
       }
     }
   }
@@ -1700,41 +2559,6 @@
     }
   }
 
-  function createLeds() {
-    const ledsContainer = document.getElementById('timerLedsTop');
-    if (!ledsContainer) return 0;
-    ledsContainer.innerHTML = '';
-    for (let i = 0; i < 20; i++) {
-      if (i === 10) {
-        const spacer = document.createElement('span');
-        spacer.className = 'timer-led-spacer';
-        ledsContainer.appendChild(spacer);
-      }
-      const s = document.createElement('span');
-      s.className = 'led';
-      ledsContainer.appendChild(s);
-    }
-    return 20;
-  }
-
-  function updateLeds(progressRatio) {
-    const ledsContainer = document.getElementById('timerLedsTop');
-    if (!ledsContainer) return;
-    const dots = Array.from(ledsContainer.querySelectorAll('.led'));
-    const activePerSide = Math.ceil(Math.max(0, Math.min(1, progressRatio)) * 10);
-
-    dots.forEach((dot, index) => {
-      const distanceFromTimer = index < 10 ? 9 - index : index - 10;
-      const hue = Math.round((distanceFromTimer / 9) * 120);
-      const isActive = distanceFromTimer < activePerSide;
-      const fillOpacity = isActive ? 0.95 : 0;
-      dot.style.background = `hsla(${hue}, 100%, 50%, ${fillOpacity})`;
-      dot.style.boxShadow = isActive
-        ? `0 0 8px hsla(${hue}, 100%, 55%, .55)`
-        : '0 0 5px rgba(255,215,0,0.3)';
-    });
-  }
-
   function stepTimerFrame(now) {
     if (timerPaused) return;
 
@@ -1753,7 +2577,6 @@
     }
 
     applyTimerGradient(progressRatio);
-    updateLeds(progressRatio);
 
     const currentSec = Math.ceil(remainingMs / 1000);
     const timerDisplay = document.getElementById('timerLabel');
@@ -1766,6 +2589,25 @@
       if (timerBox) timerBox.classList.toggle('urgent', currentSec <= 5);
       if (timerDisplay) timerDisplay.classList.toggle('urgent', currentSec <= 5);
 
+      if (isTimerSoundActive && sndTick) {
+        try {
+          const quickState = {
+            audioTime: sndTick.currentTime || 0,
+            remainingSec: currentSec,
+            totalSec: totalSec,
+            questionText: currentActiveQuestion ? (currentActiveQuestion.text || '') : '',
+            questionLevel: currentActiveQuestion ? (currentActiveQuestion.level || 1) : 1,
+            savedAt: Date.now()
+          };
+          localStorage.setItem(OFFLINE_AUDIO_STORAGE_KEY, JSON.stringify(quickState));
+        } catch (e) {}
+      }
+
+      // Audible fail-safe tick if HTML5 audio is silent (skip for 45s timer so only 45s audio plays)
+      if (sndTick !== sndTimer45) {
+        playWebAudioTick(currentSec <= 5);
+      }
+
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'timer_update',
@@ -1776,6 +2618,7 @@
 
     if (remainingMs <= 0) {
       stopTimer(false);
+      clearSavedOfflineAudio();
       if (timerDisplay) timerDisplay.innerText = '0';
       if (line) line.style.strokeDashoffset = dashArray;
       document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
@@ -1793,49 +2636,76 @@
     timerRafId = requestAnimationFrame(stepTimerFrame);
   }
 
-  function startTimer(seconds) {
+  function startTimer(totalSeconds, remainingSeconds = null, resumeAudioTime = null) {
     stopTimer();
     timerPaused = false;
     const timerDisplay = document.getElementById('timerLabel');
     const line = document.getElementById('green-line');
     const timerBox = document.getElementById('floatingTimer');
 
-    const isInfinite = seconds === 'infinite';
-    const totalTime = isInfinite ? 30 : Math.max(6, Number(seconds) || 30);
+    const totalTime = Math.max(6, Number(totalSeconds) || 30);
+    const remTime = remainingSeconds !== null ? Math.max(0, Math.min(totalTime, Number(remainingSeconds))) : totalTime;
     timerDurationMs = totalTime * 1000;
-    timerPausedRemainingMs = timerDurationMs;
+    timerPausedRemainingMs = remTime * 1000;
+
+    // Reset all timer audios before playing chosen track
+    [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+      try {
+        s.pause();
+        s.currentTime = 0;
+      } catch (e) {}
+    });
+
+    // Select the appropriate track (30s, 45s, 60s)
+    if (totalTime <= 30) {
+      sndTick = sndTimer30;
+      sndTick.loop = false;
+    } else if (totalTime <= 45) {
+      sndTick = sndTimer45;
+      sndTick.loop = false;
+    } else {
+      sndTick = sndTimer60;
+      sndTick.loop = false;
+    }
 
     let dashArray = 220;
     if (line && typeof line.getTotalLength === 'function') {
       try { dashArray = line.getTotalLength() || 220; } catch (e) { dashArray = 220; }
     }
+    const progressRatio = totalTime > 0 ? Math.max(0, remTime / totalTime) : 1;
     if (line) {
       line.style.strokeDasharray = dashArray;
-      line.style.strokeDashoffset = 0;
+      line.style.strokeDashoffset = (1 - progressRatio) * dashArray;
     }
 
-    applyTimerGradient(1.0);
-    createLeds();
-    updateLeds(isInfinite ? 0 : 1);
+    applyTimerGradient(progressRatio);
 
-    if (timerDisplay) timerDisplay.innerText = isInfinite ? '∞' : totalTime;
-    if (timerBox) timerBox.classList.remove('urgent');
-    if (timerDisplay) timerDisplay.classList.remove('urgent');
+    if (timerDisplay) timerDisplay.innerText = Math.ceil(remTime);
+    if (timerBox) timerBox.classList.toggle('urgent', remTime <= 5);
+    if (timerDisplay) timerDisplay.classList.toggle('urgent', remTime <= 5);
 
-    sndTick.currentTime = 0;
-    sndTick.play().catch(()=>{});
+    isTimerSoundActive = true;
+    const targetAudioTime = resumeAudioTime !== null ? Number(resumeAudioTime) : (totalTime - remTime);
+    if (targetAudioTime > 0) {
+      try {
+        sndTick.currentTime = targetAudioTime;
+      } catch (e) {
+        console.warn('Could not set currentTime on sndTick:', e);
+      }
+    } else {
+      sndTick.currentTime = 0;
+    }
+    playCurrentTimerSound();
 
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'timer_started',
-        payload: { totalTime: isInfinite ? 'infinite' : totalTime, status: 'started' }
+        payload: { totalTime: totalTime, remainingTime: remTime, status: 'started' }
       }));
     }
 
-    if (isInfinite) return;
-
-    lastReportedSec = totalTime;
-    timerStartTime = performance.now();
+    lastReportedSec = Math.ceil(remTime);
+    timerStartTime = performance.now() - (timerDurationMs - timerPausedRemainingMs);
     timerRafId = requestAnimationFrame(stepTimerFrame);
   }
 
@@ -1846,17 +2716,20 @@
     }
     clearInterval(timerInterval);
     timerPaused = false;
-    sndTick.pause();
-    sndTick.currentTime = 0;
+    isTimerSoundActive = false;
+
+    const banner = document.getElementById('audioUnlockBanner');
+    if (banner) banner.style.display = 'none';
+
+    [sndTimer30, sndTimer45, sndTimer60, sndTimerReal].forEach(s => {
+      try {
+        s.pause();
+        s.currentTime = 0;
+      } catch (e) {}
+    });
+
     if (!resetVisual) return;
 
-    const ledsContainer = document.getElementById('timerLedsTop');
-    if (ledsContainer) {
-      ledsContainer.querySelectorAll('.led').forEach(dot => {
-        dot.style.background = 'transparent';
-        dot.style.boxShadow = '0 0 5px rgba(255,215,0,0.3)';
-      });
-    }
     const line = document.getElementById('green-line');
     if (line) {
       try {
@@ -1876,19 +2749,28 @@
   }
 
   function pauseTimer() {
-    if (!timerRafId || timerPaused) return;
+    if (timerPaused) return;
     timerPaused = true;
-    cancelAnimationFrame(timerRafId);
-    timerRafId = null;
-    sndTick.pause();
+    if (timerRafId) {
+      cancelAnimationFrame(timerRafId);
+      timerRafId = null;
+    }
+    const elapsed = performance.now() - timerStartTime;
+    timerPausedRemainingMs = Math.max(0, timerDurationMs - elapsed);
+    isTimerSoundActive = false;
+    if (sndTick) {
+      try { sndTick.pause(); } catch (e) {}
+    }
     document.getElementById('feedback').innerText = '⏸️ Timer paused by host.';
     document.getElementById('feedback').style.color = '#ffd54d';
   }
 
   function resumeTimer() {
-    if (!timerPaused || timerPausedRemainingMs <= 0) return;
+    if (!timerPaused) return;
+    if (timerPausedRemainingMs <= 0) return;
     timerPaused = false;
-    sndTick.play().catch(()=>{});
+    isTimerSoundActive = true;
+    playCurrentTimerSound();
     document.getElementById('feedback').innerText = '▶️ Timer resumed.';
     document.getElementById('feedback').style.color = '#39ff14';
 
@@ -1898,10 +2780,12 @@
 
   function applyHostResult(result) {
     stopTimer();
+    clearSavedOfflineAudio();
     const feedbackEl = document.getElementById('feedback');
     document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
-    if (selectedOption) {
-      const btn = document.getElementById('btn' + selectedOption);
+    const finalAnswer = selectedOption || result.answer;
+    if (finalAnswer) {
+      const btn = document.getElementById('btn' + finalAnswer);
       if (btn) {
         btn.classList.remove('selected');
         btn.classList.add(result.result === 'correct' ? 'correct' : 'wrong');
@@ -1909,13 +2793,13 @@
     }
     if (result.result === 'correct') {
       stats.correct++;
-      sndCorrect.play().catch(()=>{});
+      playCorrectSound();
       feedbackEl.innerText = 'SAHI JAWAB! 🎉';
       feedbackEl.style.color = '#39ff14';
       showWinPopup(result.cash ?? stats.score);
     } else {
       stats.wrong++;
-      sndWrong.play().catch(()=>{});
+      playWrongSound();
       feedbackEl.innerText = 'GALAT JAWAB! ❌';
       feedbackEl.style.color = '#e74c3c';
     }
@@ -1923,6 +2807,7 @@
     updateCashWon(stats.score);
     if (result.resetLevel) updateLadder(result.resetLevel);
     updateStatsUI();
+    savePlayerSession({ cash: stats.score, clearedLevel: currentClearedLevel });
   }
     
   function submitAns(choice) {
