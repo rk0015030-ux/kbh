@@ -6,23 +6,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const multer = require('multer');
-const { initializeApp } = require('firebase/app');
-const {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  getDocs,
-  collection,
-  deleteDoc,
-  getDocFromServer,
-  setLogLevel
-} = require('firebase/firestore');
-
-// Silence internal Firestore gRPC idle stream warnings in Node
-try {
-  setLogLevel('silent');
-} catch (e) {}
+const { createClient } = require('@supabase/supabase-js');
 
 // Global safety error handlers to ensure robust deployment in Cloud Run
 process.on('unhandledRejection', (reason, promise) => {
@@ -62,43 +46,73 @@ function fixDevanagariMatras(text) {
   const baseChar = '[\\u0915-\\u0939\\u0958-\\u095F]';
   const halant = '\\u094D';
   const nukta = '\\u093C';
-  const postMatras = '[\\u0901-\\u0903\\u093A-\\u093E\\u0940-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+  const postMatras = '[\\u0901-\\u0903\\u093A-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
+  const postMatrasNoPre = '[\\u0901-\\u0903\\u093A-\\u093E\\u0940-\\u094F\\u0951-\\u0957\\u0962-\\u0963]';
   const vowelSigns = '[\\u093E-\\u094C]';
   const cluster = '(?:' + baseChar + nukta + '?(?:' + halant + baseChar + nukta + '?)*)';
   const devStart = '(^|[^\\u0900-\\u097F])';
   const devEnd = '(?=[^\\u0900-\\u097F]|$)';
+  const nonConsBefore = '(^|[^\\u0915-\\u0939\\u0958-\\u095F\\u093C\\u094D])\\s*';
 
-  // 1. Remove zero-width spaces and BOM
-  s = s.replace(/[\u200B\uFEFF]/g, '');
+  // 1. Remove non-printing noise: zero-width spaces, BOM, soft hyphens
+  s = s.replace(/[\u200B\uFEFF\u00AD]/g, '');
 
-  // 2. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
+  // 2. Remove stray zero-width joiners/non-joiners around spaces
+  s = s.replace(/\s*[\u200C\u200D]\s*/g, '');
+
+  // 3. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
   s = s.replace(/प\s*्\s*र\s*ि\s*य\s*ा/gu, 'प्रिया');
   s = s.replace(/प\s*्\s*र\s*ि\s*य/gu, 'प्रिय');
   s = s.replace(/प\s*्\s*र\s+य\s*ा/gu, 'प्रिया');
   s = s.replace(/प\s*्\s*र\s+य(?=[^\u0900-\u097F]|$)/gu, 'प्रिय');
 
-  // 3. Remove artificial spaces around halant (e.g. "प ् र" -> "प्र", "प् र" -> "प्र", "प ्" -> "प्")
-  s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + halant + ')', 'g'), '$1$2');
-  s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + ')', 'g'), '$1$2');
+  // 4. Remove artificial spaces around halant (virama) in consonant clusters
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + halant + ')', 'g'), '$1$2');
+  s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + nukta + '?)', 'g'), '$1$2');
 
-  // 4. Pre-base matra reordering: visual "ि" (\u093F) appearing BEFORE a consonant cluster
-  // Handles: "िप्रया" -> "प्रिया", "बहुत िप्रय" -> "बहुत प्रिय", "बहुत ि  प्रय" -> "बहुत प्रिय"
-  const nonConsonantBefore = '(^|[\\s\\p{P}\\u0901-\\u0914\\u093E\\u0940-\\u094C\\u0966-\\u096F।॥])\\s*';
-  s = s.replace(new RegExp(nonConsonantBefore + '\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+  // 5. Vocalic R (ृ \u0943 / ॄ \u0944) repairs:
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s*' + halant + '?\\s*\\u090B', 'gu'), '$1\u0943');
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+([\\u0943\\u0944])', 'g'), '$1$2');
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)' + halant + '\\s*([\\u0943\\u0944])', 'g'), '$1$2');
+  s = s.replace(new RegExp(nonConsBefore + '([\\u0943\\u0944])\\s*(' + cluster + ')', 'gu'), '$1$3$2');
 
-  // 5. Remove spaces between consonant/cluster and following POST-BASE matras / marks
-  s = s.replace(new RegExp('(' + baseChar + ')\\s+(' + postMatras + ')', 'g'), '$1$2');
+  // 6. Connect base consonant to following matra when space was artificially inserted:
+  // e.g. "क ि स" -> "कि स" -> "किस", "न ि म् न" -> "नि म्न" -> "निम्न"
+  s = s.replace(new RegExp('(^|\\s)(' + baseChar + nukta + '?)\\s+\\u093F(?=\\s*' + baseChar + ')', 'gu'), (m, p1, p2) => p1 + p2 + '\u093F');
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + postMatrasNoPre + ')', 'g'), '$1$2');
 
-  // 6. Remove spaces between vowel signs and anusvara/visarga/candrabindu
-  s = s.replace(new RegExp('([\\u093E-\\u094C])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
+  // Spaced token repairs for common quiz words
+  s = s.replace(/नि\s+म्न/gu, 'निम्न');
+  s = s.replace(/कि\s+स/gu, 'किस');
 
-  // 7. Repair displaced matra sequence: cluster1 + cluster2 + \u093F + vowelSign (e.g. "प्रयिा" -> "प्रिया", "कतिाब" -> "किताब")
+  // 7. Pre-base short I (ि \u093F) reordering:
+  // Visual order in PDF: \u093F appears BEFORE the consonant or consonant cluster
+  // e.g. "िक" -> "कि", "िकस" -> "किस", "िनम्न" -> "निम्न", "िकताब" -> "किताब"
+  s = s.replace(new RegExp('(^|[^\\u0915-\\u0939\\u0958-\\u095F\\u093C\\u094D])(\\s*)\\u093F\\s*(' + cluster + ')', 'gu'), (match, p1, p2, p3) => {
+    return p1 + p2 + p3 + '\u093F';
+  });
+
+  // Reconnect any remaining spaced matras
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + postMatras + ')', 'g'), '$1$2');
+
+  // Spaced token repairs for common quiz words
+  s = s.replace(/नि\s+म्न/gu, 'निम्न');
+  s = s.replace(/कि\s+स/gu, 'किस');
+
+  // 8. Remove spaces between vowel signs and anusvara / visarga / candrabindu
+  s = s.replace(new RegExp('([\\u093E-\\u094C\\u0943\\u0944])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
+
+  // 9. Reph (र् \u0930\u094D) repairs:
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?(?:[\\u093E-\\u094C\\u0943\\u0944])?)\\s+(\\u0930' + halant + baseChar + nukta + '?)', 'g'), '$1$2');
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)(' + postMatras + '?)\\u0930' + halant + devEnd, 'gu'), (m, p1, p2) => {
+    return '\u0930\u094D' + p1 + (p2 || '');
+  });
+
+  // 10. Displaced short I (ि \u093F) in PDF glyph streams:
   s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
+  s = s.replace(new RegExp(devStart + 'करिण' + devEnd, 'gu'), '$1किरण');
 
-  // 8. Repair accidental space between cluster + \u093F and next syllable in single words (e.g. "प्रि या" -> "प्रिया", "प्रि य" -> "प्रिय")
-  s = s.replace(new RegExp('(' + cluster + '\\u093F)\\s+(' + cluster + '[\\u093E-\\u094C]?)', 'g'), '$1$2');
-
-  // 9. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc. where \u093F was dropped or lost
+  // 11. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc.
   s = s.replace(new RegExp(devStart + 'प्र\\s+य' + devEnd, 'gu'), '$1प्रिय');
   s = s.replace(new RegExp(devStart + 'प्र\\s+या' + devEnd, 'gu'), '$1प्रिया');
   s = s.replace(new RegExp(devStart + 'प्र\\s+ये' + devEnd, 'gu'), '$1प्रिये');
@@ -112,14 +126,110 @@ function fixDevanagariMatras(text) {
   s = s.replace(new RegExp(devStart + 'प्र\\s+येक' + devEnd, 'gu'), '$1प्रत्येक');
   s = s.replace(new RegExp(devStart + 'प्र\\s+त' + devEnd, 'gu'), '$1प्रति');
   s = s.replace(new RegExp(devStart + 'प्र\\s+ति' + devEnd, 'gu'), '$1प्रति');
-
-  // Handle words where "प्रय" is standalone or preceded by prefixes/modifiers
+  s = s.replace(new RegExp(devStart + '(प्र\\u093F)\\s+(य[\\u093E-\\u094C]?)' + devEnd, 'gu'), '$1$2$3');
   s = s.replace(new RegExp('(^|\\s)प्रय' + devEnd, 'gu'), '$1प्रिय');
   s = s.replace(new RegExp(devStart + 'अप्रय' + devEnd, 'gu'), '$1अप्रिय');
   s = s.replace(new RegExp(devStart + 'सर्वप्रय' + devEnd, 'gu'), '$1सर्वप्रिय');
   s = s.replace(new RegExp(devStart + 'प्राणप्रय' + devEnd, 'gu'), '$1प्राणप्रिय');
 
-  // Handle known Hindi words where \u093F is dropped from PDF extraction
+  // 12. Dropped matra repairs for common Hindi question and option words:
+  // निम्न & निम्नलिखित
+  s = s.replace(new RegExp(devStart + 'नम्नलिखित' + devEnd, 'gu'), '$1निम्नलिखित');
+  s = s.replace(new RegExp(devStart + 'नम्नलखत' + devEnd, 'gu'), '$1निम्नलिखित');
+  s = s.replace(new RegExp(devStart + 'नम्र्नलिखित' + devEnd, 'gu'), '$1निम्नलिखित');
+  s = s.replace(new RegExp(devStart + 'नम्न' + devEnd, 'gu'), '$1निम्न');
+
+  // किस & derivative question words
+  s = s.replace(new RegExp(devStart + 'कसने' + devEnd, 'gu'), '$1किसने');
+  s = s.replace(new RegExp(devStart + 'कसी' + devEnd, 'gu'), '$1किसी');
+  s = s.replace(new RegExp(devStart + 'कसका' + devEnd, 'gu'), '$1किसका');
+  s = s.replace(new RegExp(devStart + 'कसकी' + devEnd, 'gu'), '$1किसकी');
+  s = s.replace(new RegExp(devStart + 'कसके' + devEnd, 'gu'), '$1किसके');
+  s = s.replace(new RegExp(devStart + 'कतने' + devEnd, 'gu'), '$1कितने');
+  s = s.replace(new RegExp(devStart + 'कतना' + devEnd, 'gu'), '$1कितना');
+  s = s.replace(new RegExp(devStart + 'कतनी' + devEnd, 'gu'), '$1कितनी');
+  s = s.replace(new RegExp(devStart + 'कसे' + devEnd, 'gu'), '$1किसे');
+  s = s.replace(new RegExp(devStart + 'कस' + devEnd, 'gu'), '$1किस');
+
+  // दिए & किया
+  s = s.replace(new RegExp(devStart + 'दए\\s+गए' + devEnd, 'gu'), '$1दिए गए');
+  s = s.replace(new RegExp(devStart + 'दए' + devEnd, 'gu'), '$1दिए');
+  s = s.replace(new RegExp(devStart + 'दया\\s+गया' + devEnd, 'gu'), '$1दिया गया');
+  s = s.replace(new RegExp(devStart + 'कया\\s+गया' + devEnd, 'gu'), '$1किया गया');
+  s = s.replace(new RegExp(devStart + 'कया' + devEnd, 'gu'), '$1किया');
+  s = s.replace(new RegExp(devStart + 'कए' + devEnd, 'gu'), '$1किए');
+
+  // जिस & जिन
+  s = s.replace(new RegExp(devStart + 'जसमें' + devEnd, 'gu'), '$1जिसमें');
+  s = s.replace(new RegExp(devStart + 'जसका' + devEnd, 'gu'), '$1जिसका');
+  s = s.replace(new RegExp(devStart + 'जसके' + devEnd, 'gu'), '$1जिसके');
+  s = s.replace(new RegExp(devStart + 'जसकी' + devEnd, 'gu'), '$1जिसकी');
+  s = s.replace(new RegExp(devStart + 'जसने' + devEnd, 'gu'), '$1जिसने');
+  s = s.replace(new RegExp(devStart + 'जन्हें' + devEnd, 'gu'), '$1जिन्हें');
+  s = s.replace(new RegExp(devStart + 'जनमें' + devEnd, 'gu'), '$1जिनमें');
+  s = s.replace(new RegExp(devStart + 'जनका' + devEnd, 'gu'), '$1जिनका');
+  s = s.replace(new RegExp(devStart + 'जनके' + devEnd, 'gu'), '$1जिनके');
+  s = s.replace(new RegExp(devStart + 'जनकी' + devEnd, 'gu'), '$1जिनकी');
+  s = s.replace(new RegExp(devStart + 'जस' + devEnd, 'gu'), '$1जिस');
+
+  // मिलता & नियम & दिशा & दिन
+  s = s.replace(new RegExp(devStart + 'मलता' + devEnd, 'gu'), '$1मिलता');
+  s = s.replace(new RegExp(devStart + 'मलते' + devEnd, 'gu'), '$1मिलते');
+  s = s.replace(new RegExp(devStart + 'मलती' + devEnd, 'gu'), '$1मिलती');
+  s = s.replace(new RegExp(devStart + 'मला' + devEnd, 'gu'), '$1मिला');
+  s = s.replace(new RegExp(devStart + 'मले' + devEnd, 'gu'), '$1मिले');
+  s = s.replace(new RegExp(devStart + 'नयम' + devEnd, 'gu'), '$1नियम');
+  s = s.replace(new RegExp(devStart + 'दशा' + devEnd, 'gu'), '$1दिशा');
+  s = s.replace(new RegExp(devStart + 'दन' + devEnd, 'gu'), '$1दिन');
+  s = s.replace(new RegExp(devStart + 'दल' + devEnd, 'gu'), '$1दिल');
+  s = s.replace(new RegExp(devStart + 'शक्षा' + devEnd, 'gu'), '$1शिक्षा');
+  s = s.replace(new RegExp(devStart + 'हन्दी' + devEnd, 'gu'), '$1हिन्दी');
+  s = s.replace(new RegExp(devStart + 'हंदी' + devEnd, 'gu'), '$1हिंदी');
+  s = s.replace(new RegExp(devStart + 'संधु' + devEnd, 'gu'), '$1सिंधु');
+  s = s.replace(new RegExp(devStart + 'सक्के' + devEnd, 'gu'), '$1सिक्के');
+  s = s.replace(new RegExp(devStart + 'सक्का' + devEnd, 'gu'), '$1सिक्का');
+  s = s.replace(new RegExp(devStart + 'हस्सा' + devEnd, 'gu'), '$1हिस्सा');
+  s = s.replace(new RegExp(devStart + 'कला' + devEnd, 'gu'), '$1किला');
+  s = s.replace(new RegExp(devStart + 'कले' + devEnd, 'gu'), '$1किले');
+  s = s.replace(new RegExp(devStart + 'गनती' + devEnd, 'gu'), '$1गिनती');
+  s = s.replace(new RegExp(devStart + 'लखिए' + devEnd, 'gu'), '$1लिखिए');
+  s = s.replace(new RegExp(devStart + 'लखें' + devEnd, 'gu'), '$1लिखें');
+  s = s.replace(new RegExp(devStart + 'दखाई' + devEnd, 'gu'), '$1दिखाई');
+  s = s.replace(new RegExp(devStart + 'दखता' + devEnd, 'gu'), '$1दिखता');
+  s = s.replace(new RegExp(devStart + 'दखते' + devEnd, 'gu'), '$1दिखते');
+  s = s.replace(new RegExp(devStart + 'दखती' + devEnd, 'gu'), '$1दिखती');
+
+  // वि prefix words
+  s = s.replace(new RegExp(devStart + 'वकल्पों' + devEnd, 'gu'), '$1विकल्पों');
+  s = s.replace(new RegExp(devStart + 'वकल्प' + devEnd, 'gu'), '$1विकल्प');
+  s = s.replace(new RegExp(devStart + 'वकास' + devEnd, 'gu'), '$1विकास');
+  s = s.replace(new RegExp(devStart + 'वज्ञान' + devEnd, 'gu'), '$1विज्ञान');
+  s = s.replace(new RegExp(devStart + 'वशेष' + devEnd, 'gu'), '$1विशेष');
+  s = s.replace(new RegExp(devStart + 'वश्व' + devEnd, 'gu'), '$1विश्व');
+  s = s.replace(new RegExp(devStart + 'वद्यार्थी' + devEnd, 'gu'), '$1विद्यार्थी');
+  s = s.replace(new RegExp(devStart + 'वद्या' + devEnd, 'gu'), '$1विद्या');
+  s = s.replace(new RegExp(devStart + 'वभाग' + devEnd, 'gu'), '$1विभाग');
+  s = s.replace(new RegExp(devStart + 'वजेता' + devEnd, 'gu'), '$1विजेता');
+  s = s.replace(new RegExp(devStart + 'वस्तार' + devEnd, 'gu'), '$1विस्तार');
+  s = s.replace(new RegExp(devStart + 'वद्रोह' + devEnd, 'gu'), '$1विद्रोह');
+  s = s.replace(new RegExp(devStart + 'वदेशी' + devEnd, 'gu'), '$1विदेशी');
+  s = s.replace(new RegExp(devStart + 'वदेश' + devEnd, 'gu'), '$1विदेश');
+  s = s.replace(new RegExp(devStart + 'ववाह' + devEnd, 'gu'), '$1विवाह');
+  s = s.replace(new RegExp(devStart + 'वचार' + devEnd, 'gu'), '$1विचार');
+  s = s.replace(new RegExp(devStart + 'वषय' + devEnd, 'gu'), '$1विषय');
+  s = s.replace(new RegExp(devStart + 'ववरण' + devEnd, 'gu'), '$1विवरण');
+  s = s.replace(new RegExp(devStart + 'संवधान' + devEnd, 'gu'), '$1संविधान');
+  s = s.replace(new RegExp(devStart + 'अधकार' + devEnd, 'gu'), '$1अधिकार');
+  s = s.replace(new RegExp(devStart + 'अधनयम' + devEnd, 'gu'), '$1अधिनियम');
+  s = s.replace(new RegExp(devStart + 'अधवेशन' + devEnd, 'gu'), '$1अधिवेशन');
+  s = s.replace(new RegExp(devStart + 'अधकतम' + devEnd, 'gu'), '$1अधिकतम');
+  s = s.replace(new RegExp(devStart + 'अधक' + devEnd, 'gu'), '$1अधिक');
+  s = s.replace(new RegExp(devStart + 'परणाम' + devEnd, 'gu'), '$1परिणाम');
+  s = s.replace(new RegExp(devStart + 'परवर्तन' + devEnd, 'gu'), '$1परिवर्तन');
+  s = s.replace(new RegExp(devStart + 'प्रसद्ध' + devEnd, 'gu'), '$1प्रसिद्ध');
+  s = s.replace(new RegExp(devStart + 'इतहास' + devEnd, 'gu'), '$1इतिहास');
+
+  // Other known words
   s = s.replace(new RegExp(devStart + 'क्रोधत' + devEnd, 'gu'), '$1क्रोधित');
   s = s.replace(new RegExp(devStart + 'हर्षत' + devEnd, 'gu'), '$1हर्षित');
   s = s.replace(new RegExp(devStart + 'समर्पत' + devEnd, 'gu'), '$1समर्पित');
@@ -133,7 +243,7 @@ function fixDevanagariMatras(text) {
   s = s.replace(new RegExp(devStart + 'धार्मक' + devEnd, 'gu'), '$1धार्मिक');
   s = s.replace(new RegExp(devStart + 'आर्थक' + devEnd, 'gu'), '$1आर्थिक');
 
-  // 10. Reconnect detached "प्र" prefix when followed by common words
+  // Reconnect detached "प्र" prefix when followed by common words
   s = s.replace(new RegExp(devStart + 'प्र\\s+(कार|श्न|श|थम|योग|भाव|सिद्ध|सिद्द|सिद्धि|देश|बंध|माण|वेश|हार|सार|कृति|कति|गति|काश|तष्ठित|तिष्ठित|मुख|तभा|तिभा|क्रिया|क्रया|णाम|यास)' + devEnd, 'gu'), (m, p0, p1) => {
     let word = p1;
     if (p1 === 'श') word = 'श्न';
@@ -145,11 +255,11 @@ function fixDevanagariMatras(text) {
     return (p0 || '') + 'प्र' + word;
   });
 
-  // 11. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
+  // 13. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
   s = s.replace(/(\u093F)+/g, '$1');
   s = s.replace(/([\u093E-\u094C])\1+/g, '$1');
 
-  // 12. Normalize multiple horizontal spaces
+  // 14. Normalize multiple horizontal spaces
   s = s.replace(/[ \t]+/g, ' ');
   return s.trim();
 }
@@ -167,85 +277,90 @@ const audioDatabase = new Map();
 const scoreDataDir = path.join(__dirname, 'data');
 const scoreDatabasePath = path.join(scoreDataDir, 'scores.json');
 const scoreDatabase = [];
-let firebaseApp = null;
-let firestoreDb = null;
-try {
-  let firebaseConfig = null;
-  if (process.env.FIREBASE_CONFIG) {
-    try {
-      firebaseConfig = typeof process.env.FIREBASE_CONFIG === 'string' 
-        ? JSON.parse(process.env.FIREBASE_CONFIG) 
-        : process.env.FIREBASE_CONFIG;
-    } catch (e) {
-      console.warn('[Firebase] Could not parse process.env.FIREBASE_CONFIG JSON');
-    }
-  } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_API_KEY) {
-    firebaseConfig = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      apiKey: process.env.FIREBASE_API_KEY,
-      authDomain: process.env.FIREBASE_AUTH_DOMAIN || `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`,
-      firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || '(default)',
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
-      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-      appId: process.env.FIREBASE_APP_ID || ''
-    };
-  } else if (fs.existsSync(path.join(__dirname, 'firebase-applet-config.json'))) {
-    firebaseConfig = require('./firebase-applet-config.json');
-  }
+let supabaseClient = null;
+let supabaseChecked = false;
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'media';
+const ensuredBuckets = new Set();
 
-  if (firebaseConfig && firebaseConfig.projectId) {
-    firebaseApp = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId || '(default)');
-    console.log('[Firebase] Initialized Firestore successfully for', firebaseConfig.projectId);
-  }
-} catch (err) {
-  console.warn('[Firebase] Config load error:', err.message);
+function getBucketForType(type) {
+  if (type === 'video') return 'videos';
+  if (type === 'audio') return 'audio';
+  return 'images';
 }
 
-function getOrCreateFirestore() {
-  if (firestoreDb) return firestoreDb;
+function inferMimeType(filePath, type) {
+  const ext = path.extname(filePath || '').toLowerCase();
+  if (ext === '.mp3') return 'audio/mpeg';
+  if (ext === '.wav') return 'audio/wav';
+  if (ext === '.ogg') return type === 'video' ? 'video/ogg' : 'audio/ogg';
+  if (ext === '.oga') return 'audio/ogg';
+  if (ext === '.m4a') return 'audio/mp4';
+  if (ext === '.aac') return 'audio/aac';
+  if (ext === '.flac') return 'audio/flac';
+  if (ext === '.opus') return 'audio/opus';
+  if (ext === '.mp4') return 'video/mp4';
+  if (ext === '.webm') return type === 'video' ? 'video/webm' : 'audio/webm';
+  if (ext === '.mov' || ext === '.qt') return 'video/quicktime';
+  if (ext === '.mkv') return 'video/x-matroska';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.gif') return 'image/gif';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.svg') return 'image/svg+xml';
+  return 'application/octet-stream';
+}
+
+function getOrCreateSupabase() {
+  if (supabaseClient) return supabaseClient;
   try {
-    const configPath = path.join(__dirname, 'firebase-applet-config.json');
-    if (fs.existsSync(configPath)) {
+    let supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                      process.env.SUPABASE_SERVICE_KEY || 
+                      process.env.SUPABASE_KEY || 
+                      process.env.SUPABASE_ANON_KEY || 
+                      process.env.VITE_SUPABASE_ANON_KEY;
+
+    const configPath = path.join(__dirname, 'supabase-config.json');
+    if (!supabaseUrl && fs.existsSync(configPath)) {
       try {
-        delete require.cache[require.resolve('./firebase-applet-config.json')];
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        supabaseUrl = config.supabaseUrl || config.url || config.SUPABASE_URL;
+        supabaseKey = config.supabaseKey || config.key || config.serviceRoleKey || config.SUPABASE_KEY;
       } catch (e) {}
-      firebaseConfig = require('./firebase-applet-config.json');
-      if (firebaseConfig && firebaseConfig.projectId) {
-        firebaseApp = initializeApp(firebaseConfig);
-        firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId || '(default)');
-        console.log('[Firebase] Dynamically connected Firestore for', firebaseConfig.projectId);
-      }
     }
-  } catch (e) {
-    console.warn('[Firebase] Dynamic connect error:', e.message);
+
+    if (supabaseUrl && supabaseKey) {
+      supabaseClient = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false }
+      });
+      if (!supabaseChecked) {
+        console.log('[Supabase] Initialized Supabase client for', supabaseUrl);
+        supabaseChecked = true;
+      }
+    } else if (!supabaseChecked) {
+      console.log('[Supabase] Operating with local filesystem storage. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for cloud persistence.');
+      supabaseChecked = true;
+    }
+  } catch (err) {
+    console.warn('[Supabase] Client init error:', err.message);
   }
-  return firestoreDb;
+  return supabaseClient;
 }
 
-let firebaseConnectionVerified = false;
-
-async function testFirebaseConnection() {
-  if (firebaseConnectionVerified || firestoreQuotaExhausted) return;
-  const db = getOrCreateFirestore();
-  if (!db) return;
+async function ensureBucket(client, bucketName) {
+  if (!client || ensuredBuckets.has(bucketName)) return true;
   try {
-    await Promise.race([
-      getDocFromServer(doc(db, 'test', 'connection')),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase connection timeout')), 2000))
-    ]);
-    firebaseConnectionVerified = true;
-    console.log('[Firebase] Connection to Firestore verified.');
-  } catch (error) {
-    if (error && error.message && error.message.includes('the client is offline')) {
-      console.warn('Firebase Firestore client is offline.');
-    } else if (error && error.message && (error.message.includes('Quota') || error.message.includes('RESOURCE_EXHAUSTED'))) {
-      firestoreQuotaExhausted = true;
-      lastQuotaExhaustedTime = Date.now();
-      console.warn('[Firebase] Firestore quota limit reached on connection test.');
-    } else {
-      console.warn('[Firebase] Connection check:', error?.message || error);
+    const { data: buckets } = await client.storage.listBuckets();
+    const found = buckets && buckets.some(b => b.name === bucketName);
+    if (!found) {
+      await client.storage.createBucket(bucketName, { public: true });
+      console.log(`[Supabase] Created public storage bucket "${bucketName}"`);
     }
+    ensuredBuckets.add(bucketName);
+    return true;
+  } catch (e) {
+    ensuredBuckets.add(bucketName);
+    return false;
   }
 }
 
@@ -254,116 +369,281 @@ let remoteIndexesPromise = null;
 let remoteScoresLoaded = false;
 let remoteScoresPromise = null;
 
-let firestoreQuotaExhausted = false;
+// Multi-tier Indestructible Master Archive
+const masterArchiveDir = path.join(__dirname, 'data');
+const masterArchivePath = path.join(masterArchiveDir, 'master_archive.json');
+const masterArchive = new Map();
+
+function saveMasterArchive() {
+  try {
+    if (!fs.existsSync(masterArchiveDir)) fs.mkdirSync(masterArchiveDir, { recursive: true });
+    fs.writeFileSync(masterArchivePath, JSON.stringify(Object.fromEntries(masterArchive), null, 2));
+  } catch (err) {
+    console.warn('[MasterArchive] Could not save master archive:', err.message);
+  }
+}
+
+function loadMasterArchive() {
+  try {
+    if (fs.existsSync(masterArchivePath)) {
+      const parsed = JSON.parse(fs.readFileSync(masterArchivePath, 'utf8'));
+      Object.entries(parsed).forEach(([id, item]) => {
+        if (item && item.filename) {
+          masterArchive.set(id, item);
+        }
+      });
+      console.log(`[MasterArchive] Loaded ${masterArchive.size} permanent media records from disk archive`);
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn('[MasterArchive] Load notice:', err.message);
+  }
+}
+
+loadMasterArchive();
 
 async function saveRemoteMedia(mediaId, item, localFilePath = null) {
-  const db = getOrCreateFirestore();
-  if (!db || firestoreQuotaExhausted) return;
-  try {
-    // 1. Immediately persist media metadata record with a fast 3-second safety timeout
-    await Promise.race([
-      setDoc(doc(db, 'media', mediaId), {
-        id: mediaId,
-        name: item.name || '',
-        url: item.url || '',
-        filename: item.filename || '',
-        type: item.type || 'image',
-        uploadedAt: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
-        size: Number(item.size) || 0,
-        hasChunks: false,
-        totalChunks: 0
-      }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 3000))
-    ]);
+  const type = item.type || inferMediaType(item.name, item.filename, item.url);
+  const bucketName = getBucketForType(type);
+  const filename = item.filename || `${mediaId}.${type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'}`;
 
-    // 2. Persist binary chunks if file is present on disk (up to 25MB)
-    if (localFilePath && fs.existsSync(localFilePath)) {
-      try {
-        const stats = fs.statSync(localFilePath);
-        if (stats.size > 0 && stats.size <= 25 * 1024 * 1024) {
+  // 1. TIER 1: Permanent Master Archive Record (Immutable & Append-Only)
+  let base64Data = null;
+  if (localFilePath && fs.existsSync(localFilePath)) {
+    try {
+      const stats = fs.statSync(localFilePath);
+      // For images, audio, and videos up to 35MB: embed base64 into master archive so it survives container wipes offline
+      if (stats.size > 0 && stats.size <= 35 * 1024 * 1024) {
+        base64Data = fs.readFileSync(localFilePath).toString('base64');
+      }
+    } catch (e) {}
+  }
+
+  const existingArchive = masterArchive.get(mediaId) || {};
+  const archiveItem = {
+    id: mediaId,
+    name: item.name || existingArchive.name || filename,
+    url: item.url || existingArchive.url || '',
+    filename: filename,
+    type: type,
+    size: Number(item.size) || existingArchive.size || 0,
+    uploadedAt: item.uploadedAt || existingArchive.uploadedAt || new Date().toISOString(),
+    base64: base64Data || existingArchive.base64 || null,
+    permanent: true,
+    archived: false
+  };
+  masterArchive.set(mediaId, archiveItem);
+  saveMasterArchive();
+
+  // 2. TIER 2: Supabase Cloud Storage & Database Persistence
+  const client = getOrCreateSupabase();
+  if (client) {
+    try {
+      await ensureBucket(client, bucketName);
+
+      if (localFilePath && fs.existsSync(localFilePath)) {
+        try {
           const fileBuf = fs.readFileSync(localFilePath);
-          const base64Str = fileBuf.toString('base64');
-          const CHUNK_SIZE = 800 * 1024;
-          const totalChunks = Math.ceil(base64Str.length / CHUNK_SIZE);
-          for (let i = 0; i < totalChunks; i++) {
-            const chunkData = base64Str.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-            await setDoc(doc(db, 'media', mediaId, 'chunks', String(i)), {
-              index: i,
-              total: totalChunks,
-              data: chunkData
+          const mimeType = inferMimeType(filename, type);
+          const { error: uploadErr } = await client.storage
+            .from(bucketName)
+            .upload(filename, fileBuf, {
+              contentType: mimeType,
+              upsert: true
             });
+
+          if (!uploadErr) {
+            const { data: pubData } = client.storage
+              .from(bucketName)
+              .getPublicUrl(filename);
+            if (pubData && pubData.publicUrl) {
+              item.url = pubData.publicUrl;
+              archiveItem.url = pubData.publicUrl;
+              masterArchive.set(mediaId, archiveItem);
+              saveMasterArchive();
+            }
+            console.log(`[Supabase] Uploaded ${type} "${item.name}" to bucket "${bucketName}"`);
+          } else {
+            console.warn(`[Supabase] Storage upload notice for ${mediaId}:`, uploadErr.message);
           }
-          await setDoc(doc(db, 'media', mediaId), {
-            hasChunks: true,
-            totalChunks: totalChunks
-          }, { merge: true });
-        }
-      } catch (chunkErr) {
-        if (chunkErr.message && chunkErr.message.includes('RESOURCE_EXHAUSTED')) {
-          firestoreQuotaExhausted = true;
-          console.warn('[Firebase] Firestore daily write quota reached; saving media locally on disk.');
-        } else {
-          console.warn(`[Firebase] Could not save chunks for ${mediaId}:`, chunkErr.message);
+        } catch (err) {
+          console.warn(`[Supabase] Could not upload file ${mediaId}:`, err.message);
         }
       }
-    }
-  } catch (error) {
-    if (error.message && error.message.includes('RESOURCE_EXHAUSTED')) {
-      firestoreQuotaExhausted = true;
-      console.warn('[Firebase] Firestore daily write quota reached; continuing with local storage.');
-    } else {
-      console.warn(`[Firebase] Could not save media ${mediaId} to Firestore:`, error.message);
+
+      // Upload master_archive.json to cloud storage for indestructible backup
+      try {
+        const archiveExport = {};
+        for (const [k, v] of masterArchive.entries()) {
+          // Export metadata without gigantic base64 blobs in index to keep payload nimble
+          archiveExport[k] = { ...v, base64: v.base64 ? true : false };
+        }
+        await client.storage
+          .from(bucketName)
+          .upload('master_archive.json', Buffer.from(JSON.stringify(archiveExport, null, 2)), {
+            contentType: 'application/json',
+            upsert: true
+          });
+      } catch (archErr) {}
+
+      // Persist active library index.json
+      try {
+        let dbMap = imageDatabase;
+        if (type === 'video') dbMap = videoDatabase;
+        else if (type === 'audio') dbMap = audioDatabase;
+        const indexObj = Object.fromEntries(dbMap);
+        await client.storage
+          .from(bucketName)
+          .upload('index.json', Buffer.from(JSON.stringify(indexObj, null, 2)), {
+            contentType: 'application/json',
+            upsert: true
+          });
+      } catch (idxErr) {}
+
+      // Upsert to Supabase database table `media`
+      try {
+        await client.from('media').upsert({
+          id: mediaId,
+          name: item.name || '',
+          url: item.url || '',
+          filename: filename,
+          type: type,
+          uploaded_at: item.uploadedAt ? (item.uploadedAt instanceof Date ? item.uploadedAt.toISOString() : String(item.uploadedAt)) : new Date().toISOString(),
+          size: Number(item.size) || 0
+        }, { onConflict: 'id' });
+      } catch (dbErr) {}
+    } catch (error) {
+      console.warn(`[Supabase] saveRemoteMedia error for ${mediaId}:`, error.message);
     }
   }
 }
 
+// Never-Delete Policy: Soft-delete in active view only; NEVER delete from Cloud or Master Archive!
 async function deleteRemoteMedia(mediaId) {
-  const db = getOrCreateFirestore();
-  if (!db) return;
-  try {
+  const item = masterArchive.get(mediaId) || imageDatabase.get(mediaId) || videoDatabase.get(mediaId) || audioDatabase.get(mediaId);
+  if (item) {
+    item.archived = true;
+    masterArchive.set(mediaId, item);
+    saveMasterArchive();
+  }
+
+  // Update remote index.json in Supabase so active view stays in sync, but cloud file is PRESERVED
+  const client = getOrCreateSupabase();
+  if (client && item) {
     try {
-      const chunksSnap = await getDocs(collection(db, 'media', mediaId, 'chunks'));
-      await Promise.all(chunksSnap.docs.map(chunkDoc => deleteDoc(chunkDoc.ref).catch(() => {})));
-    } catch (e) {
-      // Ignore if no chunks
-    }
-    await deleteDoc(doc(db, 'media', mediaId));
-  } catch (error) {
-    console.warn(`[Firebase] Could not delete media ${mediaId} from Firestore:`, error.message);
+      const type = item.type || 'image';
+      const bucketName = getBucketForType(type);
+      let dbMap = imageDatabase;
+      if (type === 'video') dbMap = videoDatabase;
+      else if (type === 'audio') dbMap = audioDatabase;
+      const indexObj = Object.fromEntries(dbMap);
+      await client.storage
+        .from(bucketName)
+        .upload('index.json', Buffer.from(JSON.stringify(indexObj, null, 2)), {
+          contentType: 'application/json',
+          upsert: true
+        });
+      console.log(`[Supabase] Media ${mediaId} archived in active view; permanent cloud file preserved.`);
+    } catch (e) {}
   }
 }
 
 async function rehydrateMediaFile(type, filename) {
-  const db = getOrCreateFirestore();
-  if (!db || !filename) return false;
-  try {
+  if (!filename) return false;
+  let targetDir = imagesDir;
+  let dbMap = imageDatabase;
+  if (type === 'video') { targetDir = videosDir; dbMap = videoDatabase; }
+  else if (type === 'audio') { targetDir = audioDir; dbMap = audioDatabase; }
+
+  const targetPath = path.join(targetDir, filename);
+  if (fs.existsSync(targetPath)) return true;
+
+  // 1. FAST LOCAL: Check Master Archive for offline base64 payload
+  const archiveItem = Array.from(masterArchive.values()).find(m => m.filename === filename || m.id === filename);
+  if (archiveItem && archiveItem.base64 && typeof archiveItem.base64 === 'string') {
+    try {
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(targetPath, Buffer.from(archiveItem.base64, 'base64'));
+      console.log(`[MasterArchive] Restored ${type} "${filename}" instantly from local master archive`);
+      return true;
+    } catch (bErr) {
+      console.warn(`[MasterArchive] Could not write base64 for ${filename}:`, bErr.message);
+    }
+  }
+
+  // 2. SUPABASE CLOUD: Try downloading directly from Supabase Storage bucket
+  const client = getOrCreateSupabase();
+  const bucketName = getBucketForType(type);
+
+  if (client) {
+    try {
+      const { data: blob, error } = await client.storage
+        .from(bucketName)
+        .download(filename);
+
+      if (!error && blob) {
+        const arrayBuf = await blob.arrayBuffer();
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        fs.writeFileSync(targetPath, Buffer.from(arrayBuf));
+        console.log(`[Supabase] Successfully rehydrated ${type} "${filename}" from Supabase Storage`);
+        return true;
+      }
+    } catch (err) {
+      console.warn(`[Supabase] Download error for ${filename}:`, err.message);
+    }
+  }
+
+  // 3. REMOTE URL: If item has a public HTTP/HTTPS URL, download to cache
+  const item = Array.from(dbMap.values()).find(m => m.filename === filename) || archiveItem;
+  if (item && item.url && item.url.startsWith('http')) {
+    try {
+      const res = await fetch(item.url);
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        fs.writeFileSync(targetPath, Buffer.from(arrayBuf));
+        console.log(`[Supabase] Successfully cached ${type} "${filename}" from URL`);
+        return true;
+      }
+    } catch (fErr) {
+      console.warn(`[Supabase] URL stream download notice for ${filename}:`, fErr.message);
+    }
+  }
+
+  return false;
+}
+
+// Proactive background rehydration to ensure every saved media file always exists on disk
+async function autoRehydrateAllMedia() {
+  const allItems = [
+    ...Array.from(imageDatabase.values()),
+    ...Array.from(videoDatabase.values()),
+    ...Array.from(audioDatabase.values()),
+    ...Array.from(masterArchive.values())
+  ];
+
+  const seenFilenames = new Set();
+  let rehydratedCount = 0;
+
+  for (const item of allItems) {
+    if (!item || !item.filename || seenFilenames.has(item.filename)) continue;
+    seenFilenames.add(item.filename);
+
+    const type = item.type || 'image';
     let targetDir = imagesDir;
-    let dbMap = imageDatabase;
-    if (type === 'video') { targetDir = videosDir; dbMap = videoDatabase; }
-    else if (type === 'audio') { targetDir = audioDir; dbMap = audioDatabase; }
+    if (type === 'video') targetDir = videosDir;
+    else if (type === 'audio') targetDir = audioDir;
 
-    const targetPath = path.join(targetDir, filename);
-    if (fs.existsSync(targetPath)) return true;
+    const targetPath = path.join(targetDir, item.filename);
+    if (!fs.existsSync(targetPath)) {
+      try {
+        const success = await rehydrateMediaFile(type, item.filename);
+        if (success) rehydratedCount++;
+      } catch (err) {}
+    }
+  }
 
-    const item = Array.from(dbMap.values()).find(m => m.filename === filename);
-    if (!item || !item.id) return false;
-
-    const chunksSnap = await getDocs(collection(db, 'media', item.id, 'chunks'));
-    if (chunksSnap.empty) return false;
-
-    const chunks = [];
-    chunksSnap.forEach(snap => chunks.push(snap.data()));
-    chunks.sort((a, b) => a.index - b.index);
-
-    const fullBase64 = chunks.map(c => c.data).join('');
-    const buffer = Buffer.from(fullBase64, 'base64');
-    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-    fs.writeFileSync(targetPath, buffer);
-    console.log(`[Firebase] Successfully rehydrated ${type} "${item.name}" (${filename}) to disk`);
-    return true;
-  } catch (err) {
-    console.warn(`[Firebase] Could not rehydrate ${filename}:`, err.message);
-    return false;
+  if (rehydratedCount > 0) {
+    console.log(`[AutoRehydrate] Restored ${rehydratedCount} media file(s) to disk`);
   }
 }
 
@@ -404,122 +684,142 @@ function normalizeMediaUrl(rawUrl) {
   return url;
 }
 
-let lastQuotaExhaustedTime = 0;
-
 async function loadRemoteIndexes(force = false) {
-  if (firestoreQuotaExhausted && (Date.now() - lastQuotaExhaustedTime < 10 * 60 * 1000)) {
+  const client = getOrCreateSupabase();
+  if (!client) {
     remoteIndexesLoaded = true;
     return;
   }
-  await testFirebaseConnection();
-  const db = getOrCreateFirestore();
-  if (!db) {
-    remoteIndexesLoaded = true;
-    return;
-  }
+
   try {
-    const collectionsToCheck = ['media'];
-    let totalDocsLoaded = 0;
+    let totalLoaded = 0;
+    const bucketTypes = [
+      { bucket: 'images', type: 'image', db: imageDatabase },
+      { bucket: 'videos', type: 'video', db: videoDatabase },
+      { bucket: 'audio', type: 'audio', db: audioDatabase }
+    ];
 
-    for (const colName of collectionsToCheck) {
+    for (const { bucket, type, db } of bucketTypes) {
       try {
-        const snap = await getDocs(collection(db, colName));
-        snap.forEach((docSnap) => {
-          const data = docSnap.data() || {};
-          const docId = docSnap.id;
-          const id = String(data.id || data.mediaId || data.videoId || data.imageId || data.audioId || docId);
-          
-          let type = String(data.type || data.fileType || data.mediaType || '').toLowerCase();
-          if (!['image', 'video', 'audio'].includes(type)) {
-            type = inferMediaType(data.name, data.filename, data.url);
-          }
+        // A. Check if index.json exists in bucket
+        const { data: indexBlob, error: indexErr } = await client.storage
+          .from(bucket)
+          .download('index.json');
 
-          const name = String(data.name || data.fileName || data.filename || data.title || data.originalName || id);
-          
-          let filename = data.filename || data.fileName;
-          if (!filename) {
-            const raw = data.url ? path.basename(String(data.url).split('?')[0]) : name;
-            filename = raw && raw.includes('.') ? raw : `${id}.${type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'}`;
-          }
-
-          let url = data.url || data.downloadUrl || data.downloadURL || data.src || data.link;
-          if (!url) {
-            const prefix = type === 'video' ? '/videos' : type === 'audio' ? '/audio' : '/images';
-            url = `${prefix}/${encodeURIComponent(filename)}`;
-          }
-
-          const item = {
-            id,
-            name,
-            url,
-            filename,
-            type,
-            uploadedAt: data.uploadedAt ? (data.uploadedAt.toDate ? data.uploadedAt.toDate().toISOString() : String(data.uploadedAt)) : new Date().toISOString(),
-            size: Number(data.size) || 0,
-            hasChunks: Boolean(data.hasChunks),
-            totalChunks: Number(data.totalChunks) || 0
-          };
-
-          // If document has inline base64 data, write to disk if missing
-          const inlineBase64 = data.base64 || data.data || data.dataUrl || data.content;
-          if (inlineBase64 && typeof inlineBase64 === 'string') {
-            try {
-              let cleanBase64 = inlineBase64;
-              if (cleanBase64.includes(';base64,')) {
-                cleanBase64 = cleanBase64.split(';base64,')[1];
+        if (!indexErr && indexBlob) {
+          try {
+            const text = await indexBlob.text();
+            const entries = JSON.parse(text);
+            Object.entries(entries).forEach(([id, item]) => {
+              if (item && (item.filename || item.url)) {
+                db.set(id, item);
+                totalLoaded++;
               }
-              const targetDir = type === 'video' ? videosDir : type === 'audio' ? audioDir : imagesDir;
-              const targetPath = path.join(targetDir, filename);
-              if (!fs.existsSync(targetPath)) {
-                fs.writeFileSync(targetPath, Buffer.from(cleanBase64, 'base64'));
-              }
-            } catch (inlineErr) {
-              console.warn('[Firebase] Could not write inline base64 for', id, inlineErr.message);
-            }
-          } else if (data.hasChunks) {
-            const targetDir = type === 'video' ? videosDir : type === 'audio' ? audioDir : imagesDir;
-            const targetPath = path.join(targetDir, filename);
-            if (!fs.existsSync(targetPath)) {
-              rehydrateMediaFile(type, filename).catch(err => {
-                console.warn(`[Firebase] Auto-rehydrate background notice for ${filename}:`, err.message);
-              });
-            }
-          }
-
-          if (type === 'video') {
-            videoDatabase.set(id, item);
-          } else if (type === 'audio') {
-            audioDatabase.set(id, item);
-          } else {
-            imageDatabase.set(id, item);
-          }
-          totalDocsLoaded++;
-        });
-      } catch (colErr) {
-        if (colErr.message && (colErr.message.includes('Quota') || colErr.message.includes('RESOURCE_EXHAUSTED'))) {
-          firestoreQuotaExhausted = true;
-          lastQuotaExhaustedTime = Date.now();
-          console.warn('[Firebase] Read quota limit reached on Firestore. Using local storage.');
-          break;
+            });
+          } catch (jsonErr) {}
         }
+
+        // B. Also list files directly from the bucket
+        const { data: files, error: listErr } = await client.storage
+          .from(bucket)
+          .list();
+
+        if (!listErr && Array.isArray(files)) {
+          const existingFilenames = new Set(Array.from(db.values()).map(m => m.filename));
+          files.forEach(file => {
+            if (!file.name || file.name === 'index.json' || file.name.startsWith('.')) return;
+            if (existingFilenames.has(file.name)) return;
+
+            const { data: pubData } = client.storage.from(bucket).getPublicUrl(file.name);
+            const pubUrl = pubData?.publicUrl || `/${type === 'audio' ? 'audio' : type + 's'}/${encodeURIComponent(file.name)}`;
+            const mediaId = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            const mediaItem = {
+              id: mediaId,
+              name: file.name,
+              url: pubUrl,
+              filename: file.name,
+              type: type,
+              uploadedAt: file.created_at || new Date().toISOString(),
+              size: file.metadata?.size || 0
+            };
+            db.set(mediaId, mediaItem);
+            existingFilenames.add(file.name);
+            totalLoaded++;
+          });
+        }
+        // C. Check master_archive.json in bucket for complete permanent history
+        try {
+          const { data: archBlob } = await client.storage.from(bucket).download('master_archive.json');
+          if (archBlob) {
+            const parsedArch = JSON.parse(await archBlob.text());
+            Object.entries(parsedArch).forEach(([id, item]) => {
+              if (item && item.filename) {
+                if (!masterArchive.has(id)) {
+                  masterArchive.set(id, item);
+                }
+                const itType = item.type || type;
+                if (itType === 'video' && !videoDatabase.has(id)) videoDatabase.set(id, item);
+                else if (itType === 'audio' && !audioDatabase.has(id)) audioDatabase.set(id, item);
+                else if (!imageDatabase.has(id)) imageDatabase.set(id, item);
+                totalLoaded++;
+              }
+            });
+          }
+        } catch (mErr) {}
+      } catch (bucketErr) {
+        // Individual bucket error is non-fatal
       }
     }
 
+    // D. Also check if media table exists in Supabase DB
+    try {
+      const { data: rows } = await client.from('media').select('*');
+      if (Array.isArray(rows)) {
+        rows.forEach(row => {
+          const id = String(row.id);
+          let type = String(row.type || '').toLowerCase();
+          if (!['image', 'video', 'audio'].includes(type)) {
+            type = inferMediaType(row.name, row.filename, row.url);
+          }
+          const item = {
+            id,
+            name: String(row.name || id),
+            url: row.url || '',
+            filename: row.filename || `${id}.${type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'}`,
+            type,
+            uploadedAt: row.uploaded_at || new Date().toISOString(),
+            size: Number(row.size) || 0
+          };
+          if (!masterArchive.has(id)) masterArchive.set(id, item);
+          if (type === 'video') videoDatabase.set(id, item);
+          else if (type === 'audio') audioDatabase.set(id, item);
+          else imageDatabase.set(id, item);
+          totalLoaded++;
+        });
+      }
+    } catch (e) {}
+
+    // E. Synchronize from local Master Archive so offline-persisted media is always active
+    masterArchive.forEach((item, id) => {
+      if (item && item.filename) {
+        const type = item.type || 'image';
+        if (type === 'video' && !videoDatabase.has(id)) videoDatabase.set(id, item);
+        else if (type === 'audio' && !audioDatabase.has(id)) audioDatabase.set(id, item);
+        else if (!imageDatabase.has(id)) imageDatabase.set(id, item);
+        totalLoaded++;
+      }
+    });
+
+    saveMasterArchive();
     saveImageIndex();
     saveVideoIndex();
     saveAudioIndex();
     lastRemoteIndexesFetchTime = Date.now();
-    if (totalDocsLoaded > 0) {
-      console.log(`[Firebase] Loaded ${totalDocsLoaded} total media records from Firestore`);
+    if (totalLoaded > 0) {
+      console.log(`[Supabase] Loaded ${totalLoaded} media records from Supabase & Master Archive`);
     }
   } catch (error) {
-    if (error.message && (error.message.includes('Quota') || error.message.includes('RESOURCE_EXHAUSTED'))) {
-      firestoreQuotaExhausted = true;
-      lastQuotaExhaustedTime = Date.now();
-      console.warn('[Firebase] Read quota limit reached. Using local media cache.');
-    } else {
-      console.warn('[Firebase] Could not load media indexes:', error.message);
-    }
+    console.warn('[Supabase] Could not load media indexes:', error.message);
   } finally {
     remoteIndexesLoaded = true;
   }
@@ -558,6 +858,62 @@ function loadImageIndex() {
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load image index:', error.message);
   }
+  // Scan local imagesDir and public/assets/aistudio for any disk files
+  try {
+    if (fs.existsSync(imagesDir)) {
+      const diskFiles = fs.readdirSync(imagesDir);
+      const existingFilenames = new Set(Array.from(imageDatabase.values()).map(img => img.filename));
+      diskFiles.forEach(file => {
+        if (file === 'index.json' || existingFilenames.has(file)) return;
+        const filePath = path.join(imagesDir, file);
+        const stats = fs.statSync(filePath);
+        if (!stats.isFile()) return;
+        const imageId = createImageId();
+        const item = {
+          id: imageId,
+          name: file,
+          url: `/images/${encodeURIComponent(file)}`,
+          filename: file,
+          type: 'image',
+          uploadedAt: stats.mtime.toISOString(),
+          size: stats.size
+        };
+        imageDatabase.set(imageId, item);
+        existingFilenames.add(file);
+      });
+      saveImageIndex();
+    }
+  } catch (err) {
+    console.warn('Could not scan imagesDir:', err.message);
+  }
+
+  // Scan public/assets/aistudio images
+  try {
+    const assetsDir = path.join(__dirname, 'public', 'assets', 'aistudio');
+    if (fs.existsSync(assetsDir)) {
+      const diskFiles = fs.readdirSync(assetsDir);
+      const existingFilenames = new Set(Array.from(imageDatabase.values()).map(img => img.filename));
+      diskFiles.forEach(file => {
+        if (existingFilenames.has(file)) return;
+        const filePath = path.join(assetsDir, file);
+        const stats = fs.statSync(filePath);
+        if (!stats.isFile()) return;
+        const imageId = createImageId();
+        const item = {
+          id: imageId,
+          name: file.replace(/_[a-f0-9]+\.jpg$/i, '').replace(/_/g, ' '),
+          url: `/assets/aistudio/${encodeURIComponent(file)}`,
+          filename: file,
+          type: 'image',
+          uploadedAt: stats.mtime.toISOString(),
+          size: stats.size
+        };
+        imageDatabase.set(imageId, item);
+        existingFilenames.add(file);
+      });
+      saveImageIndex();
+    }
+  } catch (err) {}
 }
 
 loadImageIndex();
@@ -712,28 +1068,61 @@ function loadScoreDatabase() {
 }
 
 async function loadRemoteScores() {
-  const db = getOrCreateFirestore();
-  if (!db) {
+  const client = getOrCreateSupabase();
+  if (!client) {
     remoteScoresLoaded = true;
     return;
   }
   try {
-    const snap = await getDocs(collection(db, 'scores'));
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data && data.playerId) {
-        const existingIdx = scoreDatabase.findIndex((e) => e.playerId === data.playerId && e.roomId === data.roomId);
+    // 1. Try Supabase database table `scores`
+    const { data: rows, error } = await client.from('scores').select('*');
+    if (!error && Array.isArray(rows) && rows.length > 0) {
+      rows.forEach(data => {
+        const playerId = data.player_id || data.playerId;
+        if (!playerId) return;
+        const formatted = {
+          playerId,
+          name: data.name,
+          roomId: data.room_id || data.roomId || 'unknown',
+          score: Number(data.score) || 0,
+          cash: Number(data.cash) || 0,
+          clearedLevel: Number(data.cleared_level || data.clearedLevel) || 0,
+          eliminated: Boolean(data.eliminated),
+          updatedAt: data.updated_at || data.updatedAt || new Date().toISOString()
+        };
+        const existingIdx = scoreDatabase.findIndex((e) => e.playerId === playerId && e.roomId === formatted.roomId);
         if (existingIdx >= 0) {
-          scoreDatabase[existingIdx] = { ...scoreDatabase[existingIdx], ...data };
+          scoreDatabase[existingIdx] = { ...scoreDatabase[existingIdx], ...formatted };
         } else {
-          scoreDatabase.push(data);
+          scoreDatabase.push(formatted);
         }
-      }
-    });
-    scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
-    saveScoreDatabase();
+      });
+      scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
+      saveScoreDatabase();
+      console.log(`[Supabase] Loaded ${rows.length} scores from Supabase table`);
+    } else {
+      // 2. Fallback: try scores.json in Supabase storage
+      try {
+        const { data: scoreBlob } = await client.storage.from('images').download('scores.json');
+        if (scoreBlob) {
+          const text = await scoreBlob.text();
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(entry => {
+              if (entry && entry.playerId) {
+                const existingIdx = scoreDatabase.findIndex((e) => e.playerId === entry.playerId && e.roomId === entry.roomId);
+                if (existingIdx >= 0) scoreDatabase[existingIdx] = { ...scoreDatabase[existingIdx], ...entry };
+                else scoreDatabase.push(entry);
+              }
+            });
+            scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
+            saveScoreDatabase();
+          }
+        }
+      } catch (storageScoreErr) {}
+    }
   } catch (error) {
-    console.warn('[Firebase] Could not load scores from Firestore:', error.message);
+    console.warn('[Supabase] Could not load scores from Supabase:', error.message);
   } finally {
     remoteScoresLoaded = true;
   }
@@ -773,10 +1162,25 @@ function persistScoreSnapshot({ playerId, name, roomId, score, cash, clearedLeve
   scoreDatabase.sort((a, b) => Number(b.score) - Number(a.score));
   saveScoreDatabase();
 
-  if (firestoreDb) {
-    setDoc(doc(firestoreDb, 'scores', playerId), snapshot).catch((err) => {
-      console.warn(`[Firebase] Could not persist score for ${playerId}:`, err.message);
-    });
+  const client = getOrCreateSupabase();
+  if (client) {
+    // Upsert into Supabase table if available
+    client.from('scores').upsert({
+      player_id: playerId,
+      name: snapshot.name,
+      room_id: snapshot.roomId,
+      score: snapshot.score,
+      cash: snapshot.cash,
+      cleared_level: snapshot.clearedLevel,
+      eliminated: snapshot.eliminated,
+      updated_at: snapshot.updatedAt
+    }, { onConflict: 'player_id' }).catch(() => {});
+
+    // Also persist scores.json in Supabase Storage
+    client.storage.from('images').upload('scores.json', Buffer.from(JSON.stringify(scoreDatabase, null, 2)), {
+      contentType: 'application/json',
+      upsert: true
+    }).catch(() => {});
   }
 
   return snapshot;
@@ -797,10 +1201,13 @@ function removeScoreSnapshot(playerId) {
   filtered.forEach((entry) => scoreDatabase.push(entry));
   saveScoreDatabase();
 
-  if (firestoreDb) {
-    deleteDoc(doc(firestoreDb, 'scores', playerId)).catch((err) => {
-      console.warn(`[Firebase] Could not delete score for ${playerId}:`, err.message);
-    });
+  const client = getOrCreateSupabase();
+  if (client) {
+    client.from('scores').delete().eq('player_id', playerId).catch(() => {});
+    client.storage.from('images').upload('scores.json', Buffer.from(JSON.stringify(scoreDatabase, null, 2)), {
+      contentType: 'application/json',
+      upsert: true
+    }).catch(() => {});
   }
 
   return true;
@@ -955,7 +1362,7 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
       };
       imageDatabase.set(imageId, mediaItem);
       saveRemoteMedia(imageId, mediaItem, path.join(imagesDir, file.filename)).catch(err => {
-        console.warn(`[Firebase] Image remote save notice for ${imageId}:`, err.message);
+        console.warn(`[Supabase] Image remote save notice for ${imageId}:`, err.message);
       });
       uploadedImages.push({
         imageId,
@@ -1021,7 +1428,7 @@ app.delete('/api/images/:imageId', async (req, res) => {
     });
     imageDatabase.delete(imageId);
     saveImageIndex();
-    deleteRemoteMedia(imageId).catch(err => console.warn(`[Firebase] Image delete background notice:`, err.message));
+    deleteRemoteMedia(imageId).catch(err => console.warn(`[Supabase] Image delete background notice:`, err.message));
     res.json({ success: true, message: 'Image deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete image file' });
@@ -1059,9 +1466,9 @@ app.post('/api/videos/upload', (req, res, next) => {
         size: file.size
       };
       videoDatabase.set(videoId, mediaItem);
-      // Persist to Firestore in background so large video chunks do not delay or time out the client HTTP upload
+      // Persist to Supabase in background so large video chunks do not delay or time out the client HTTP upload
       saveRemoteMedia(videoId, mediaItem, path.join(videosDir, file.filename)).catch(remoteErr => {
-        console.warn(`[Firebase] Video remote save notice for ${videoId}:`, remoteErr.message);
+        console.warn(`[Supabase] Video remote save notice for ${videoId}:`, remoteErr.message);
       });
       videos.push({ videoId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
@@ -1137,7 +1544,7 @@ app.delete('/api/videos/:videoId', async (req, res) => {
     });
     videoDatabase.delete(req.params.videoId);
     saveVideoIndex();
-    deleteRemoteMedia(req.params.videoId).catch(err => console.warn(`[Firebase] Video delete background notice:`, err.message));
+    deleteRemoteMedia(req.params.videoId).catch(err => console.warn(`[Supabase] Video delete background notice:`, err.message));
     res.json({ success: true, message: 'Video deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete video file' });
@@ -1176,7 +1583,7 @@ app.post('/api/audio/upload', (req, res, next) => {
       };
       audioDatabase.set(audioId, mediaItem);
       saveRemoteMedia(audioId, mediaItem, path.join(audioDir, file.filename)).catch(err => {
-        console.warn(`[Firebase] Audio remote save notice for ${audioId}:`, err.message);
+        console.warn(`[Supabase] Audio remote save notice for ${audioId}:`, err.message);
       });
       audios.push({ audioId, name: mediaItem.name, url: mediaItem.url, size: mediaItem.size });
     }
@@ -1213,20 +1620,21 @@ app.delete('/api/audio/:audioId', async (req, res) => {
     });
     audioDatabase.delete(req.params.audioId);
     saveAudioIndex();
-    deleteRemoteMedia(req.params.audioId).catch(err => console.warn(`[Firebase] Audio delete background notice:`, err.message));
+    deleteRemoteMedia(req.params.audioId).catch(err => console.warn(`[Supabase] Audio delete background notice:`, err.message));
     res.json({ success: true, message: 'Audio deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Could not delete audio file' });
   }
 });
 
-// Explicit media sync endpoint from Firestore
+// Explicit media sync endpoint from Supabase
 app.all(['/api/media/sync', '/api/media/refresh'], async (req, res) => {
   try {
     await loadRemoteIndexes(true);
+    autoRehydrateAllMedia().catch(() => {});
     res.json({
       success: true,
-      message: 'Synced successfully with Firebase Firestore',
+      message: 'Synced successfully with Supabase Storage & Master Archive',
       counts: {
         images: imageDatabase.size,
         videos: videoDatabase.size,
@@ -1238,7 +1646,164 @@ app.all(['/api/media/sync', '/api/media/refresh'], async (req, res) => {
   }
 });
 
-// Add media via URL or Firebase Storage URL
+// Restore ALL historical saved media from Master Archive & Cloud Storage
+app.all('/api/media/restore-all', async (req, res) => {
+  try {
+    // 1. Reload from disk archive and cloud
+    loadMasterArchive();
+    await loadRemoteIndexes(true);
+
+    // 2. Un-archive every historical media record so it reappears in active library
+    let restoredCount = 0;
+    masterArchive.forEach((item, id) => {
+      if (item && item.filename) {
+        item.archived = false;
+        const type = item.type || 'image';
+        if (type === 'video') videoDatabase.set(id, item);
+        else if (type === 'audio') audioDatabase.set(id, item);
+        else imageDatabase.set(id, item);
+        restoredCount++;
+      }
+    });
+
+    saveMasterArchive();
+    saveImageIndex();
+    saveVideoIndex();
+    saveAudioIndex();
+
+    // 3. Proactively rehydrate files to disk
+    await autoRehydrateAllMedia();
+
+    res.json({
+      success: true,
+      message: `Restored ${restoredCount} media files from indestructible master archive & Supabase!`,
+      counts: {
+        images: imageDatabase.size,
+        videos: videoDatabase.size,
+        audios: audioDatabase.size,
+        totalArchived: masterArchive.size
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List permanent master archive records
+app.get('/api/media/archive/list', (req, res) => {
+  res.json({
+    total: masterArchive.size,
+    items: Array.from(masterArchive.values()).map(item => ({
+      id: item.id,
+      name: item.name,
+      filename: item.filename,
+      type: item.type,
+      size: item.size,
+      uploadedAt: item.uploadedAt,
+      url: item.url,
+      hasOfflineBackup: Boolean(item.base64)
+    }))
+  });
+});
+
+// Full Media Backup Export: Downloadable JSON containing all media and base64
+app.get('/api/media/export-all', async (req, res) => {
+  try {
+    loadMasterArchive();
+    const exportData = {
+      app: 'Kaun Banega Hazarpati',
+      exportedAt: new Date().toISOString(),
+      counts: {
+        images: imageDatabase.size,
+        videos: videoDatabase.size,
+        audios: audioDatabase.size,
+        masterArchive: masterArchive.size
+      },
+      images: Array.from(imageDatabase.values()),
+      videos: Array.from(videoDatabase.values()),
+      audios: Array.from(audioDatabase.values()),
+      masterArchive: Array.from(masterArchive.values())
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="kbh-all-media-backup.json"');
+    res.send(JSON.stringify(exportData, null, 2));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Full Media Backup Import: Restore all media from a JSON backup file
+app.post('/api/media/import-all', express.json({ limit: '500mb' }), async (req, res) => {
+  try {
+    const data = req.body;
+    if (!data || (!data.images && !data.videos && !data.audios && !data.masterArchive)) {
+      return res.status(400).json({ error: 'Invalid backup file format' });
+    }
+    let restoredCount = 0;
+    if (Array.isArray(data.masterArchive)) {
+      data.masterArchive.forEach(item => {
+        if (item && (item.id || item.filename)) {
+          const id = item.id || `archive-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          item.archived = false;
+          masterArchive.set(id, item);
+          const type = item.type || 'image';
+          if (type === 'video') videoDatabase.set(id, item);
+          else if (type === 'audio') audioDatabase.set(id, item);
+          else imageDatabase.set(id, item);
+          restoredCount++;
+        }
+      });
+    }
+    if (Array.isArray(data.images)) {
+      data.images.forEach(img => {
+        if (img && img.id) {
+          imageDatabase.set(img.id, img);
+          masterArchive.set(img.id, { ...img, type: 'image', archived: false });
+          restoredCount++;
+        }
+      });
+    }
+    if (Array.isArray(data.videos)) {
+      data.videos.forEach(vid => {
+        if (vid && vid.id) {
+          videoDatabase.set(vid.id, vid);
+          masterArchive.set(vid.id, { ...vid, type: 'video', archived: false });
+          restoredCount++;
+        }
+      });
+    }
+    if (Array.isArray(data.audios)) {
+      data.audios.forEach(aud => {
+        if (aud && aud.id) {
+          audioDatabase.set(aud.id, aud);
+          masterArchive.set(aud.id, { ...aud, type: 'audio', archived: false });
+          restoredCount++;
+        }
+      });
+    }
+
+    saveMasterArchive();
+    saveImageIndex();
+    saveVideoIndex();
+    saveAudioIndex();
+    await autoRehydrateAllMedia();
+
+    res.json({
+      success: true,
+      message: `Safaltapurvak ${restoredCount} media items restore ho gaye!`,
+      counts: {
+        images: imageDatabase.size,
+        videos: videoDatabase.size,
+        audios: audioDatabase.size,
+        masterArchive: masterArchive.size
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add media via URL or Supabase Storage URL
 app.post('/api/media/add-url', async (req, res) => {
   try {
     const { url, name, type } = req.body || {};
@@ -1276,7 +1841,7 @@ app.post('/api/media/add-url', async (req, res) => {
     else if (mediaType === 'audio') saveAudioIndex();
     else saveImageIndex();
 
-    res.json({ success: true, message: `${mediaType} added successfully to library and Firestore`, media: mediaItem });
+    res.json({ success: true, message: `${mediaType} added successfully to library and Supabase`, media: mediaItem });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1918,7 +2483,7 @@ app.get('/images/:filename', async (req, res, next) => {
     <rect width="600" height="400" fill="#152238"/>
     <rect x="20" y="20" width="560" height="360" rx="12" fill="#1f3252" stroke="#ffd54d" stroke-width="2"/>
     <text x="50%" y="45%" text-anchor="middle" fill="#ffd54d" font-family="sans-serif" font-size="24" font-weight="bold">📷 ${escapeXml(title)}</text>
-    <text x="50%" y="60%" text-anchor="middle" fill="#9ec5e8" font-family="sans-serif" font-size="14">Persisted media record from Firestore</text>
+    <text x="50%" y="60%" text-anchor="middle" fill="#9ec5e8" font-family="sans-serif" font-size="14">Persisted media record from Supabase</text>
   </svg>`);
 });
 
@@ -2019,13 +2584,20 @@ function printServerUrls(message = 'Server running at') {
 
 server.listen(PORT, '0.0.0.0', () => {
   printServerUrls();
-  // Asynchronously load remote indexes and scores without blocking healthchecks
+  // Asynchronously load remote indexes, scores, and auto-rehydrate all media to disk
   Promise.all([
     Promise.race([loadRemoteIndexes(), new Promise(r => setTimeout(r, 4000))]),
     Promise.race([loadRemoteScores(), new Promise(r => setTimeout(r, 4000))])
-  ]).catch(error => {
-    console.warn('[Firebase] Non-blocking initial sync notice:', error?.message || error);
+  ]).then(() => {
+    autoRehydrateAllMedia().catch(() => {});
+  }).catch(error => {
+    console.warn('[Supabase] Non-blocking initial sync notice:', error?.message || error);
   });
+
+  // Background check every 10 minutes to guarantee all media files remain permanently on disk
+  setInterval(() => {
+    autoRehydrateAllMedia().catch(() => {});
+  }, 10 * 60 * 1000);
 });
 
 server.on('error', (error) => {

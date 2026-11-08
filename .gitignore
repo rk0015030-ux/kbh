@@ -3,8 +3,8 @@
 .env.local
 .env.*.local
 
-# Firebase credentials and configs
-firebase-applet-config.json
+# Supabase credentials and configs
+supabase-config.json
 serviceAccountKey.json
 
 # Dependencies
