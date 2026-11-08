@@ -620,15 +620,53 @@
             </div>
           </div>
 
-          <!-- PDF Question Loader -->
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,215,0,0.12); border-radius:8px; padding:8px 10px; margin-top:2px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <label for="pdfFile" style="font-size:12px; font-weight:700; color:#b8c7db; margin:0;">📄 Import Question from PDF</label>
-              <span id="pdfStatus" style="font-size:11px; color:#8ed0ff;">No file</span>
+          <!-- Question Import Card (Text / Notepad / PDF / Direct Paste) -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,215,0,0.22); border-radius:10px; padding:10px 12px; margin-top:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:13px; font-weight:800; color:#ffd54d;">📥 Import Questions (Text / PDF / Paste)</span>
+                <span style="font-size:10px; background:rgba(46,204,113,0.2); color:#45d477; padding:1px 6px; border-radius:4px; border:1px solid rgba(46,204,113,0.4); font-weight:700;">Text = 100% सटीक मात्राएं</span>
+              </div>
+              <span id="pdfStatus" style="font-size:11px; color:#8ed0ff; font-weight:600;">No file loaded</span>
             </div>
-            <div style="display:flex; gap:8px;">
-              <input type="file" id="pdfFile" accept="application/pdf" style="font-size:12px; color:#b8c7db; flex:1;">
-              <button id="nextPdfQuestion" type="button" class="gold-btn" style="padding:4px 10px; font-size:12px; white-space:nowrap;" disabled>Next PDF Q ⏭️</button>
+
+            <!-- Import Action Buttons -->
+            <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px; margin-bottom:8px;">
+              <!-- Text File (.txt / Notepad) -->
+              <label for="textFile" class="kbc-btn" style="padding:7px 10px; font-size:12px; font-weight:700; background:linear-gradient(135deg, #164e2e, #14532d); border:1px solid #22c55e; color:#86efac; border-radius:6px; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; gap:5px; margin:0;" title="Upload plain text file (.txt). Recommended for perfect Hindi matras!">
+                📝 Text (.txt) File
+                <input type="file" id="textFile" accept=".txt,.text,.md,.csv" style="display:none;">
+              </label>
+
+              <!-- PDF File -->
+              <label for="pdfFile" class="kbc-btn" style="padding:7px 10px; font-size:12px; font-weight:700; background:linear-gradient(135deg, #2d2212, #451a03); border:1px solid #f59e0b; color:#fde68a; border-radius:6px; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; gap:5px; margin:0;" title="Upload questions from PDF (supports embedded images)">
+                📑 PDF File
+                <input type="file" id="pdfFile" accept="application/pdf" style="display:none;">
+              </label>
+
+              <!-- Direct Paste Toggle Button -->
+              <button id="togglePasteBoxBtn" type="button" class="kbc-btn" style="padding:7px 12px; font-size:12px; font-weight:700; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#e2e8f0; border-radius:6px; cursor:pointer; white-space:nowrap;">
+                📋 Paste Text
+              </button>
+            </div>
+
+            <!-- Direct Paste Box (collapsible) -->
+            <div id="pasteQuestionsBox" style="display:none; margin-bottom:8px; background:rgba(0,0,0,0.45); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:12px; color:#ffd54d; font-weight:700;">सीधे सवाल पेस्ट करें (Q1, A, B, C, D, Answer):</span>
+                <span style="font-size:10px; color:#94a3b8;">Notepad या Word से कॉपी करके यहाँ पेस्ट करें</span>
+              </div>
+              <textarea id="pastedQuestionsText" class="kbc-input" rows="5" placeholder="Q1) भारत की राजधानी क्या है?&#10;A) दिल्ली&#10;B) मुंबई&#10;C) कोलकाता&#10;D) चेन्नई&#10;Answer: A&#10;&#10;Q2) विटामिन डी का मुख्य स्रोत क्या है?&#10;A) दूध&#10;B) सूर्य का प्रकाश&#10;C) सेब&#10;D) पानी&#10;Answer: B" style="width:100%; box-sizing:border-box; font-size:12px; line-height:1.4; resize:vertical; margin-bottom:6px;"></textarea>
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button id="cancelPasteBtn" type="button" style="padding:5px 12px; font-size:11px; background:rgba(255,255,255,0.1); color:#ccc; border:none; border-radius:4px; cursor:pointer;">Cancel</button>
+                <button id="loadPastedQuestionsBtn" type="button" class="gold-btn" style="padding:5px 14px; font-size:11px; font-weight:700;">✅ Load Questions</button>
+              </div>
+            </div>
+
+            <!-- Next Question Navigation & Status Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span id="activeQuestionSourceLabel" style="font-size:11px; color:#94a3b8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">Choose a .txt or .pdf file, or click Paste Text</span>
+              <button id="nextPdfQuestion" type="button" class="gold-btn" style="padding:5px 12px; font-size:12px; font-weight:800; white-space:nowrap;" disabled>Next Question ⏭️</button>
             </div>
           </div>
 
@@ -3232,28 +3270,127 @@ if (window.pdfjsLib) {
   bindMediaBtn('clearActiveImageBtn', () => clearImageSelection());
   bindMediaBtn('clearBannerImageBtn', () => clearImageSelection());
 
+  // 1. Text File (.txt / Notepad / Word / UTF-8) Loader
+  const textFileInput = document.getElementById('textFile');
+  if (textFileInput) {
+    textFileInput.onchange = async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('pdfStatus');
+      const sourceLabel = document.getElementById('activeQuestionSourceLabel');
+      if (status) status.textContent = 'Reading text file...';
+
+      try {
+        const textContent = await file.text();
+        const parsed = parsePdfQuestions(textContent, []);
+        if (!parsed || !parsed.length) {
+          if (status) status.textContent = 'No questions found.';
+          alert('No questions detected. Please ensure questions are formatted as:\nQ1) Question statement\nA) Option 1\nB) Option 2\nC) Option 3\nD) Option 4\nAnswer: A');
+          return;
+        }
+
+        pdfQuestions = parsed;
+        pdfQuestionIndex = -1;
+        const nextBtn = document.getElementById('nextPdfQuestion');
+        if (nextBtn) {
+          nextBtn.disabled = false;
+          nextBtn.style.display = 'block';
+        }
+
+        if (status) status.textContent = `✅ ${pdfQuestions.length} Qs (100% सटीक)`;
+        if (sourceLabel) sourceLabel.textContent = `Text File: ${file.name} (${pdfQuestions.length} Qs loaded)`;
+
+        loadNextPdfQuestion();
+      } catch (err) {
+        if (status) status.textContent = 'Read error';
+        alert(`Could not read text file: ${err.message}`);
+      }
+    };
+  }
+
+  // 2. Direct Paste Box Toggle & Actions
+  const togglePasteBoxBtn = document.getElementById('togglePasteBoxBtn');
+  const pasteQuestionsBox = document.getElementById('pasteQuestionsBox');
+  const cancelPasteBtn = document.getElementById('cancelPasteBtn');
+  const loadPastedQuestionsBtn = document.getElementById('loadPastedQuestionsBtn');
+  const pastedQuestionsText = document.getElementById('pastedQuestionsText');
+
+  if (togglePasteBoxBtn && pasteQuestionsBox) {
+    togglePasteBoxBtn.onclick = () => {
+      const isHidden = pasteQuestionsBox.style.display === 'none';
+      pasteQuestionsBox.style.display = isHidden ? 'block' : 'none';
+      if (isHidden && pastedQuestionsText) pastedQuestionsText.focus();
+    };
+  }
+
+  if (cancelPasteBtn && pasteQuestionsBox) {
+    cancelPasteBtn.onclick = () => {
+      pasteQuestionsBox.style.display = 'none';
+    };
+  }
+
+  if (loadPastedQuestionsBtn && pastedQuestionsText) {
+    loadPastedQuestionsBtn.onclick = () => {
+      const rawText = pastedQuestionsText.value.trim();
+      if (!rawText) {
+        return alert('कृपया पहले सवाल यहाँ पेस्ट करें।');
+      }
+
+      const status = document.getElementById('pdfStatus');
+      const sourceLabel = document.getElementById('activeQuestionSourceLabel');
+
+      const parsed = parsePdfQuestions(rawText, []);
+      if (!parsed || !parsed.length) {
+        alert('कोई सवाल नहीं मिला। कृपया फॉर्मेट चेक करें:\nQ1) सवाल\nA) विकल्प 1\nB) विकल्प 2\nC) विकल्प 3\nD) विकल्प 4\nAnswer: A');
+        return;
+      }
+
+      pdfQuestions = parsed;
+      pdfQuestionIndex = -1;
+      const nextBtn = document.getElementById('nextPdfQuestion');
+      if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.style.display = 'block';
+      }
+
+      if (status) status.textContent = `✅ ${pdfQuestions.length} Qs (Pasted)`;
+      if (sourceLabel) sourceLabel.textContent = `Pasted Text (${pdfQuestions.length} Qs loaded)`;
+      if (pasteQuestionsBox) pasteQuestionsBox.style.display = 'none';
+
+      loadNextPdfQuestion();
+    };
+  }
+
+  // 3. PDF File Loader
   document.getElementById('pdfFile').onchange = async (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (!file) return;
     if (!window.pdfjsLib) {
       return alert('PDF reader could not load. Check your internet connection and reload the host page.');
     }
 
     const status = document.getElementById('pdfStatus');
-    status.textContent = 'Reading PDF...';
+    const sourceLabel = document.getElementById('activeQuestionSourceLabel');
+    if (status) status.textContent = 'Reading PDF...';
     try {
       pdfQuestions = await extractPdfQuestions(file);
       pdfQuestionIndex = -1;
+      const nextBtn = document.getElementById('nextPdfQuestion');
       if (!pdfQuestions.length) {
-        status.textContent = 'No questions found. Use Q1/Q2 or 1./2. question headings.';
-        document.getElementById('nextPdfQuestion').style.display = 'none';
+        if (status) status.textContent = 'No questions found. Use Q1/Q2 or 1./2. question headings.';
+        if (nextBtn) nextBtn.disabled = true;
         return;
       }
-      status.textContent = `${pdfQuestions.length} questions loaded.`;
-      document.getElementById('nextPdfQuestion').style.display = 'block';
+      if (status) status.textContent = `${pdfQuestions.length} Qs loaded.`;
+      if (sourceLabel) sourceLabel.textContent = `PDF File: ${file.name} (${pdfQuestions.length} Qs)`;
+      if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.style.display = 'block';
+      }
       loadNextPdfQuestion();
     } catch (error) {
-      status.textContent = '';
+      if (status) status.textContent = '';
       alert(`Could not read PDF: ${error.message}`);
     }
   };
@@ -3908,8 +4045,14 @@ if (window.pdfjsLib) {
       clearImageSelection(false);
     }
     refreshImageLibrary();
-    
-    document.getElementById('pdfStatus').textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length} ready. ${question.image ? '(with image)' : '(text only)'}`;
+    const statusEl = document.getElementById('pdfStatus');
+    if (statusEl) {
+      statusEl.textContent = `Q ${pdfQuestionIndex + 1} of ${pdfQuestions.length} ready`;
+    }
+    const sourceLabel = document.getElementById('activeQuestionSourceLabel');
+    if (sourceLabel) {
+      sourceLabel.textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length}: ${question.image ? 'Image Q' : 'Text Q'} (Correct: Option ${question.correct})`;
+    }
   }
 
   document.getElementById('sendQ').onclick = async () => {

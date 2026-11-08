@@ -30,7 +30,9 @@ app.use((req, res, next) => {
 });
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 50 * 1024 * 1024 });
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.APP_PORT
+  ? parseInt(process.env.APP_PORT, 10)
+  : (process.env.PORT && process.env.PORT !== '8080' ? parseInt(process.env.PORT, 10) : 3000);
 const PRIZE_LADDER = [100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
 
 function getQuestionTimeLimit(level) {
@@ -2655,16 +2657,22 @@ app.use(express.static(__dirname));
 function getNetworkAddress() {
   const networkInterfaces = Object.values(os.networkInterfaces()).flat();
   const address = networkInterfaces.find((networkInterface) => (
-    networkInterface && networkInterface.family === 'IPv4' && !networkInterface.internal
+    networkInterface &&
+    networkInterface.family === 'IPv4' &&
+    !networkInterface.internal &&
+    !networkInterface.address.startsWith('169.254.')
   ));
   return address ? address.address : 'localhost';
 }
 
 function printServerUrls(message = 'Server running at') {
-  const baseUrl = `http://${getNetworkAddress()}:${PORT}`;
-  console.log(`${message} ${baseUrl}`);
-  console.log(`Host: ${baseUrl}/`);
-  console.log(`Player: ${baseUrl}/player`);
+  const lanAddress = getNetworkAddress();
+  console.log(`${message} http://localhost:${PORT}`);
+  if (lanAddress !== 'localhost') {
+    console.log(`Network: http://${lanAddress}:${PORT}`);
+  }
+  console.log(`Host: http://localhost:${PORT}/`);
+  console.log(`Player: http://localhost:${PORT}/player`);
 }
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -2686,19 +2694,19 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 server.on('error', (error) => {
+  console.error('HTTP server error:', error);
   if (error.code === 'EADDRINUSE') {
     printServerUrls('Server is already running at');
-    return;
+    process.exit(1);
   }
-  console.error('HTTP server error:', error);
 });
 
 wss.on('error', (error) => {
+  console.error('WebSocket server error:', error);
   if (error.code === 'EADDRINUSE') {
     printServerUrls('Server is already running at');
-    return;
+    process.exit(1);
   }
-  console.error('WebSocket server error:', error);
 });
 
 // Clean shutdown signals for container environments
