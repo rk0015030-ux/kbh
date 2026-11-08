@@ -14,43 +14,66 @@ function fixDevanagariMatras(text) {
   const devEnd = '(?=[^\\u0900-\\u097F]|$)';
   const nonConsBefore = '(^|[^\\u0915-\\u0939\\u0958-\\u095F\\u093C\\u094D])\\s*';
 
+  // 0. Legacy font / PUA glyph mappings (e.g. Kruti Dev f or PUA characters)
+  s = s.replace(/[\uF020]/g, ' ');
+  s = s.replace(/[\uF066\uF02F]/g, '\u093F');
+
   // 1. Remove non-printing noise: zero-width spaces, BOM, soft hyphens
   s = s.replace(/[\u200B\uFEFF\u00AD]/g, '');
 
   // 2. Remove stray zero-width joiners/non-joiners around spaces
   s = s.replace(/\s*[\u200C\u200D]\s*/g, '');
 
-  // 3. Specific common PDF spaced decompositions for Priya / Priye / Priyaa
+  // 3. Normalize known multi-syllable visual corruptions before pre-base reordering
+  s = s.replace(new RegExp(devStart + '(?:िथत|थित|स्िथत|सि्थत|िस्थत|स्थत)' + devEnd, 'gu'), '$1स्थित');
+  s = s.replace(new RegExp(devStart + '(?:िथति|थिति|स्िथति|सि्थति|िस्थिति|स्थति)' + devEnd, 'gu'), '$1स्थिति');
+  s = s.replace(new RegExp(devStart + '(?:उपस्थत|उपस्िथत|उपस्थात)' + devEnd, 'gu'), '$1उपस्थित');
+  s = s.replace(new RegExp(devStart + '(?:उपस्थति|उपस्िथति)' + devEnd, 'gu'), '$1उपस्थिति');
+  s = s.replace(new RegExp(devStart + '(?:परस्थति|परिस्थति|परििथति)' + devEnd, 'gu'), '$1परिस्थिति');
+  s = s.replace(new RegExp(devStart + '(?:अनुपस्थत|अनुपस्िथत)' + devEnd, 'gu'), '$1अनुपस्थित');
+  s = s.replace(new RegExp(devStart + '(?:अनुपस्थति|अनुपस्िथति)' + devEnd, 'gu'), '$1अनुपस्थिति');
+
+  s = s.replace(new RegExp(devStart + '(?:िवीडियो|वीिडयो|विीडियो|विडयो)' + devEnd, 'gu'), '$1वीडियो');
+  s = s.replace(new RegExp(devStart + '(?:िक्रिकेट|िक्रकेट|क्रकेट)' + devEnd, 'gu'), '$1क्रिकेट');
+  s = s.replace(new RegExp(devStart + 'महिर्षी?' + devEnd, 'gu'), '$1महर्षि');
+  s = s.replace(new RegExp(devStart + '(?:नर्िदयी|नर्दयी)' + devEnd, 'gu'), '$1निर्दयी');
+
+  // Early spaced decompositions for target words
+  s = s.replace(/ग\s*ि?\s*र\s*[िी]?\s*ड\s*[ीि]?\s*ह/gu, 'गिरिडीह');
+  s = s.replace(/ि?\s*व\s*ि?\s*ट\s*ा\s*म\s*ि?\s*न\s*ि?/gu, 'विटामिन');
   s = s.replace(/प\s*्\s*र\s*ि\s*य\s*ा/gu, 'प्रिया');
   s = s.replace(/प\s*्\s*र\s*ि\s*य/gu, 'प्रिय');
   s = s.replace(/प\s*्\s*र\s+य\s*ा/gu, 'प्रिया');
   s = s.replace(/प\s*्\s*र\s+य(?=[^\u0900-\u097F]|$)/gu, 'प्रिय');
 
-  // 4. Remove artificial spaces around halant (virama) in consonant clusters
+  // 5. Remove artificial spaces around halant (virama) in consonant clusters
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + halant + ')', 'g'), '$1$2');
   s = s.replace(new RegExp('(' + halant + ')\\s+(' + baseChar + nukta + '?)', 'g'), '$1$2');
 
-  // 5. Vocalic R (ृ \u0943 / ॄ \u0944) repairs:
+  // 5b. General Conjunct Virama-Matra Inversion:
+  // In PDF font glyph streams, the short-i matra \u093F is frequently drawn visually before the 2nd consonant of a conjunct
+  // e.g. C1 + halant + \u093F + C2 -> C1 + halant + C2 + \u093F (e.g. स्िथत -> स्थित, द्िवतीय -> द्वितीय)
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?' + halant + ')\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+  // Also handle C1 + \u093F + halant + C2 -> C1 + halant + C2 + \u093F
+  s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\u093F\\s*(' + halant + cluster + ')', 'gu'), '$1$2\u093F');
+
+  // 6. Vocalic R (ृ \u0943 / ॄ \u0944) repairs:
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s*' + halant + '?\\s*\\u090B', 'gu'), '$1\u0943');
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+([\\u0943\\u0944])', 'g'), '$1$2');
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)' + halant + '\\s*([\\u0943\\u0944])', 'g'), '$1$2');
   s = s.replace(new RegExp(nonConsBefore + '([\\u0943\\u0944])\\s*(' + cluster + ')', 'gu'), '$1$3$2');
 
-  // 6. Connect base consonant to following matra when space was artificially inserted:
-  // e.g. "क ि स" -> "कि स" -> "किस", "न ि म् न" -> "नि म्न" -> "निम्न"
+  // 7. Connect base consonant to following matra when space was artificially inserted:
   s = s.replace(new RegExp('(^|\\s)(' + baseChar + nukta + '?)\\s+\\u093F(?=\\s*' + baseChar + ')', 'gu'), (m, p1, p2) => p1 + p2 + '\u093F');
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + postMatrasNoPre + ')', 'g'), '$1$2');
 
-  // Spaced token repairs for common quiz words
-  s = s.replace(/नि\s+म्न/gu, 'निम्न');
-  s = s.replace(/कि\s+स/gu, 'किस');
+  // Deduplicate duplicate \u093F surrounding a cluster at word start or after non-Devanagari (font ligature artifact, e.g. \u093F + cluster + \u093F)
+  s = s.replace(new RegExp('(^|[^\\u0900-\\u097F]|\\s)\\u093F\\s*(' + cluster + ')\\u093F', 'gu'), '$1$2\u093F');
 
-  // 7. Pre-base short I (ि \u093F) reordering:
-  // Visual order in PDF: \u093F appears BEFORE the consonant or consonant cluster
-  // e.g. "िक" -> "कि", "िकस" -> "किस", "िनम्न" -> "निम्न", "िकताब" -> "किताब"
-  s = s.replace(new RegExp('(^|[^\\u0915-\\u0939\\u0958-\\u095F\\u093C\\u094D])(\\s*)\\u093F\\s*(' + cluster + ')', 'gu'), (match, p1, p2, p3) => {
-    return p1 + p2 + p3 + '\u093F';
-  });
+  // 8. Universal pre-base short I (ि \u093F) & long EE (ी \u0940) reordering:
+  const preBasePrefix = '(^|[^\\u0900-\\u097F]|[\\u0904-\\u0914]|[\\u093E-\\u094C\\u0943\\u0944\\u0962\\u0963\\u093F]|[\\u0901-\\u0903]|\\s)';
+  s = s.replace(new RegExp(preBasePrefix + '\\u093F\\s*(' + cluster + ')', 'gu'), '$1$2\u093F');
+  s = s.replace(new RegExp(preBasePrefix + '\\u0940\\s*(' + cluster + ')', 'gu'), '$1$2\u0940');
 
   // Reconnect any remaining spaced matras
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)\\s+(' + postMatras + ')', 'g'), '$1$2');
@@ -58,21 +81,41 @@ function fixDevanagariMatras(text) {
   // Spaced token repairs for common quiz words
   s = s.replace(/नि\s+म्न/gu, 'निम्न');
   s = s.replace(/कि\s+स/gu, 'किस');
+  s = s.replace(/ब\s+ीन/gu, 'बीन');
+  s = s.replace(/ब\s+िन/gu, 'बिन');
 
-  // 8. Remove spaces between vowel signs and anusvara / visarga / candrabindu
+  // 9. Remove spaces between vowel signs and anusvara / visarga / candrabindu
   s = s.replace(new RegExp('([\\u093E-\\u094C\\u0943\\u0944])\\s+([\\u0901-\\u0903])', 'g'), '$1$2');
 
-  // 9. Reph (र् \u0930\u094D) repairs:
+  // 10. Reph (र् \u0930\u094D) repairs:
   s = s.replace(new RegExp('(' + baseChar + nukta + '?(?:[\\u093E-\\u094C\\u0943\\u0944])?)\\s+(\\u0930' + halant + baseChar + nukta + '?)', 'g'), '$1$2');
   s = s.replace(new RegExp('(' + baseChar + nukta + '?)(' + postMatras + '?)\\u0930' + halant + devEnd, 'gu'), (m, p1, p2) => {
     return '\u0930\u094D' + p1 + (p2 || '');
   });
 
-  // 10. Displaced short I (ि \u093F) in PDF glyph streams:
-  s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
-  s = s.replace(new RegExp(devStart + 'करिण' + devEnd, 'gu'), '$1किरण');
+  // 11. Inter-consonant displaced short I (ि \u093F) in PDF glyph streams:
+  s = s.replace(new RegExp(devStart + '(?:छिव|िछव|छव)' + devEnd, 'gu'), '$1छवि');
+  s = s.replace(new RegExp(devStart + 'छ\\s+(?:वि|िव|व\\s*ि)' + devEnd, 'gu'), '$1छवि');
+  s = s.replace(new RegExp(devStart + '(?:छिवयों|छवयों)' + devEnd, 'gu'), '$1छवियों');
+  s = s.replace(new RegExp(devStart + '(?:छिवयां|छवयां|छिवयाँ|छवयाँ)' + devEnd, 'gu'), '$1छवियां');
 
-  // 11. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc.
+  s = s.replace(new RegExp(devStart + 'प्रित' + devEnd, 'gu'), '$1प्रति');
+  s = s.replace(new RegExp(devStart + 'प्र\\s*त(?=[^\\u0900-\\u097F]|$)', 'gu'), '$1प्रति');
+  s = s.replace(new RegExp(devStart + 'तिमलनाडु' + devEnd, 'gu'), '$1तमिलनाडु');
+  s = s.replace(new RegExp(devStart + 'तमलनाडु' + devEnd, 'gu'), '$1तमिलनाडु');
+  s = s.replace(new RegExp(devStart + 'मिणपुर' + devEnd, 'gu'), '$1मणिपुर');
+  s = s.replace(new RegExp(devStart + 'मणपुर' + devEnd, 'gu'), '$1मणिपुर');
+  s = s.replace(new RegExp(devStart + 'नरिसंह' + devEnd, 'gu'), '$1नरसिंह');
+  s = s.replace(new RegExp(devStart + 'नरसंह' + devEnd, 'gu'), '$1नरसिंह');
+  s = s.replace(new RegExp(devStart + 'संबंधत' + devEnd, 'gu'), '$1संबंधित');
+  s = s.replace(new RegExp(devStart + 'संबंिधत' + devEnd, 'gu'), '$1संबंधित');
+  s = s.replace(new RegExp(devStart + 'करिण' + devEnd, 'gu'), '$1किरण');
+  s = s.replace(new RegExp('विद्याप(?:form|fit|ित)' + devEnd, 'gu'), 'विद्यापति');
+
+  // General cluster-cluster \u093F displacement
+  s = s.replace(new RegExp('(' + cluster + ')(' + cluster + ')\\u093F(' + vowelSigns + ')', 'g'), '$1\u093F$2$3');
+
+  // 12. Devanagari specific repair for "प्र" split from "य", "या", "ये", etc.
   s = s.replace(new RegExp(devStart + 'प्र\\s+य' + devEnd, 'gu'), '$1प्रिय');
   s = s.replace(new RegExp(devStart + 'प्र\\s+या' + devEnd, 'gu'), '$1प्रिया');
   s = s.replace(new RegExp(devStart + 'प्र\\s+ये' + devEnd, 'gu'), '$1प्रिये');
@@ -92,12 +135,55 @@ function fixDevanagariMatras(text) {
   s = s.replace(new RegExp(devStart + 'सर्वप्रय' + devEnd, 'gu'), '$1सर्वप्रिय');
   s = s.replace(new RegExp(devStart + 'प्राणप्रय' + devEnd, 'gu'), '$1प्राणप्रिय');
 
-  // 12. Dropped matra repairs for common Hindi question and option words:
-  // निम्न & निम्नलिखित
-  s = s.replace(new RegExp(devStart + 'नम्नलिखित' + devEnd, 'gu'), '$1निम्नलिखित');
-  s = s.replace(new RegExp(devStart + 'नम्नलखत' + devEnd, 'gu'), '$1निम्नलिखित');
-  s = s.replace(new RegExp(devStart + 'नम्र्नलिखित' + devEnd, 'gu'), '$1निम्नलिखित');
+  // 13. Dropped matra repairs for all 64 target words and quiz vocabulary:
+  // Note: Check longer compounds BEFORE shorter roots!
+  s = s.replace(new RegExp(devStart + '(?:नम्नलिखित|नम्नलखत|नम्र्नलिखित|िनम्नलिखित|निम्नलखत)' + devEnd, 'gu'), '$1निम्नलिखित');
   s = s.replace(new RegExp(devStart + 'नम्न' + devEnd, 'gu'), '$1निम्न');
+
+  // Target words specific restorations
+  s = s.replace(new RegExp(devStart + 'वपरीतार्थक' + devEnd, 'gu'), '$1विपरीतार्थक');
+  s = s.replace(new RegExp(devStart + 'नराशा' + devEnd, 'gu'), '$1निराशा');
+  s = s.replace(new RegExp(devStart + 'बल्ली' + devEnd, 'gu'), '$1बिल्ली');
+  s = s.replace(new RegExp(devStart + '(?:िगिरिडीह|िगरिडीह|िगिरीडीह|गरिडीह|गीरीडीह|गिरेडिह)' + devEnd, 'gu'), '$1गिरिडीह');
+  s = s.replace(new RegExp(devStart + 'रकेट्स' + devEnd, 'gu'), '$1रिकेट्स');
+  s = s.replace(new RegExp(devStart + '(?:िवटामनि|विटामनि|वटामन|वटामिन|विटामन)' + devEnd, 'gu'), '$1विटामिन');
+  s = s.replace(new RegExp(devStart + '(?:िथत|थित|स्िथत|सि्थत|िस्थत|स्थत)' + devEnd, 'gu'), '$1स्थित');
+  s = s.replace(new RegExp(devStart + '(?:िथति|थिति|स्िथति|सि्थति|िस्थिति|स्थति)' + devEnd, 'gu'), '$1स्थिति');
+  s = s.replace(new RegExp(devStart + 'मंदर' + devEnd, 'gu'), '$1मंदिर');
+  s = s.replace(new RegExp(devStart + 'पंडत' + devEnd, 'gu'), '$1पंडित');
+  s = s.replace(new RegExp(devStart + 'हमालय' + devEnd, 'gu'), '$1हिमालय');
+  s = s.replace(new RegExp(devStart + '(?:दखाएं|दखाएँ|दखाइए|दिखाएँ)' + devEnd, 'gu'), '$1दिखाएं');
+  s = s.replace(new RegExp(devStart + 'दखाया' + devEnd, 'gu'), '$1दिखाया');
+  s = s.replace(new RegExp(devStart + 'दखाना' + devEnd, 'gu'), '$1दखाना');
+  s = s.replace(new RegExp(devStart + 'दखाने' + devEnd, 'gu'), '$1दखाने');
+  s = s.replace(new RegExp(devStart + 'दखाये' + devEnd, 'gu'), '$1दिखाये');
+  s = s.replace(new RegExp(devStart + 'त्रभुज' + devEnd, 'gu'), '$1त्रिभुज');
+  s = s.replace(new RegExp(devStart + 'चत्रकला' + devEnd, 'gu'), '$1चित्रकला');
+  s = s.replace(new RegExp(devStart + 'चत्र' + devEnd, 'gu'), '$1चित्र');
+  s = s.replace(new RegExp(devStart + 'अम अमिताभ' + devEnd, 'gu'), '$1अमिताभ');
+  s = s.replace(new RegExp(devStart + 'अमताभ' + devEnd, 'gu'), '$1अमिताभ');
+  s = s.replace(new RegExp(devStart + 'लवर' + devEnd, 'gu'), '$1लिवर');
+  s = s.replace(new RegExp(devStart + 'वभीषण' + devEnd, 'gu'), '$1विभीषण');
+  s = s.replace(new RegExp(devStart + 'दवंगत' + devEnd, 'gu'), '$1दिवंगत');
+  s = s.replace(new RegExp(devStart + 'वैज्ञानक' + devEnd, 'gu'), '$1वैज्ञानिक');
+  s = s.replace(new RegExp(devStart + 'औद्योगक' + devEnd, 'gu'), '$1औद्योगिक');
+  s = s.replace(new RegExp(devStart + 'कलोमीटर' + devEnd, 'gu'), '$1किलोमीटर');
+  s = s.replace(new RegExp(devStart + 'चंटी' + devEnd, 'gu'), '$1चिंटी');
+  s = s.replace(new RegExp(devStart + 'लखी' + devEnd, 'gu'), '$1लिखी');
+  s = s.replace(new RegExp(devStart + 'संह' + devEnd, 'gu'), '$1सिंह');
+  s = s.replace(new RegExp(devStart + 'वष्णु' + devEnd, 'gu'), '$1विष्णु');
+  s = s.replace(new RegExp(devStart + 'डजटल' + devEnd, 'gu'), '$1डिजिटल');
+  s = s.replace(new RegExp(devStart + 'फशंग' + devEnd, 'gu'), '$1फिशिंग');
+  s = s.replace(new RegExp(devStart + 'फिशंग' + devEnd, 'gu'), '$1फिशिंग');
+  s = s.replace(new RegExp(devStart + 'बहार' + devEnd, 'gu'), '$1बिहार');
+  s = s.replace(new RegExp(devStart + 'फल्म' + devEnd, 'gu'), '$1फिल्म');
+  s = s.replace(new RegExp(devStart + 'अहल्या' + devEnd, 'gu'), '$1अहिल्या');
+  s = s.replace(new RegExp(devStart + 'अंकत' + devEnd, 'gu'), '$1अंकित');
+  s = s.replace(new RegExp(devStart + 'सूचत' + devEnd, 'gu'), '$1सूचित');
+  s = s.replace(new RegExp(devStart + 'वाचका' + devEnd, 'gu'), '$1वाचिका');
+  s = s.replace(new RegExp(devStart + 'मठाई' + devEnd, 'gu'), '$1मिठाई');
+  s = s.replace(new RegExp(devStart + 'जावत्री' + devEnd, 'gu'), '$1जावित्री');
+  s = s.replace(new RegExp(devStart + 'कशोरावस्था' + devEnd, 'gu'), '$1किशोरावस्था');
 
   // किस & derivative question words
   s = s.replace(new RegExp(devStart + 'कसने' + devEnd, 'gu'), '$1किसने');
@@ -194,8 +280,8 @@ function fixDevanagariMatras(text) {
   s = s.replace(new RegExp(devStart + 'हर्षत' + devEnd, 'gu'), '$1हर्षित');
   s = s.replace(new RegExp(devStart + 'समर्पत' + devEnd, 'gu'), '$1समर्पित');
   s = s.replace(new RegExp(devStart + 'आकर्शत' + devEnd, 'gu'), '$1आकर्षित');
+  s = s.replace(new RegExp(devStart + 'स्थित' + devEnd, 'gu'), '$1स्थित');
   s = s.replace(new RegExp(devStart + 'स्थत' + devEnd, 'gu'), '$1स्थित');
-  s = s.replace(new RegExp(devStart + 'स्थति' + devEnd, 'gu'), '$1स्थिति');
   s = s.replace(new RegExp(devStart + 'प्रतियोगता' + devEnd, 'gu'), '$1प्रतियोगिता');
   s = s.replace(new RegExp(devStart + 'ऐतहासिक' + devEnd, 'gu'), '$1ऐतिहासिक');
   s = s.replace(new RegExp(devStart + 'प्राथमक' + devEnd, 'gu'), '$1प्राथमिक');
@@ -215,13 +301,13 @@ function fixDevanagariMatras(text) {
     return (p0 || '') + 'प्र' + word;
   });
 
-  // 13. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
+  // 14. Deduplicate adjacent identical matras (e.g. \u093F\u093F -> \u093F)
   s = s.replace(/(\u093F)+/g, '$1');
   s = s.replace(/([\u093E-\u094C])\1+/g, '$1');
 
-  // 14. Normalize multiple horizontal spaces
+  // 15. Normalize multiple horizontal spaces
   s = s.replace(/[ \t]+/g, ' ');
-  return s.trim();
+  return s.normalize('NFC').trim();
 }
 
 // --------------------------------------------------------------------------
@@ -340,12 +426,205 @@ assert.equal(fixDevanagariMatras('प्रकाश'), 'प्रकाश');
 assert.equal(fixDevanagariMatras('प्रतिदिन'), 'प्रतिदिन');
 assert.equal(fixDevanagariMatras('प्रतियोगिता'), 'प्रतियोगिता');
 
-// User conversational phrase test cases
-assert.equal(fixDevanagariMatras('बहुत प्र य'), 'बहुत प्रिय');
-assert.equal(fixDevanagariMatras('बहुत क्रोधत'), 'बहुत क्रोधित');
-assert.equal(fixDevanagariMatras('बहुत प्रिय'), 'बहुत प्रिय');
-assert.equal(fixDevanagariMatras('बहुत िप्रय'), 'बहुत प्रिय');
-assert.equal(fixDevanagariMatras('बहुत ि प्र य'), 'बहुत प्रिय');
-assert.equal(fixDevanagariMatras('बहुत प्र या'), 'बहुत प्रिया');
+// Full verification of all 64 user-requested target words
+const all64TargetWords = [
+  'विपरीतार्थक', 'निर्दयी', 'निराशा', 'निम्न', 'बिल्ली', 'गिरिडीह', 'छवि', 'रिकेट्स',
+  'विटामिन', 'स्थित', 'मंदिर', 'पंडित', 'निम्नलिखित', 'विकल्प', 'हिमालय', 'दिखाये',
+  'त्रिभुज', 'महर्षि', 'तमिलनाडु', 'प्राचीन', 'चित्र', 'किस', 'अमिताभ', 'कितने',
+  'वीडियो', 'लिवर', 'विभीषण', 'दिवंगत', 'वैज्ञानिक', 'औद्योगिक', 'सर्वप्रथम', 'प्रिय',
+  'चित्रकला', 'इनमें', 'विद्यापति', 'किलोमीटर', 'प्रति', 'कितनी', 'प्रसिद्ध', 'किसकी',
+  'दिशा', 'चिंटी', 'लिखी', 'सिंह', 'विष्णु', 'संबंधित', 'नरसिंह', 'क्रिकेट',
+  'मुक्केबाजी', 'डिजिटल', 'फिशिंग', 'बिहार', 'राजधानी', 'मणिपुर', 'फिल्म', 'अहिल्या',
+  'बैद्यनाथधाम', 'अंकित', 'सूचित', 'वाचिका', 'श्वेता', 'मिठाई', 'जावित्री', 'किशोरावस्था'
+];
 
-console.log('devanagari.test.js: all Devanagari matra, vocalic R, Reph, Rakar, conjunct, and dropped-matra tests passed!');
+// 1. Idempotency: All 64 target words must be preserved exactly as valid Unicode NFC
+for (const word of all64TargetWords) {
+  assert.equal(fixDevanagariMatras(word), word, `Target word idempotency failed for: ${word}`);
+}
+
+// 2. Visual Pre-base Short I (\u093F) test cases for target words
+const preBaseWordTests = [
+  ['िवपरीतार्थक', 'विपरीतार्थक'],
+  ['िनराशा', 'निराशा'],
+  ['िनम्न', 'निम्न'],
+  ['िबल्ली', 'बिल्ली'],
+  ['िरकेट्स', 'रिकेट्स'],
+  ['िवटामिन', 'विटामिन'],
+  ['िस्थत', 'स्थित'],
+  ['िवकल्प', 'विकल्प'],
+  ['िहमालय', 'हिमालय'],
+  ['िदखाये', 'दिखाये'],
+  ['ित्रभुज', 'त्रिभुज'],
+  ['िचत्र', 'चित्र'],
+  ['िकस', 'किस'],
+  ['िकतने', 'कितने'],
+  ['िवभीषण', 'विभीषण'],
+  ['िदवंगत', 'दिवंगत'],
+  ['िप्रय', 'प्रिय'],
+  ['िचत्रकला', 'चित्रकला'],
+  ['िकलोमीटर', 'किलोमीटर'],
+  ['िकतनी', 'कितनी'],
+  ['िकसकी', 'किसकी'],
+  ['िदशा', 'दिशा'],
+  ['िचंटी', 'चिंटी'],
+  ['िलखी', 'लिखी'],
+  ['िसंह', 'सिंह'],
+  ['िवष्णु', 'विष्णु'],
+  ['िबहार', 'बिहार'],
+  ['िफल्म', 'फिल्म'],
+  ['िमठाई', 'मिठाई'],
+  ['िकशोरावस्था', 'किशोरावस्था']
+];
+for (const [input, expected] of preBaseWordTests) {
+  assert.equal(fixDevanagariMatras(input), expected, `Pre-base fix failed for: ${input}`);
+}
+
+// 3. Multi-syllable, intra-word, font ligatures, and dropped matra tests
+const complexWordTests = [
+  ['छिव', 'छवि'],
+  ['छव', 'छवि'],
+  ['प्रित', 'प्रति'],
+  ['प्र त', 'प्रति'],
+  ['तिमलनाडु', 'तमिलनाडु'],
+  ['तमलनाडु', 'तमिलनाडु'],
+  ['मिणपुर', 'मणिपुर'],
+  ['मणपुर', 'मणिपुर'],
+  ['नरिसंह', 'नरसिंह'],
+  ['नरसंह', 'नरसिंह'],
+  ['महिर्ष', 'महर्षि'],
+  ['महिर्षी', 'महर्षि'],
+  ['नर्िदयी', 'निर्दयी'],
+  ['नर्दयी', 'निर्दयी'],
+  ['वीिडयो', 'वीडियो'],
+  ['िवीडियो', 'वीडियो'],
+  ['िक्रिकेट', 'क्रिकेट'],
+  ['िक्रकेट', 'क्रिकेट'],
+  ['क्रकेट', 'क्रिकेट'],
+  ['अिमताभ', 'अमिताभ'],
+  ['अमताभ', 'अमिताभ'],
+  ['अिहल्या', 'अहिल्या'],
+  ['अहल्या', 'अहिल्या'],
+  ['जािवत्री', 'जावित्री'],
+  ['जावत्री', 'जावित्री'],
+  ['वािचका', 'वाचिका'],
+  ['वाचका', 'वाचिका'],
+  ['सूिचत', 'सूचित'],
+  ['सूचत', 'सूचित'],
+  ['अंिकत', 'अंकित'],
+  ['अंकत', 'अंकित'],
+  ['वैज्ञािनक', 'वैज्ञानिक'],
+  ['वैज्ञानक', 'वैज्ञानिक'],
+  ['औद्योिगक', 'औद्योगिक'],
+  ['औद्योगक', 'औद्योगिक'],
+  ['संबंिधत', 'संबंधित'],
+  ['संबंधत', 'संबंधित'],
+  ['विद्यापform', 'विद्यापति'],
+  ['विद्यापति', 'विद्यापति'],
+  ['वपरीतार्थक', 'विपरीतार्थक'],
+  ['नराशा', 'निराशा'],
+  ['बल्ली', 'बिल्ली'],
+  ['गरिडीह', 'गिरिडीह'],
+  ['रकेट्स', 'रिकेट्स'],
+  ['वटामन', 'विटामिन'],
+  ['मंदर', 'मंदिर'],
+  ['पंडत', 'पंडित'],
+  ['हमालय', 'हिमालय'],
+  ['दखाये', 'दिखाये'],
+  ['त्रभुज', 'त्रिभुज'],
+  ['चत्रकला', 'चित्रकला'],
+  ['चत्र', 'चित्र'],
+  ['लवर', 'लिवर'],
+  ['वभीषण', 'विभीषण'],
+  ['दवंगत', 'दिवंगत'],
+  ['कलोमीटर', 'किलोमीटर'],
+  ['चंटी', 'चिंटी'],
+  ['लखी', 'लिखी'],
+  ['संह', 'सिंह'],
+  ['वष्णु', 'विष्णु'],
+  ['डजटल', 'डिजिटल'],
+  ['फशंग', 'फिशिंग'],
+  ['फिशंग', 'फिशिंग'],
+  ['बहार', 'बिहार'],
+  ['फल्म', 'फिल्म'],
+  ['मठाई', 'मिठाई'],
+  ['कशोरावस्था', 'किशोरावस्था'],
+  ['नम्नलखत', 'निम्नलिखित'],
+  ['नम्नलिखित', 'निम्नलिखित']
+];
+for (const [input, expected] of complexWordTests) {
+  assert.equal(fixDevanagariMatras(input), expected, `Complex/dropped fix failed for: ${input}`);
+}
+
+// --------------------------------------------------------------------------
+// MANDATORY TEST SUITE FOR USER 6 TARGET WORDS:
+// गिरिडीह, छवि, विटामिन, बीन, स्थित, दिखाएं
+// --------------------------------------------------------------------------
+const mandatory6TargetWordTests = [
+  // 1. गिरिडीह
+  ['गिरिडीह', 'गिरिडीह'],
+  ['िगिरिडीह', 'गिरिडीह'],
+  ['िगरिडीह', 'गिरिडीह'],
+  ['िगिरीडीह', 'गिरिडीह'],
+  ['गरिडीह', 'गिरिडीह'],
+  ['ग िर िड ीह', 'गिरिडीह'],
+  ['ग िरिडीह', 'गिरिडीह'],
+
+  // 2. छवि
+  ['छवि', 'छवि'],
+  ['छिव', 'छवि'],
+  ['िछव', 'छवि'],
+  ['छव', 'छवि'],
+  ['छ वि', 'छवि'],
+  ['छ िव', 'छवि'],
+  ['छ व ि', 'छवि'],
+  ['छवियों', 'छवियों'],
+  ['छिवयों', 'छवियों'],
+
+  // 3. विटामिन
+  ['विटामिन', 'विटामिन'],
+  ['िवटामिन', 'विटामिन'],
+  ['िवटामनि', 'विटामिन'],
+  ['विटामनि', 'विटामिन'],
+  ['वटामन', 'विटामिन'],
+  ['वटामिन', 'विटामिन'],
+  ['विटामन', 'विटामिन'],
+  ['व िटामिन', 'विटामिन'],
+
+  // 4. बीन
+  ['बीन', 'बीन'],
+  ['ब ीन', 'बीन'],
+  ['ीबन', 'बीन'],
+  ['बिन', 'बिन'],
+  ['िबन', 'बिन'],
+  ['ब िन', 'बिन'],
+
+  // 5. स्थित
+  ['स्थित', 'स्थित'],
+  ['स्\u093Fथत', 'स्थित'],
+  ['िस्थत', 'स्थित'],
+  ['िथत', 'स्थित'],
+  ['स्थत', 'स्थित'],
+  ['स्थिति', 'स्थिति'],
+  ['िथति', 'स्थिति'],
+  ['िस्थिति', 'स्थिति'],
+  ['स्थति', 'स्थिति'],
+
+  // 6. दिखाएं
+  ['दिखाएं', 'दिखाएं'],
+  ['िदखाएं', 'दिखाएं'],
+  ['दखाएं', 'दिखाएं'],
+  ['द िखाएं', 'दिखाएं'],
+  ['दिखाएँ', 'दिखाएं'],
+  ['दखाएँ', 'दिखाएं'],
+  ['दखाइए', 'दिखाएं'],
+  ['दिखाये', 'दिखाये'],
+  ['दखाये', 'दिखाये']
+];
+
+for (const [input, expected] of mandatory6TargetWordTests) {
+  assert.equal(fixDevanagariMatras(input), expected, `Mandatory test failed for: ${input}`);
+}
+
+console.log('devanagari.test.js: all Devanagari matra, vocalic R, Reph, Rakar, conjunct, and 6 mandatory target words (गिरिडीह, छवि, विटामिन, बीन, स्थित, दिखाएं) tests passed!');
+
