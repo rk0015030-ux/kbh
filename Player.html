@@ -1900,8 +1900,8 @@
 
   function getQuestionTimeLimit(level) {
     const lvl = Number(level) || 1;
-    if (lvl <= 4) return 30;
-    if (lvl <= 7) return 45;
+    if (lvl <= 5) return 30;
+    if (lvl <= 8) return 45;
     return 60;
   }
 
@@ -2620,11 +2620,11 @@
       const lvl = Number(q.level) || 1;
       let totalTime = q.timeLimitSec;
       if (!totalTime || totalTime === 'auto') {
-        if (lvl <= 4) totalTime = 30;
-        else if (lvl <= 7) totalTime = 45;
+        if (lvl <= 5) totalTime = 30;
+        else if (lvl <= 8) totalTime = 45;
         else totalTime = 60;
       }
-      totalTime = Number(totalTime) || (lvl <= 4 ? 30 : (lvl <= 7 ? 45 : 60));
+      totalTime = Number(totalTime) || (lvl <= 5 ? 30 : (lvl <= 8 ? 45 : 60));
 
       const savedOffline = getSavedOfflineAudio();
       const isMatchingQuestion = savedOffline && savedOffline.questionText && savedOffline.questionText === q.text;

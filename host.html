@@ -2,7 +2,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#060814" />
-  <title>Quiz Host - Hazarpati</title>
+  <title>Quiz Host - Hazarpati (KBH)</title>
+  <meta name="description" content="Interactive multiplayer quiz show applet with real-time host and player controls, audio/video questions, and lifelines." />
+  <meta property="og:title" content="Quiz Host - Hazarpati (KBH)" />
+  <meta property="og:description" content="Interactive multiplayer quiz show applet with real-time host and player controls, audio/video questions, and lifelines." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -609,7 +612,7 @@
             <div>
               <label for="timeLimit" style="font-size:12px; font-weight:700; color:#ffd54d; display:block; margin-bottom:2px;">Timer Duration</label>
               <select id="timeLimit" class="kbc-input" style="width:100%;">
-                <option value="auto" selected>Auto by Level (Q1-4: 30s | Q5-7: 45s | Q8-10: 60s)</option>
+                <option value="auto" selected>Auto by Level (Q1-5: 30s | Q6-8: 45s | Q9-10: 60s)</option>
                 <option value="30">30 Seconds (30 sec timer)</option>
                 <option value="45">45 Seconds (45 sec timer)</option>
                 <option value="60">60 Seconds (60 sec timer)</option>
@@ -990,8 +993,8 @@
   function resolveQuestionTimeLimit(timeLimitChoice, level) {
     if (timeLimitChoice === 'auto' || timeLimitChoice === undefined || timeLimitChoice === null || timeLimitChoice === '') {
       const lvl = Number(level) || 1;
-      if (lvl <= 4) return 30;
-      if (lvl <= 7) return 45;
+      if (lvl <= 5) return 30;
+      if (lvl <= 8) return 45;
       return 60;
     }
     const val = Number(timeLimitChoice);

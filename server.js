@@ -35,8 +35,8 @@ const PRIZE_LADDER = [100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
 
 function getQuestionTimeLimit(level) {
   const lvl = Number(level) || 1;
-  if (lvl <= 4) return 30;
-  if (lvl <= 7) return 45;
+  if (lvl <= 5) return 30;
+  if (lvl <= 8) return 45;
   return 60;
 }
 
@@ -2564,6 +2564,7 @@ app.get('/healthz', (req, res) => res.status(200).send('OK'));
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', uptime: process.uptime() }));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'host.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'host.html')));
 app.get('/player', (req, res) => res.sendFile(path.join(__dirname, 'Player.html')));
 app.use(express.static(__dirname));
 
