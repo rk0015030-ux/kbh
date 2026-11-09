@@ -155,4 +155,165 @@ assert.strictEqual(q10.length, 2, 'Case 10: Both questions should be parsed');
 assert.strictEqual(q10[0].correct, 'B');
 assert.strictEqual(q10[1].correct, 'A');
 
-console.log('All 10 question-parser test cases passed successfully!');
+// Case 11: Complete 10-Question set with various image formats, blank lines, and image-only questions
+global.imageLibrary = [
+  { imageId: 'image-1', url: '/images/image-1.jpg', name: 'taj.jpg' },
+  { imageId: 'image-2', url: '/images/image-2.jpg', name: 'kalam.jpg' },
+  { imageId: 'image-3', url: '/images/image-3.jpg', name: 'tiger.jpg' },
+  { imageId: 'image-4', url: '/images/image-4.jpg', name: 'mango.jpg' }
+];
+
+const test11 = `
+1. भारत की राजधानी क्या है?
+A. मुंबई
+B. नई दिल्ली
+C. कोलकाता
+D. चेन्नई
+उत्तर: B
+
+2. सौरमंडल का सबसे बड़ा ग्रह कौन सा है?
+A. मंगल
+B. पृथ्वी
+C. बृहस्पति
+D. शुक्र
+उत्तर: C
+
+3. दिए गए चित्र में दिख रहे स्मारक का नाम बताएं:
+[Image: 1]
+A. कुतुब मीनार
+B. लाल किला
+C. ताजमहल
+D. इंडिया गेट
+Answer: C
+
+4. [Image: 2]
+A. एपीजे अब्दुल कलाम
+B. सीवी रमन
+C. होमी भाभा
+D. विक्रम साराभाई
+Ans: A
+
+5. क्रिकेट का भगवान किसे कहा जाता है?
+(A) विराट कोहली
+(B) सचिन तेंदुलकर
+(C) एमएस धोनी
+(D) रोहित शर्मा
+Key: B
+
+6. जल का रासायनिक सूत्र क्या है?
+A. CO2
+B. NaCl
+C. H2O
+D. O2
+Ans: C
+
+7. 
+[चित्र 3]
+इस चित्र में किस जानवर को दिखाया गया है?
+(क) बाघ
+(ख) शेर
+(ग) चीता
+(घ) तेंदुआ
+उत्तर: (क)
+
+8. बिहार का राजकीय पशु कौन सा है?
+A) बैल
+B) गाय
+C) बाघ
+D) हाथी
+उत्तर: A
+
+9. [IMAGE]
+A. आम
+B. सेब
+C. केला
+D. संतरा
+Ans: A
+
+10. कंप्यूटर का मस्तिष्क किसे कहते हैं?
+A. RAM
+B. ROM
+C. CPU
+D. GPU
+उत्तर: C
+`;
+
+const q11 = parsePdfQuestions(test11);
+assert.strictEqual(q11.length, 10, 'Case 11: Exactly 10 out of 10 questions must be extracted without skipping any');
+assert.strictEqual(q11[2].image, '/images/image-1.jpg', 'Q3 image should resolve');
+assert.strictEqual(q11[2].imageId, 'image-1');
+assert.strictEqual(q11[3].image, '/images/image-2.jpg', 'Q4 image should resolve');
+assert.strictEqual(q11[3].text, 'दिए गए चित्र को देखकर उत्तर दीजिए', 'Q4 text should not be empty');
+assert.strictEqual(q11[6].image, '/images/image-3.jpg', 'Q7 image should resolve');
+assert.strictEqual(q11[8].image, '/images/image-4.jpg', 'Q9 image should resolve');
+assert.strictEqual(q11[9].correct, 'C', 'Q10 answer should be C');
+
+// Case 12: 10-Question set with mixed Q headers, no blank lines
+const test12 = `
+Q1. Question 1
+A) opt1
+B) opt2
+C) opt3
+D) opt4
+Ans: A
+2. Question 2
+[Image: 1]
+A) opt1
+B) opt2
+C) opt3
+D) opt4
+Ans: B
+Question 3: Capital of France?
+A) Paris
+B) Lyon
+C) Nice
+D) Marseille
+Answer: A
+4. [Image: 2]
+A) 1
+B) 2
+C) 3
+D) 4
+Ans: C
+5. Question 5
+(A) a
+(B) b
+(C) c
+(D) d
+Key: D
+6. Question 6
+A. a
+B. b
+C. c
+D. d
+Ans: A
+7. [चित्र: 3] Question 7
+(क) ka
+(ख) kha
+(ग) ga
+(घ) gha
+उत्तर: ख
+8. Question 8
+1. one
+2. two
+3. three
+4. four
+Ans: 2
+9. [IMAGE]
+A) a
+B) b
+C) c
+D) d
+Ans: A
+10. Question 10
+A) RAM
+B) ROM
+C) CPU
+D) GPU
+Ans: C
+`;
+
+const q12 = parsePdfQuestions(test12);
+assert.strictEqual(q12.length, 10, 'Case 12: Exactly 10 out of 10 questions must be extracted in mixed format');
+
+console.log('All 12 question-parser and 10/10 question extraction test cases passed successfully!');

@@ -3491,6 +3491,9 @@ if (window.pdfjsLib) {
       if (status) status.textContent = 'Reading text file...';
 
       try {
+        if (!imageLibrary || !imageLibrary.length) {
+          try { await refreshImageLibrary(); } catch (e) {}
+        }
         const textContent = await file.text();
         const parsed = parsePdfQuestions(textContent, []);
         if (!parsed || !parsed.length) {
@@ -3540,7 +3543,7 @@ if (window.pdfjsLib) {
   }
 
   if (loadPastedQuestionsBtn && pastedQuestionsText) {
-    loadPastedQuestionsBtn.onclick = () => {
+    loadPastedQuestionsBtn.onclick = async () => {
       const rawText = pastedQuestionsText.value.trim();
       if (!rawText) {
         return alert('कृपया पहले सवाल यहाँ पेस्ट करें।');
@@ -3548,6 +3551,10 @@ if (window.pdfjsLib) {
 
       const status = document.getElementById('pdfStatus');
       const sourceLabel = document.getElementById('activeQuestionSourceLabel');
+
+      if (!imageLibrary || !imageLibrary.length) {
+        try { await refreshImageLibrary(); } catch (e) {}
+      }
 
       const parsed = parsePdfQuestions(rawText, []);
       if (!parsed || !parsed.length) {
@@ -4117,35 +4124,93 @@ if (window.pdfjsLib) {
       return false;
     };
 
-    const explicitMarker = /(?:^|\n)\s*(?=(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)\s*[:.)-]))/i;
+    const optClass = '(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)';
+    const alphaOptRegex = /^\s*(?:\(?\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\).\-:]|\(\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*\)|\[\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*\])\s+/i;
+    const numOptRegex = /^\s*(?:\(?\s*([1234१२३४])\s*[\).\-:]|\(\s*([1234१२३४])\s*\)|\[\s*([1234१२३४])\s*\])\s+/i;
+    const isExplicitQ = (l) => /^\s*(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*/i.test(l);
+    const isNumberedQ = (l) => /^(?:[0-9०-९]+|(?:\([0-9०-९]+\))|(?:\[[0-9०-९]+\]))\s*[:.)-]?\s*/i.test(l.trim());
+    const getLeadingNum = (l) => {
+      const m = l.trim().match(/^(?:(?:\(?([0-9०-९]+)[\).:\-]?)|(?:\[([0-9०-९]+)\]))\s*/);
+      if (!m) return null;
+      const devanagariNums = { '०':0, '१':1, '२':2, '३':3, '४':4, '५':5, '६':6, '७':7, '८':8, '९':9 };
+      const raw = (m[1] || m[2]).replace(/[०-९]/g, d => devanagariNums[d]);
+      return parseInt(raw, 10);
+    };
 
-    let rawBlocks = [];
-    if (/(?:^|\n)\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)\s*[:.)-])/i.test(normalizedText)) {
-      rawBlocks = normalizedText.split(explicitMarker).map(b => b.trim()).filter(Boolean);
-    } else {
-      const blankBlocks = normalizedText.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
-      if (blankBlocks.length > 1) {
-        rawBlocks = blankBlocks;
+    // Resilient line-by-line block splitter that prevents question merging and handles image questions with blank lines
+    const lines = normalizedText.split(/\r?\n/);
+    const rawBlocks = [];
+    let currentLines = [];
+    let currentOptionCount = 0;
+    let currentHasAnswer = false;
+    let currentOptionType = null; // 'alpha' or 'num'
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (!trimmed) {
+        if (currentLines.length > 0) currentLines.push(line);
+        continue;
+      }
+
+      if (isAnswerLine(trimmed)) {
+        currentHasAnswer = true;
+        currentLines.push(line);
+        continue;
+      }
+
+      const isAlphaOpt = alphaOptRegex.test(trimmed);
+      const isNumOpt = numOptRegex.test(trimmed);
+      const leadingNum = getLeadingNum(trimmed);
+
+      let isNewQ = false;
+      // Condition 1: Explicit Q marker e.g. Q1, Question 2, प्रश्न 3
+      if (isExplicitQ(trimmed) && currentLines.length > 0) {
+        isNewQ = true;
+      }
+      // Condition 2: Answer line already seen, this non-option line begins next question
+      else if (currentHasAnswer && !isAlphaOpt && !(currentOptionType === 'num' && isNumOpt)) {
+        isNewQ = true;
+      }
+      // Condition 3: Already have 4 options and this line is not another option
+      else if (currentOptionCount >= 4 && !isAlphaOpt && !isNumOpt) {
+        isNewQ = true;
+      }
+      // Condition 4: A number > 4 when current block already has options (options can only be 1..4)
+      else if (leadingNum && leadingNum > 4 && currentOptionCount > 0 && currentLines.length > 0) {
+        isNewQ = true;
+      }
+      // Condition 5: Numbered question line when current block uses alpha options (A, B, C, D)
+      else if (isNumberedQ(trimmed) && currentOptionType === 'alpha' && currentLines.length > 0) {
+        isNewQ = true;
+      }
+
+      if (isNewQ) {
+        const blockStr = currentLines.join('\n').trim();
+        if (blockStr) rawBlocks.push(blockStr);
+        currentLines = [line];
+        currentOptionCount = 0;
+        currentHasAnswer = false;
+        currentOptionType = null;
       } else {
-        const lines = normalizedText.split('\n');
-        let current = [];
-        let seenAns = false;
-        for (const line of lines) {
-          if (isAnswerLine(line)) {
-            seenAns = true;
-            current.push(line);
-            continue;
-          }
-          if (seenAns && /^(?:[0-9०-९]+)\s*[:.)-]/i.test(line.trim())) {
-            rawBlocks.push(current.join('\n'));
-            current = [line];
-            seenAns = false;
-          } else {
-            current.push(line);
+        if (isAlphaOpt) {
+          currentOptionType = 'alpha';
+          currentOptionCount++;
+        } else if (isNumOpt && (currentOptionCount > 0 || currentLines.length > 0)) {
+          if (currentOptionType === 'num' || currentOptionCount === 0) {
+            if (leadingNum && leadingNum >= 1 && leadingNum <= 4) {
+              currentOptionType = 'num';
+              currentOptionCount++;
+            }
           }
         }
-        if (current.length) rawBlocks.push(current.join('\n'));
+        currentLines.push(line);
       }
+    }
+
+    if (currentLines.length > 0) {
+      const blockStr = currentLines.join('\n').trim();
+      if (blockStr) rawBlocks.push(blockStr);
     }
 
     const optionCharMap = {
@@ -4161,11 +4226,58 @@ if (window.pdfjsLib) {
       'ए': 'A', 'बी': 'B', 'सी': 'C', 'डी': 'D'
     };
 
-    const optClass = '(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)';
     const optionRegex = new RegExp('(?:^|\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[\\s*' + optClass + '))\\s*(?:\\(?\\s*(' + optClass + ')\\s*[\\).\\-:]|\\(\\s*(' + optClass + ')\\s*\\)|\\[\\s*(' + optClass + ')\\s*\\])\\s*(.*?)(?=(?:\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[))\\s*(?:\\(?\\s*' + optClass + '\\s*[\\).\\-:]|\\(\\s*' + optClass + '\\s*\\)|\\[\\s*' + optClass + '\\s*\\])\\s*|$)', 'gis');
 
+    // Comprehensive Image Resolver: resolves image-1, [Image: 1], [चित्र 1], filenames, URLs, or generic [IMAGE]
+    function resolveImage(blockText, imgLib, curIdx) {
+      const imgRegex = /(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*([^\]\)\n\r]+?)(?:\]|\)|\b)/i;
+      const match = blockText.match(imgRegex);
+
+      if (match) {
+        const rawRef = match[1].trim();
+        if (!/^(?:id|here|tag|file)$/i.test(rawRef)) {
+          // Direct URL
+          if (/^(?:https?:\/\/|\/|data:image\/)/i.test(rawRef)) {
+            return { url: rawRef, imageId: null };
+          }
+          // Exact imageId
+          let found = imgLib.find(i => i.imageId && i.imageId.toLowerCase() === rawRef.toLowerCase());
+          if (found) return { url: found.url, imageId: found.imageId };
+
+          // Number (e.g. "1", "image-1", "चित्र 1")
+          const numMatch = rawRef.match(/(?:image|img|चित्र|तस्वीर|फोटो)?\s*[:#-]?\s*([0-9०-९]+)/i);
+          if (numMatch) {
+            const devanagariNums = { '०':0, '१':1, '२':2, '३':3, '४':4, '५':5, '६':6, '७':7, '८':8, '९':9 };
+            const rawNum = numMatch[1].replace(/[०-९]/g, d => devanagariNums[d]);
+            const num = parseInt(rawNum, 10);
+            found = imgLib.find(i => i.imageId === `image-${num}` || i.imageId === String(num));
+            if (found) return { url: found.url, imageId: found.imageId };
+            if (num >= 1 && num <= imgLib.length) {
+              const item = imgLib[num - 1];
+              return { url: item.url, imageId: item.imageId };
+            }
+          }
+
+          // Filename match
+          found = imgLib.find(i => i.name && (i.name.toLowerCase() === rawRef.toLowerCase() || i.name.toLowerCase().includes(rawRef.toLowerCase())));
+          if (found) return { url: found.url, imageId: found.imageId };
+        }
+      }
+
+      // Generic [IMAGE] / [चित्र] tag or context match
+      const genericMatch = blockText.match(/(?:\[|\()\s*(?:image|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*(?:\]|\))/i);
+      if (genericMatch || /(?:दिए गए चित्र|इस तस्वीर|दिख रहे चित्र|निम्न चित्र|see the image|in this picture|in the image)/i.test(blockText)) {
+        if (curIdx >= 0 && curIdx < imgLib.length) {
+          const item = imgLib[curIdx];
+          return { url: item.url, imageId: item.imageId };
+        }
+      }
+
+      return null;
+    }
+
     const questions = [];
-    let imageIndex = 0;
+    let imageCounter = 0;
 
     rawBlocks.forEach(block => {
       let textWithoutAnswer = block;
@@ -4195,6 +4307,24 @@ if (window.pdfjsLib) {
         }
       }
 
+      // Resolve Image, Video, Audio anywhere in the question block
+      const imgInfo = resolveImage(block, (typeof imageLibrary !== 'undefined' ? imageLibrary : []), imageCounter);
+      const resolvedImageUrl = imgInfo ? imgInfo.url : (imageCounter < images.length ? images[imageCounter] : null);
+      const resolvedImageId = imgInfo ? imgInfo.imageId : null;
+      if (resolvedImageUrl) imageCounter++;
+
+      const videoIdMatch = block.match(/\bvideo\s*id\s*[:#=-]?\s*(video\s*[-_]\s*\d+)\b/i);
+      const audioIdMatch = block.match(/\baudio\s*id\s*[:#=-]?\s*(audio\s*[-_]\s*\d+)\b/i);
+      const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
+      const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
+
+      // Strip image/video/audio tags from text
+      textWithoutAnswer = textWithoutAnswer
+        .replace(/(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*[^\]\)\n\r]+?(?:\]|\)|\b)/ig, '')
+        .replace(/(?:\[|\()\s*(?:image|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*(?:\]|\))/ig, '')
+        .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
+        .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '');
+
       // Strip leading question numbering header before searching for options
       textWithoutAnswer = textWithoutAnswer
         .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
@@ -4204,20 +4334,15 @@ if (window.pdfjsLib) {
       const firstOptionIndex = optionMatches.length ? optionMatches[0].index : textWithoutAnswer.length;
       let cleanQuestionText = textWithoutAnswer.slice(0, firstOptionIndex).trim();
 
-      const imageIdMatch = cleanQuestionText.match(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*((?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/i);
-      const videoIdMatch = cleanQuestionText.match(/\bvideo\s*id\s*[:#=-]?\s*(video\s*[-_]\s*\d+)\b/i);
-      const audioIdMatch = cleanQuestionText.match(/\baudio\s*id\s*[:#=-]?\s*(audio\s*[-_]\s*\d+)\b/i);
-
       cleanQuestionText = cleanQuestionText
-        .replace(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*(?:(?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/ig, '')
-        .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
-        .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '')
+        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
         .replace(/\n\s*\n/g, '\n')
         .trim();
 
-      const libraryImage = imageIdMatch && imageLibrary.find(image => image.imageId === imageIdMatch[1]);
-      const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
-      const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
+      // If question has an image but question text was only the image tag, provide clean default text so question is not dropped
+      if (!cleanQuestionText && resolvedImageUrl) {
+        cleanQuestionText = 'दिए गए चित्र को देखकर उत्तर दीजिए';
+      }
 
       const optionsMap = { 'A': '', 'B': '', 'C': '', 'D': '' };
       const rawOptionsList = [];
@@ -4278,11 +4403,10 @@ if (window.pdfjsLib) {
           audioId,
           options: options.slice(0, 4), 
           correct: String(correct || 'A').toUpperCase().trim(),
-          image: libraryImage ? libraryImage.url : (imageIndex < images.length ? images[imageIndex] : null),
-          imageId: libraryImage ? libraryImage.imageId : null
+          image: resolvedImageUrl,
+          imageId: resolvedImageId
         };
         questions.push(questionObj);
-        if (imageIndex < images.length) imageIndex++;
       }
     });
 
