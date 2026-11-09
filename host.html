@@ -4115,25 +4115,39 @@ if (window.pdfjsLib) {
     const isAnswerLine = (line) => {
       const trimmed = (line || '').trim();
       if (!trimmed) return false;
-      // 1. Keyword followed by delimiter : = - – — .
-      if (/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—.]\s*(.*)$/i.test(trimmed)) return true;
-      // 2. Keyword followed by option/is/विकल्प
-      if (/^(?:Answer|Ans|Correct|उत्तर|सही\s*उत्तर|जवाब)\s+(?:is|option|विकल्प|नंबर|संख्या)\s*[:=\-–—.]?\s*(.*)$/i.test(trimmed)) return true;
-      // 3. Keyword followed directly by option letter like "उत्तर (ख)" or "Answer B" or "उत्तर ख"
-      if (/^(?:Answer|Ans|Correct|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[\(\[]?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)[\)\]\.\-:]?(?:\s|$)/i.test(trimmed)) return true;
+      // 1. Keyword followed by delimiter : = - – — . /
+      if (/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—./]\s*(.*)$/i.test(trimmed)) return true;
+      // 2. Keyword followed by option/is/विकल्प/नंबर/संख्या/सही है
+      if (/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|उत्तर|सही\s*उत्तर|जवाब)\s+(?:is|option|विकल्प|नंबर|संख्या|is\s+correct|is\s+right|सही\s*है)\s*[:=\-–—./]?\s*(.*)$/i.test(trimmed)) return true;
+      // 3. Option X is correct / विकल्प X सही है
+      if (/^(?:Option|विकल्प)\s*[\(\[]?\s*([ABCDabcdकखगघअबसदआइई1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)[\)\]\.\-:]?\s*(?:is\s+correct|is\s+right|सही\s*है)/i.test(trimmed)) return true;
+      // 4. Keyword followed directly by option letter like "उत्तर (ख)" or "Answer B" or "उत्तर ख"
+      if (/^(?:Answer|Ans|Correct|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब|Key)\s*[\(\[]?\s*([ABCDabcdकखगघअबसदआइई1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)[\)\]\.\-:]?(?:\s|$)/i.test(trimmed)) return true;
+      // 5. Keyword followed by text answer (e.g. "उत्तर: पेरिस" or "उत्तर: नई दिल्ली" - excludes "उत्तर प्रदेश / उत्तराखंड")
+      if (/^(?:उत्तर|सही\s*उत्तर|जवाब)\s*[:=\-–—./]\s*(\S+)/i.test(trimmed)) return true;
       return false;
     };
 
-    const optClass = '(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)';
-    const alphaOptRegex = /^\s*(?:\(?\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\).\-:]|\(\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*\)|\[\s*([ABCDabcdकखगघअबसद]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*\])\s+/i;
-    const numOptRegex = /^\s*(?:\(?\s*([1234१२३४])\s*[\).\-:]|\(\s*([1234१२३४])\s*\)|\[\s*([1234१२३४])\s*\])\s+/i;
-    const isExplicitQ = (l) => /^\s*(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*/i.test(l);
-    const isNumberedQ = (l) => /^(?:[0-9०-९]+|(?:\([0-9०-९]+\))|(?:\[[0-9०-९]+\]))\s*[:.)-]?\s*/i.test(l.trim());
+    const isExplanationLine = (line) => {
+      const trimmed = (line || '').trim();
+      if (!trimmed) return false;
+      return /^(?:Explanation|Explain|Solution|Sol|व्याख्या|स्पष्टीकरण|हल|विवरण|Note|नोट)\s*[:=\-–—./]/i.test(trimmed);
+    };
+
+    const optChars = '(?:[ABCDabcdकखगघअबसदआइई1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)';
+    const delim = '[\\).\\:\\/\\-–—\\u0964\\]]';
+
+    const alphaOptRegex = new RegExp('^\\s*(?:\\(?\\s*([ABCDabcdकखगघअबसदआइई]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)\\s*' + delim + '|\\(\\s*([ABCDabcdकखगघअबसदआइई]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)\\s*\\)|\\[\\s*([ABCDabcdकखगघअबसदआइई]|i{1,3}|iv|I{1,3}|IV|ए|ऐ|बी|सी|डी)\\s*\\])\\s*', 'i');
+    const numOptRegex = new RegExp('^\\s*(?:\\(?\\s*([1234१२३४])\\s*' + delim + '|\\(\\s*([1234१२३४])\\s*\\)|\\[\\s*([1234१२३४])\\s*\\])\\s*', 'i');
+
+    const isExplicitQ = (l) => /^\s*(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*[0-9०-९IVXivx]*/i.test(l.trim());
+    const isNumberedQ = (l) => /^\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*[0-9०-९IVXivx]+|(?:\(?\s*[0-9०-९IVXivx]+\s*[\).\:\]\-–—]|\[\s*[0-9०-९IVXivx]+\s*\]))\s*/i.test(l.trim());
+
     const getLeadingNum = (l) => {
-      const m = l.trim().match(/^(?:(?:\(?([0-9०-९]+)[\).:\-]?)|(?:\[([0-9०-९]+)\]))\s*/);
+      const m = l.trim().match(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*([0-9०-९]+)|(?:\(?\s*([0-9०-९]+)\s*[\).\:\]\-–—]|\[\s*([0-9०-९]+)\s*\]))\s*/i);
       if (!m) return null;
       const devanagariNums = { '०':0, '१':1, '२':2, '३':3, '४':4, '५':5, '६':6, '७':7, '८':8, '९':9 };
-      const raw = (m[1] || m[2]).replace(/[०-९]/g, d => devanagariNums[d]);
+      const raw = (m[1] || m[2] || m[3]).replace(/[०-९]/g, d => devanagariNums[d]);
       return parseInt(raw, 10);
     };
 
@@ -4144,17 +4158,26 @@ if (window.pdfjsLib) {
     let currentOptionCount = 0;
     let currentHasAnswer = false;
     let currentOptionType = null; // 'alpha' or 'num'
+    let sawEmptyLine = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
       if (!trimmed) {
-        if (currentLines.length > 0) currentLines.push(line);
+        if (currentLines.length > 0) {
+          sawEmptyLine = true;
+          currentLines.push(line);
+        }
         continue;
       }
 
       if (isAnswerLine(trimmed)) {
         currentHasAnswer = true;
+        currentLines.push(line);
+        continue;
+      }
+
+      if (currentHasAnswer && isExplanationLine(trimmed)) {
         currentLines.push(line);
         continue;
       }
@@ -4168,19 +4191,23 @@ if (window.pdfjsLib) {
       if (isExplicitQ(trimmed) && currentLines.length > 0) {
         isNewQ = true;
       }
-      // Condition 2: Answer line already seen, this non-option line begins next question
-      else if (currentHasAnswer && !isAlphaOpt && !(currentOptionType === 'num' && isNumOpt)) {
+      // Condition 2: Answer line already seen for current question -> ANY non-option or numbered line starts next question
+      else if (currentHasAnswer && (!isAlphaOpt && !isNumOpt || isNumberedQ(trimmed) || sawEmptyLine)) {
         isNewQ = true;
       }
-      // Condition 3: Already have 4 options and this line is not another option
-      else if (currentOptionCount >= 4 && !isAlphaOpt && !isNumOpt) {
+      // Condition 3: Already have 4 options and this line is a new question / numbered / media / not an option
+      else if (currentOptionCount >= 4 && (!isAlphaOpt && !isNumOpt || isNumberedQ(trimmed) || sawEmptyLine)) {
         isNewQ = true;
       }
-      // Condition 4: A number > 4 when current block already has options (options can only be 1..4)
+      // Condition 4: Empty line seen followed by numbered question header or media tag
+      else if (sawEmptyLine && currentLines.length > 0 && (isNumberedQ(trimmed) || /^(?:\[|\()(?:image|img|चित्र|video|audio)/i.test(trimmed))) {
+        isNewQ = true;
+      }
+      // Condition 5: A number > 4 when current block already has options (options can only be 1..4)
       else if (leadingNum && leadingNum > 4 && currentOptionCount > 0 && currentLines.length > 0) {
         isNewQ = true;
       }
-      // Condition 5: Numbered question line when current block uses alpha options (A, B, C, D)
+      // Condition 6: Numbered question line when current block uses alpha options (A, B, C, D)
       else if (isNumberedQ(trimmed) && currentOptionType === 'alpha' && currentLines.length > 0) {
         isNewQ = true;
       }
@@ -4192,6 +4219,7 @@ if (window.pdfjsLib) {
         currentOptionCount = 0;
         currentHasAnswer = false;
         currentOptionType = null;
+        sawEmptyLine = false;
       } else {
         if (isAlphaOpt) {
           currentOptionType = 'alpha';
@@ -4205,6 +4233,7 @@ if (window.pdfjsLib) {
           }
         }
         currentLines.push(line);
+        sawEmptyLine = false;
       }
     }
 
@@ -4223,10 +4252,16 @@ if (window.pdfjsLib) {
       '१': 'A', '२': 'B', '३': 'C', '४': 'D',
       'I': 'A', 'II': 'B', 'III': 'C', 'IV': 'D',
       'i': 'A', 'ii': 'B', 'iii': 'C', 'iv': 'D',
-      'ए': 'A', 'बी': 'B', 'सी': 'C', 'डी': 'D'
+      'ए': 'A', 'ऐ': 'A', 'बी': 'B', 'सी': 'C', 'डी': 'D'
     };
 
-    const optionRegex = new RegExp('(?:^|\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[\\s*' + optClass + '))\\s*(?:\\(?\\s*(' + optClass + ')\\s*[\\).\\-:]|\\(\\s*(' + optClass + ')\\s*\\)|\\[\\s*(' + optClass + ')\\s*\\])\\s*(.*?)(?=(?:\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[))\\s*(?:\\(?\\s*' + optClass + '\\s*[\\).\\-:]|\\(\\s*' + optClass + '\\s*\\)|\\[\\s*' + optClass + '\\s*\\])\\s*|$)', 'gis');
+    const optionRegex = new RegExp(
+      '(?:^|\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optChars + '|\\[\\s*' + optChars + '))\\s*' +
+      '(?:\\(?\\s*(' + optChars + ')\\s*' + delim + '|\\(\\s*(' + optChars + ')\\s*\\)|\\[\\s*(' + optChars + ')\\s*\\])\\s*' +
+      '(.*?)' +
+      '(?=(?:\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optChars + '|\\[))\\s*(?:\\(?\\s*' + optChars + '\\s*' + delim + '|\\(\\s*' + optChars + '\\s*\\)|\\[\\s*' + optChars + '\\s*\\])\\s*|$)',
+      'gis'
+    );
 
     // Comprehensive Image Resolver: resolves image-1, [Image: 1], [चित्र 1], filenames, URLs, or generic [IMAGE]
     function resolveImage(blockText, imgLib, curIdx) {
@@ -4279,7 +4314,7 @@ if (window.pdfjsLib) {
     const questions = [];
     let imageCounter = 0;
 
-    rawBlocks.forEach(block => {
+    rawBlocks.forEach((block, bIdx) => {
       let textWithoutAnswer = block;
       let answerLine = '';
 
@@ -4300,7 +4335,7 @@ if (window.pdfjsLib) {
         textWithoutAnswer = lines.join('\n');
       } else {
         // Check for inline answer at the end of text
-        const inlineMatch = block.match(/(?:[\t ]{2,}|\s+)(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—.]?\s*(.*?)$/i);
+        const inlineMatch = block.match(/(?:[\t ]{2,}|\s+)(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—./]?\s*(.*?)$/i);
         if (inlineMatch && isAnswerLine(inlineMatch[0])) {
           answerLine = inlineMatch[0].trim();
           textWithoutAnswer = block.slice(0, inlineMatch.index).trim();
@@ -4318,6 +4353,10 @@ if (window.pdfjsLib) {
       const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
       const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
 
+      const hasImageTag = /(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\b/i.test(textWithoutAnswer);
+      const hasVideoTag = /video/i.test(textWithoutAnswer);
+      const hasAudioTag = /audio/i.test(textWithoutAnswer);
+
       // Strip image/video/audio tags from text
       textWithoutAnswer = textWithoutAnswer
         .replace(/(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*[^\]\)\n\r]+?(?:\]|\)|\b)/ig, '')
@@ -4325,23 +4364,45 @@ if (window.pdfjsLib) {
         .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
         .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '');
 
+      // Detect question number if present
+      const qNumMatch = textWithoutAnswer.trim().match(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*([0-9०-९IVXivx]+)|(?:\(?\s*([0-9०-९IVXivx]+)\s*[\).\:\]\-–—]|\[\s*([0-9०-९IVXivx]+)\s*\]))\s*/i);
+      const detectedQNumber = qNumMatch ? (qNumMatch[1] || qNumMatch[2] || qNumMatch[3]) : (bIdx + 1);
+
       // Strip leading question numbering header before searching for options
-      textWithoutAnswer = textWithoutAnswer
-        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
-        .trim();
+      const qHeaderRegex = /^\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*[0-9०-९IVXivx]*(?:\s*[:.)\-–—])?|(?:\(?\s*[0-9०-९IVXivx]+\s*[\).\:\]\-–—]|\[\s*[0-9०-९IVXivx]+\s*\]))\s*/i;
+      const strippedHeader = textWithoutAnswer.replace(qHeaderRegex, '').trim();
+      if (strippedHeader) {
+        textWithoutAnswer = strippedHeader;
+      }
 
       const optionMatches = [...textWithoutAnswer.matchAll(optionRegex)];
-      const firstOptionIndex = optionMatches.length ? optionMatches[0].index : textWithoutAnswer.length;
-      let cleanQuestionText = textWithoutAnswer.slice(0, firstOptionIndex).trim();
+      let cleanQuestionText = '';
+      if (optionMatches.length > 0) {
+        const firstOptionIndex = optionMatches[0].index;
+        cleanQuestionText = textWithoutAnswer.slice(0, firstOptionIndex).trim();
+      } else {
+        cleanQuestionText = textWithoutAnswer.trim();
+      }
 
-      cleanQuestionText = cleanQuestionText
-        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
-        .replace(/\n\s*\n/g, '\n')
-        .trim();
+      const cleaned = cleanQuestionText.replace(qHeaderRegex, '').trim();
+      if (cleaned) {
+        cleanQuestionText = cleaned;
+      }
+      cleanQuestionText = cleanQuestionText.replace(/\n\s*\n/g, '\n').trim();
 
-      // If question has an image but question text was only the image tag, provide clean default text so question is not dropped
-      if (!cleanQuestionText && resolvedImageUrl) {
-        cleanQuestionText = 'दिए गए चित्र को देखकर उत्तर दीजिए';
+      // If question text was only an image/media tag or empty header, provide robust default text so question is NEVER dropped
+      if (!cleanQuestionText) {
+        if (resolvedImageUrl || hasImageTag) {
+          cleanQuestionText = 'दिए गए चित्र को देखकर उत्तर दीजिए';
+        } else if (videoId || hasVideoTag) {
+          cleanQuestionText = 'दिए गए वीडियो को देखकर उत्तर दीजिए';
+        } else if (audioId || hasAudioTag) {
+          cleanQuestionText = 'दिए गए ऑडियो को सुनकर उत्तर दीजिए';
+        } else if (detectedQNumber) {
+          cleanQuestionText = `प्रश्न ${detectedQNumber}`;
+        } else {
+          cleanQuestionText = `प्रश्न ${questions.length + 1}`;
+        }
       }
 
       const optionsMap = { 'A': '', 'B': '', 'C': '', 'D': '' };
@@ -4352,7 +4413,7 @@ if (window.pdfjsLib) {
         const letter = optionCharMap[rawChar];
         let optText = fixDevanagariMatras((m[4] || '').replace(/\s+/g, ' ').trim());
         // Clean any redundant duplicate option marker at start of option text
-        optText = optText.replace(/^(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\).\-:]\s*/i, '').trim();
+        optText = optText.replace(new RegExp('^(?:' + optChars + ')\\s*' + delim + '\\s*', 'i'), '').trim();
         if (letter && !optionsMap[letter]) {
           optionsMap[letter] = optText;
         }
@@ -4365,11 +4426,11 @@ if (window.pdfjsLib) {
       let correct = 'A';
       if (answerLine) {
         let cleanAns = answerLine.replace(/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*/i, '');
-        cleanAns = cleanAns.replace(/^[:=\-–—.]\s*/, '');
-        cleanAns = cleanAns.replace(/^(?:is|option|विकल्प|नंबर|संख्या)\s*[:=\-–—.]?\s*/i, '');
-        cleanAns = cleanAns.replace(/^(?:Option|विकल्प)\s*[:=\-–—.]?\s*/i, '').trim();
+        cleanAns = cleanAns.replace(/^[:=\-–—./]\s*/, '');
+        cleanAns = cleanAns.replace(/^(?:is|option|विकल्प|नंबर|संख्या)\s*[:=\-–—./]?\s*/i, '');
+        cleanAns = cleanAns.replace(/^(?:Option|विकल्प)\s*[:=\-–—./]?\s*/i, '').trim();
 
-        const letterMatch = cleanAns.match(/^[\(\[]?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\)\]\.\-:]?/i);
+        const letterMatch = cleanAns.match(new RegExp('^[\\(\\[]?\\s*(' + optChars + ')\\s*[\\)\\]\\.\\-–—:]?', 'i'));
         if (letterMatch && optionCharMap[letterMatch[1]]) {
           correct = optionCharMap[letterMatch[1]];
         } else {

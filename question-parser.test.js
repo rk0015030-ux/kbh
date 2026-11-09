@@ -316,4 +316,97 @@ Ans: C
 const q12 = parsePdfQuestions(test12);
 assert.strictEqual(q12.length, 10, 'Case 12: Exactly 10 out of 10 questions must be extracted in mixed format');
 
-console.log('All 12 question-parser and 10/10 question extraction test cases passed successfully!');
+// Case 13: 10 Questions with (1)..(10) numbering and (A)..(D) options
+const test13 = Array.from({length: 10}, (_, i) => `
+(${i + 1}) प्रश्न संख्या ${i + 1} क्या है?
+A. विकल्प 1
+B. विकल्प 2
+C. विकल्प 3
+D. विकल्प 4
+उत्तर: A
+`).join('\n');
+const q13 = parsePdfQuestions(test13);
+assert.strictEqual(q13.length, 10, 'Case 13: (1)..(10) question numbering must extract all 10 questions');
+
+// Case 14: 10 Questions with inline answers on Option D line
+const test14 = Array.from({length: 10}, (_, i) => `
+${i + 1}. सवाल ${i + 1} का विवरण:
+A. ऑप्शन 1
+B. ऑप्शन 2
+C. ऑप्शन 3
+D. ऑप्शन 4   Ans: B
+`).join('\n');
+const q14 = parsePdfQuestions(test14);
+assert.strictEqual(q14.length, 10, 'Case 14: Inline answer on option D must extract all 10 questions');
+assert.strictEqual(q14[0].correct, 'B');
+
+// Case 15: 10 Questions with no space after option delimiter: A.विकल्प, B.विकल्प
+const test15 = Array.from({length: 10}, (_, i) => `
+${i + 1}. प्रश्न ${i + 1}
+A.विकल्प 1
+B.विकल्प 2
+C.विकल्प 3
+D.विकल्प 4
+उत्तर: A
+`).join('\n');
+const q15 = parsePdfQuestions(test15);
+assert.strictEqual(q15.length, 10, 'Case 15: No space after option delimiter must extract all 10 questions');
+
+// Case 16: 10 Questions with options 2 per line
+const test16 = Array.from({length: 10}, (_, i) => `
+${i + 1}. प्रश्न ${i + 1}
+A) विकल्प 1   B) विकल्प 2
+C) विकल्प 3   D) विकल्प 4
+उत्तर: C
+`).join('\n');
+const q16 = parsePdfQuestions(test16);
+assert.strictEqual(q16.length, 10, 'Case 16: Options 2 per line must extract all 10 questions');
+assert.strictEqual(q16[0].correct, 'C');
+
+// Case 17: 10 Questions with Devanagari vowel options (अ), (आ), (इ), (ई)
+const test17 = Array.from({length: 10}, (_, i) => `
+${i + 1}. प्रश्न ${i + 1}
+(अ) विकल्प 1
+(आ) विकल्प 2
+(इ) विकल्प 3
+(ई) विकल्प 4
+उत्तर: आ
+`).join('\n');
+const q17 = parsePdfQuestions(test17);
+assert.strictEqual(q17.length, 10, 'Case 17: Devanagari vowel options (अ, आ, इ, ई) must extract all 10 questions');
+assert.strictEqual(q17[0].correct, 'B');
+
+// Case 18: 10 Questions with consecutive numeric options (1, 2, 3, 4)
+const test18 = Array.from({length: 10}, (_, i) => `
+${i + 1}. प्रश्न ${i + 1}
+1. विकल्प 1
+2. विकल्प 2
+3. विकल्प 3
+4. विकल्प 4
+उत्तर: 2
+`).join('\n');
+const q18 = parsePdfQuestions(test18);
+assert.strictEqual(q18.length, 10, 'Case 18: Consecutive numeric options 1..4 must extract all 10 questions');
+assert.strictEqual(q18[0].correct, 'B');
+
+// Case 19: 10 Questions with image/video tags and NO imageLibrary loaded (must NOT drop questions)
+const test19 = Array.from({length: 10}, (_, i) => {
+  if (i % 2 === 0) {
+    return `${i + 1}. [Image: ${i + 1}]\nA. विकल्प 1\nB. विकल्प 2\nC. विकल्प 3\nD. विकल्प 4\nउत्तर: A`;
+  }
+  return `${i + 1}. सामान्य प्रश्न ${i + 1}\nA. विकल्प 1\nB. विकल्प 2\nC. विकल्प 3\nD. विकल्प 4\nउत्तर: A`;
+}).join('\n\n');
+const q19 = parsePdfQuestions(test19);
+assert.strictEqual(q19.length, 10, 'Case 19: Questions with media tags must never be dropped even without imageLibrary');
+
+// Case 20: 10 Questions with no blank lines between questions
+const test20 = Array.from({length: 10}, (_, i) => `${i + 1}. प्रश्न ${i + 1} का विवरण:
+A. विकल्प 1
+B. विकल्प 2
+C. विकल्प 3
+D. विकल्प 4
+उत्तर: A`).join('\n');
+const q20 = parsePdfQuestions(test20);
+assert.strictEqual(q20.length, 10, 'Case 20: No blank lines between questions must extract all 10 questions');
+
+console.log('All 20 question-parser test cases passed! 10/10 questions extracted across all formats!');
