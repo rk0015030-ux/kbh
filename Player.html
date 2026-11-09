@@ -2703,14 +2703,25 @@
       stopTimer(false);
       clearSavedOfflineAudio();
     } else {
-      const lvl = Number(q.level) || 1;
-      let totalTime = q.timeLimitSec;
-      if (!totalTime || totalTime === 'auto') {
-        if (lvl <= 5) totalTime = 30;
-        else if (lvl <= 8) totalTime = 45;
-        else totalTime = 60;
+      const lvl = (Number(q.level) >= 1 && Number(q.level) <= 10) ? Number(q.level) : 1;
+      let totalTime = Number(q.timeLimitSec);
+      const isManualOverride = Boolean(q.manualTimeOverride) && [30, 45, 60].includes(totalTime);
+      
+      // Strict rule enforcement:
+      // Questions 1-5 MUST be 30 seconds
+      // Questions 6-8 MUST be 45 seconds
+      // Questions 9-10 MUST be 60 seconds
+      if (!isManualOverride || !([30, 45, 60].includes(totalTime)) || q.timeLimitSec === 'auto') {
+        totalTime = getQuestionTimeLimit(lvl);
       }
-      totalTime = Number(totalTime) || (lvl <= 5 ? 30 : (lvl <= 8 ? 45 : 60));
+      // Fail-safe protection: if Q1-5 ever receives > 30s without manual override, clamp to 30s
+      if (lvl <= 5 && totalTime > 30 && !isManualOverride) {
+        totalTime = 30;
+      } else if (lvl >= 6 && lvl <= 8 && totalTime !== 45 && !isManualOverride) {
+        totalTime = 45;
+      } else if (lvl >= 9 && totalTime !== 60 && !isManualOverride) {
+        totalTime = 60;
+      }
 
       const savedOffline = getSavedOfflineAudio();
       const isMatchingQuestion = savedOffline && savedOffline.questionText && savedOffline.questionText === q.text;

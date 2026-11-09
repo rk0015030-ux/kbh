@@ -30,9 +30,16 @@ app.use((req, res, next) => {
 });
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 50 * 1024 * 1024 });
-const PORT = process.env.APP_PORT
-  ? parseInt(process.env.APP_PORT, 10)
-  : (process.env.PORT && process.env.PORT !== '8080' ? parseInt(process.env.PORT, 10) : 3000);
+const isDevContainer = Boolean(process.env.CONTROL_PLANE_PORT || process.env.NGINX_PORT);
+const PORT = (() => {
+  if (process.env.APP_PORT) return parseInt(process.env.APP_PORT, 10);
+  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
+  if (isDevContainer) {
+    if (envPort && envPort !== 8080) return envPort;
+    return process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT, 10) : 3000;
+  }
+  return envPort || 3000;
+})();
 const PRIZE_LADDER = [100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
 
 function getQuestionTimeLimit(level) {
@@ -2285,14 +2292,33 @@ wss.on('connection', (ws) => {
     if (type === 'send_question') {
       const room = rooms.get(ws.roomId);
       if (!room || ws.role !== 'host') return;
-      const level = room.questionLevel;
-      let timeLimit = payload?.timeLimitSec;
-      if (timeLimit === 'auto' || timeLimit === undefined || timeLimit === null || timeLimit === '') {
-        timeLimit = getQuestionTimeLimit(level);
+
+      // 1. Determine level: host payload level takes priority over room.questionLevel
+      let level = 1;
+      if (payload && payload.level !== undefined && payload.level !== null) {
+        const parsedLvl = parseInt(payload.level, 10);
+        if (!isNaN(parsedLvl) && parsedLvl >= 1 && parsedLvl <= 10) {
+          level = parsedLvl;
+        } else {
+          level = Number(room.questionLevel) || 1;
+        }
       } else {
-        const val = Number(timeLimit);
-        timeLimit = [30, 45, 60].includes(val) ? val : getQuestionTimeLimit(level) || 30;
+        level = Number(room.questionLevel) || 1;
       }
+      room.questionLevel = level;
+
+      // 2. Strict timer duration enforcement:
+      // Questions 1-5: 30 seconds
+      // Questions 6-8: 45 seconds
+      // Questions 9-10: 60 seconds
+      let timeLimit = payload?.timeLimitSec;
+      const isManualOverride = Boolean(payload?.manualTimeOverride) && [30, 45, 60].includes(Number(timeLimit));
+      if (isManualOverride) {
+        timeLimit = Number(timeLimit);
+      } else {
+        timeLimit = getQuestionTimeLimit(level);
+      }
+
       let videoUrl = payload?.videoUrl;
       if (!videoUrl && payload?.videoId && videoDatabase.has(payload.videoId)) {
         videoUrl = videoDatabase.get(payload.videoId)?.url;
@@ -2316,6 +2342,7 @@ wss.on('connection', (ws) => {
         level,
         startedAt: Date.now(),
         timeLimitSec: timeLimit,
+        manualTimeOverride: isManualOverride,
         videoUrl: videoUrl || payload?.videoUrl || null,
         audioUrl: audioUrl || payload?.audioUrl || null,
         hostSelectedAnswer: null,
@@ -2328,7 +2355,7 @@ wss.on('connection', (ws) => {
       if (room.lifelines) {
         room.lifelines.fiftyFiftyRemove = null;
       }
-      room.questionLevel = Math.min(room.questionLevel + 1, PRIZE_LADDER.length);
+      room.questionLevel = Math.min(level + 1, PRIZE_LADDER.length);
       broadcastToRoom(ws.roomId, { type: 'question', payload: room.currentQuestion });
       send(ws, {
         type: 'question_sent',
@@ -2338,7 +2365,8 @@ wss.on('connection', (ws) => {
           audioId: room.currentQuestion.audioId || null,
           format: room.currentQuestion.format || 'text',
           level,
-          timeLimitSec: timeLimit
+          timeLimitSec: timeLimit,
+          manualTimeOverride: isManualOverride
         }
       });
       return;
