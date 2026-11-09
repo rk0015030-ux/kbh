@@ -409,4 +409,87 @@ D. विकल्प 4
 const q20 = parsePdfQuestions(test20);
 assert.strictEqual(q20.length, 10, 'Case 20: No blank lines between questions must extract all 10 questions');
 
-console.log('All 20 question-parser test cases passed! 10/10 questions extracted across all formats!');
+// Case 21: User exact reported case - Image ID: image-10 or -10 bleeding into question text
+global.imageLibrary = [
+  { imageId: 'image-1', url: '/images/image-1.jpg', name: 'img1.jpg' },
+  { imageId: 'image-10', url: '/images/image-10.jpg', name: 'img10.jpg' }
+];
+
+const test21 = `
+1. आपका नाम क्या है?
+Image ID: image-10
+A. क
+B. ख
+C. ग
+D. घ
+Ans: A
+`;
+const q21 = parsePdfQuestions(test21);
+assert.strictEqual(q21.length, 1);
+assert.strictEqual(q21[0].text, 'आपका नाम क्या है?', 'Case 21: "Image ID: image-10" must not bleed into question text');
+assert.strictEqual(q21[0].imageId, 'image-10', 'Case 21: imageId must be resolved as image-10');
+assert.strictEqual(q21[0].image, '/images/image-10.jpg', 'Case 21: image URL must resolve from imageLibrary');
+
+// Case 22: Stray line with -10 right below question text
+const test22 = `
+आपका नाम क्या है?
+-10
+A. क
+B. ख
+C. ग
+D. घ
+Ans: A
+`;
+const q22 = parsePdfQuestions(test22);
+assert.strictEqual(q22.length, 1);
+assert.strictEqual(q22[0].text, 'आपका नाम क्या है?', 'Case 22: Stray "-10" line must not bleed into question text');
+assert.strictEqual(q22[0].imageId, 'image-10', 'Case 22: Stray "-10" must resolve to image-10');
+assert.strictEqual(q22[0].image, '/images/image-10.jpg', 'Case 22: Stray "-10" must link to library image');
+
+// Case 23: [Image: image-10] and [चित्र: 10]
+const test23 = `
+1. भारत की राजधानी क्या है?
+[Image: image-10]
+A. मुंबई
+B. दिल्ली
+C. कोलकाता
+D. चेन्नई
+उत्तर: B
+
+2. सौरमंडल का सबसे बड़ा ग्रह?
+[चित्र: 1]
+(क) पृथ्वी
+(ख) बृहस्पति
+(ग) मंगल
+(घ) शुक्र
+उत्तर: ख
+`;
+const q23 = parsePdfQuestions(test23);
+assert.strictEqual(q23.length, 2);
+assert.strictEqual(q23[0].text, 'भारत की राजधानी क्या है?', 'Case 23: [Image: image-10] must not bleed into question text');
+assert.strictEqual(q23[0].imageId, 'image-10');
+assert.strictEqual(q23[0].image, '/images/image-10.jpg');
+assert.strictEqual(q23[1].text, 'सौरमंडल का सबसे बड़ा ग्रह?', 'Case 23: [चित्र: 1] must not bleed into question text');
+assert.strictEqual(q23[1].imageId, 'image-1');
+assert.strictEqual(q23[1].image, '/images/image-1.jpg');
+
+// Case 24: 10 questions with alternating Image ID: image-X and -X
+const test24 = Array.from({length: 10}, (_, i) => {
+  const num = i + 1;
+  const tag = (i % 2 === 0) ? `Image ID: image-${num}` : `-${num}`;
+  return `${num}. सामान्य ज्ञान प्रश्न: भारत का राष्ट्रीय फूल क्या है?
+${tag}
+A. कमल
+B. गुलाब
+C. गेंदा
+D. चमेली
+उत्तर: A`;
+}).join('\n\n');
+const q24 = parsePdfQuestions(test24);
+assert.strictEqual(q24.length, 10, 'Case 24: All 10 questions with image tags must be extracted');
+q24.forEach((q, idx) => {
+  assert.strictEqual(q.text, 'सामान्य ज्ञान प्रश्न: भारत का राष्ट्रीय फूल क्या है?', `Case 24: Q${idx + 1} text must be clean without image ID tags`);
+  assert.strictEqual(q.imageId, `image-${idx + 1}`, `Case 24: Q${idx + 1} imageId must be image-${idx + 1}`);
+});
+
+console.log('All 24 question-parser test cases passed! Image tags and 10/10 questions verified!');

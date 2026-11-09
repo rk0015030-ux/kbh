@@ -4263,45 +4263,105 @@ if (window.pdfjsLib) {
       'gis'
     );
 
-    // Comprehensive Image Resolver: resolves image-1, [Image: 1], [चित्र 1], filenames, URLs, or generic [IMAGE]
+    // Comprehensive Image Resolver: resolves image-1, image-10, [Image: 10], [Image ID: image-10], [चित्र 1], stray -10, filenames, URLs, or generic [IMAGE]
     function resolveImage(blockText, imgLib, curIdx) {
-      const imgRegex = /(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*([^\]\)\n\r]+?)(?:\]|\)|\b)/i;
-      const match = blockText.match(imgRegex);
+      if (!imgLib || !Array.isArray(imgLib)) imgLib = [];
+      const devanagariNums = { '०':0, '१':1, '२':2, '३':3, '४':4, '५':5, '६':6, '७':7, '८':8, '९':9 };
 
-      if (match) {
-        const rawRef = match[1].trim();
-        if (!/^(?:id|here|tag|file)$/i.test(rawRef)) {
-          // Direct URL
-          if (/^(?:https?:\/\/|\/|data:image\/)/i.test(rawRef)) {
-            return { url: rawRef, imageId: null };
-          }
-          // Exact imageId
-          let found = imgLib.find(i => i.imageId && i.imageId.toLowerCase() === rawRef.toLowerCase());
-          if (found) return { url: found.url, imageId: found.imageId };
+      // 1. Direct URL match
+      const urlMatch = blockText.match(/(?:https?:\/\/[^\s\)\"\'<>\\]+|\/api\/images\/[^\s\)\"\'<>\\]+|data:image\/[^\s\)\"\'<>\\]+)/i);
+      if (urlMatch) {
+        return { url: urlMatch[0], imageId: null };
+      }
 
-          // Number (e.g. "1", "image-1", "चित्र 1")
-          const numMatch = rawRef.match(/(?:image|img|चित्र|तस्वीर|फोटो)?\s*[:#-]?\s*([0-9०-९]+)/i);
-          if (numMatch) {
-            const devanagariNums = { '०':0, '१':1, '२':2, '३':3, '४':4, '५':5, '६':6, '७':7, '८':8, '९':9 };
-            const rawNum = numMatch[1].replace(/[०-९]/g, d => devanagariNums[d]);
-            const num = parseInt(rawNum, 10);
-            found = imgLib.find(i => i.imageId === `image-${num}` || i.imageId === String(num));
-            if (found) return { url: found.url, imageId: found.imageId };
-            if (num >= 1 && num <= imgLib.length) {
-              const item = imgLib[num - 1];
-              return { url: item.url, imageId: item.imageId };
-            }
-          }
+      let rawRef = null;
 
-          // Filename match
-          found = imgLib.find(i => i.name && (i.name.toLowerCase() === rawRef.toLowerCase() || i.name.toLowerCase().includes(rawRef.toLowerCase())));
-          if (found) return { url: found.url, imageId: found.imageId };
+      // 2. Bracketed or parenthesized image tag, e.g. [Image: 10], [Image ID: image-10], [चित्र: 10]
+      const bracketMatch = blockText.match(/(?:\[|\()\s*(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*([^\]\)\n\r]*?)\s*(?:\]|\))/i);
+      if (bracketMatch && bracketMatch[1].trim()) {
+        rawRef = bracketMatch[1].trim();
+      }
+
+      // 3. Standalone bracketed ID, e.g. [image-10], [img 10]
+      if (!rawRef) {
+        const bracketIdMatch = blockText.match(/(?:\[|\()\s*(?:image|img)\s*[-_]?\s*([0-9०-९]+)\s*(?:\]|\))/i);
+        if (bracketIdMatch) {
+          rawRef = 'image-' + bracketIdMatch[1].replace(/[०-९]/g, d => devanagariNums[d]);
         }
       }
 
-      // Generic [IMAGE] / [चित्र] tag or context match
-      const genericMatch = blockText.match(/(?:\[|\()\s*(?:image|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*(?:\]|\))/i);
-      if (genericMatch || /(?:दिए गए चित्र|इस तस्वीर|दिख रहे चित्र|निम्न चित्र|see the image|in this picture|in the image)/i.test(blockText)) {
+      // 4. Line prefix match, e.g. "Image ID: image-10", "Image: 10", "चित्र: 10"
+      if (!rawRef) {
+        const prefixMatch = blockText.match(/(?:^|[\s\r\n])(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\-–—]\s*(?:image\s*[-_]\s*)?([^\s,;\n\r\)\]]+)/i);
+        if (prefixMatch && prefixMatch[1].trim()) {
+          rawRef = prefixMatch[1].trim();
+        }
+      }
+
+      // 5. Standalone image reference, e.g. "image-10", "img_10"
+      if (!rawRef) {
+        const standaloneMatch = blockText.match(/(?:^|[\s\r\n\[\(])(?:image|img)\s*[-_]?\s*([0-9०-९]+)(?:$|[\s\r\n\]\)])/i);
+        if (standaloneMatch) {
+          const num = standaloneMatch[1].replace(/[०-९]/g, d => devanagariNums[d]);
+          rawRef = 'image-' + num;
+        }
+      }
+
+      // 6. Stray numeric ID line e.g. "-10" or "– 10" on its own line under question
+      if (!rawRef) {
+        const strayMatch = blockText.match(/(?:^|[\r\n])\s*[-–—:]\s*([0-9०-९]+)\s*(?=[\r\n]|$)/);
+        if (strayMatch) {
+          const num = strayMatch[1].replace(/[०-९]/g, d => devanagariNums[d]);
+          rawRef = 'image-' + num;
+        }
+      }
+
+      if (rawRef && !/^(?:id|here|tag|file)$/i.test(rawRef)) {
+        const normRef = rawRef.trim().toLowerCase();
+
+        // Exact imageId match (e.g. "image-10")
+        let found = imgLib.find(i => i.imageId && i.imageId.toLowerCase() === normRef);
+        if (found) return { url: found.url, imageId: found.imageId };
+
+        // Match with "image-" prefix added
+        found = imgLib.find(i => i.imageId && i.imageId.toLowerCase() === ('image-' + normRef));
+        if (found) return { url: found.url, imageId: found.imageId };
+
+        // Match by number
+        const numMatch = normRef.match(/([0-9०-९]+)/);
+        if (numMatch) {
+          const num = parseInt(numMatch[1].replace(/[०-९]/g, d => devanagariNums[d]), 10);
+          found = imgLib.find(i => i.imageId && (
+            i.imageId.toLowerCase() === `image-${num}` ||
+            i.imageId.toLowerCase() === `image_${num}` ||
+            i.imageId.toLowerCase() === String(num)
+          ));
+          if (found) return { url: found.url, imageId: found.imageId };
+
+          // Only use index fallback if the item at index has matching imageId or no conflicting imageId
+          if (num >= 1 && num <= imgLib.length) {
+            const item = imgLib[num - 1];
+            const itemNumMatch = item.imageId ? item.imageId.match(/([0-9]+)/) : null;
+            if (!itemNumMatch || parseInt(itemNumMatch[1], 10) === num) {
+              return { url: item.url, imageId: item.imageId || `image-${num}` };
+            }
+          }
+
+          return { url: null, imageId: `image-${num}` };
+        }
+
+        // Filename match
+        found = imgLib.find(i => i.name && (
+          i.name.toLowerCase() === normRef ||
+          i.name.toLowerCase().includes(normRef) ||
+          normRef.includes(i.name.toLowerCase())
+        ));
+        if (found) return { url: found.url, imageId: found.imageId };
+      }
+
+      // 7. Generic [IMAGE] / [चित्र] tag or context keyword match
+      if (/(?:\[|\()\s*(?:image|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*(?:\]|\))/i.test(blockText) ||
+          /(?:दिए गए चित्र|इस तस्वीर|दिख रहे चित्र|निम्न चित्र|see the image|in this picture|in the image)/i.test(blockText)) {
         if (curIdx >= 0 && curIdx < imgLib.length) {
           const item = imgLib[curIdx];
           return { url: item.url, imageId: item.imageId };
@@ -4357,12 +4417,17 @@ if (window.pdfjsLib) {
       const hasVideoTag = /video/i.test(textWithoutAnswer);
       const hasAudioTag = /audio/i.test(textWithoutAnswer);
 
-      // Strip image/video/audio tags from text
+      // Strip image/video/audio tags from text thoroughly
       textWithoutAnswer = textWithoutAnswer
-        .replace(/(?:\[|\(|\b)(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*[^\]\)\n\r]+?(?:\]|\)|\b)/ig, '')
-        .replace(/(?:\[|\()\s*(?:image|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*(?:\]|\))/ig, '')
+        .replace(/(?:\[|\()\s*(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\s-]*\s*[^\]\)\n\r]*\s*(?:\]|\))/ig, '')
+        .replace(/(?:\[|\()\s*(?:image|img)\s*[-_]?\s*[0-9०-९]+\s*(?:\]|\))/ig, '')
+        .replace(/(?:^|[\r\n])\s*(?:image(?:\s*id)?|img|चित्र|तस्वीर|फोटो|pic(?:ture)?)\s*[:#=\-–—]\s*[^\r\n]+/ig, '')
+        .replace(/(?:^|[\s\r\n])(?:image|img)\s*[-_]?\s*[0-9०-९]+(?=[\s\r\n]|$)/ig, '')
+        .replace(/(?:^|[\r\n])\s*video\s*id\s*[:#=-]?\s*[^\r\n]+/ig, '')
+        .replace(/(?:^|[\r\n])\s*audio\s*id\s*[:#=-]?\s*[^\r\n]+/ig, '')
         .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
-        .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '');
+        .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '')
+        .replace(/(?:^|[\r\n])\s*[-–—:]\s*[0-9०-९]+\s*(?=[\r\n]|$)/ig, '');
 
       // Detect question number if present
       const qNumMatch = textWithoutAnswer.trim().match(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र०|प्र[.]?|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)\-–—]?\s*([0-9०-९IVXivx]+)|(?:\(?\s*([0-9०-९IVXivx]+)\s*[\).\:\]\-–—]|\[\s*([0-9०-९IVXivx]+)\s*\]))\s*/i);
@@ -4388,7 +4453,11 @@ if (window.pdfjsLib) {
       if (cleaned) {
         cleanQuestionText = cleaned;
       }
-      cleanQuestionText = cleanQuestionText.replace(/\n\s*\n/g, '\n').trim();
+      cleanQuestionText = cleanQuestionText
+        .replace(/(?:^|[\r\n])\s*[-–—:]\s*[0-9०-९]+\s*(?=[\r\n]|$)/ig, '')
+        .replace(/(\?|।|\.)\s*[-–—:]\s*[0-9०-९]+\s*$/g, '$1')
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
 
       // If question text was only an image/media tag or empty header, provide robust default text so question is NEVER dropped
       if (!cleanQuestionText) {
@@ -4479,11 +4548,30 @@ if (window.pdfjsLib) {
     pdfQuestionIndex = (pdfQuestionIndex + 1) % pdfQuestions.length;
     const question = pdfQuestions[pdfQuestionIndex];
     currentPdfQuestion = question;
-    selectedImageId = question.imageId || null;
     syncQuestionLevelUI(pdfQuestionIndex + 1);
+
+    // Resolve image from imageLibrary if question has imageId or question.image
+    let resolvedImageSrc = question.image || null;
+    let effectiveImageId = question.imageId || null;
+
+    if (!resolvedImageSrc && effectiveImageId && Array.isArray(imageLibrary)) {
+      const normId = effectiveImageId.toLowerCase();
+      const match = imageLibrary.find(i => 
+        (i.imageId && i.imageId.toLowerCase() === normId) ||
+        (i.imageId && i.imageId.toLowerCase() === ('image-' + normId)) ||
+        (i.imageId && normId === ('image-' + i.imageId.toLowerCase()))
+      );
+      if (match && match.url) {
+        resolvedImageSrc = match.url;
+        question.image = match.url;
+        effectiveImageId = match.imageId;
+      }
+    }
+
+    selectedImageId = effectiveImageId;
     
     // If question has an image, set to image format
-    if (question.image) {
+    if (resolvedImageSrc) {
       document.getElementById('qFormat').value = 'image';
       document.getElementById('qFormat').dispatchEvent(new Event('change'));
     } else {
@@ -4523,16 +4611,16 @@ if (window.pdfjsLib) {
     const prevContainer = document.getElementById('imagePreviewContainer');
     const preview = document.getElementById('imagePreview');
     const label = document.getElementById('selectedImageLabel');
-    if (question.image) {
+    if (resolvedImageSrc) {
       if (prevContainer) prevContainer.style.display = 'block';
       if (preview) {
-        preview.src = question.image;
+        preview.src = resolvedImageSrc;
         preview.style.display = 'block';
       }
       if (label) {
         label.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,215,0,0.15); padding:6px 10px; border-radius:6px; border:1px solid gold; width:100%; box-sizing:border-box;">
-            <span><b>PDF Question Image:</b> Loaded from question ${pdfQuestionIndex + 1}</span>
+            <span><b>Question Image:</b> ${effectiveImageId ? `(${effectiveImageId})` : ''} Loaded for question ${pdfQuestionIndex + 1}</span>
             <button type="button" onclick="clearImageSelection()" style="background:#c93b4a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;">✕ Remove</button>
           </div>
         `;
@@ -4547,7 +4635,7 @@ if (window.pdfjsLib) {
     }
     const sourceLabel = document.getElementById('activeQuestionSourceLabel');
     if (sourceLabel) {
-      sourceLabel.textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length}: ${question.image ? 'Image Q' : 'Text Q'} (Correct: Option ${question.correct})`;
+      sourceLabel.textContent = `Question ${pdfQuestionIndex + 1} of ${pdfQuestions.length}: ${resolvedImageSrc ? 'Image Q' : 'Text Q'} (Correct: Option ${question.correct})`;
     }
   }
 
