@@ -30,15 +30,12 @@ app.use((req, res, next) => {
 });
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 50 * 1024 * 1024 });
-const isDevContainer = Boolean(process.env.CONTROL_PLANE_PORT || process.env.NGINX_PORT);
 const PORT = (() => {
   if (process.env.APP_PORT) return parseInt(process.env.APP_PORT, 10);
   const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
-  if (isDevContainer) {
-    if (envPort && envPort !== 8080) return envPort;
-    return process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT, 10) : 3000;
-  }
-  return envPort || 3000;
+  if (envPort && envPort !== 8080) return envPort;
+  if (process.env.DEFAULT_APP_PORT) return parseInt(process.env.DEFAULT_APP_PORT, 10);
+  return 3000;
 })();
 const PRIZE_LADDER = [100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
 
@@ -689,7 +686,7 @@ async function rehydrateMediaFile(type, filename) {
   const item = Array.from(dbMap.values()).find(m => m.filename === filename) || archiveItem;
   if (item && item.url && item.url.startsWith('http')) {
     try {
-      const res = await fetch(item.url);
+      const res = await fetch(item.url, { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const arrayBuf = await res.arrayBuffer();
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
@@ -1974,11 +1971,19 @@ function broadcastToRoom(roomId, message) {
 function broadcastConnectionStatus(roomId) {
   const room = rooms.get(roomId);
   if (!room) return;
+  const isHostConnected = Boolean(room.host && room.host.readyState === WebSocket.OPEN);
+  const isPlayerConnected = Array.from(room.players.values()).some(({ ws }) => ws && ws.readyState === WebSocket.OPEN);
+  const reconnectingPlayers = Array.from(room.players.values()).filter(({ ws }) => !ws || ws.readyState !== WebSocket.OPEN);
+  const isPlayerReconnecting = !isPlayerConnected && reconnectingPlayers.length > 0;
+  const reconnectingName = reconnectingPlayers.length > 0 ? reconnectingPlayers[0].name : null;
+
   broadcastToRoom(roomId, {
     type: 'connection_status',
     payload: {
-      host: Boolean(room.host && room.host.readyState === WebSocket.OPEN),
-      player: Array.from(room.players.values()).some(({ ws }) => ws && ws.readyState === WebSocket.OPEN)
+      host: isHostConnected,
+      player: isPlayerConnected,
+      playerReconnecting: isPlayerReconnecting,
+      reconnectingPlayerName: reconnectingName
     }
   });
 }
@@ -2550,7 +2555,10 @@ wss.on('connection', (ws) => {
         player.connected = false;
         player.disconnectedAt = Date.now();
       }
-      if (room.host) send(room.host, { type: 'player_left', payload: { playerId: ws.id, name: player ? player.name : ws.name } });
+      if (room.host) {
+        send(room.host, { type: 'player_left', payload: { playerId: ws.id, name: player ? player.name : ws.name } });
+        send(room.host, { type: 'player_reconnecting', payload: { playerId: ws.id, name: player ? player.name : ws.name } });
+      }
     }
     broadcastConnectionStatus(ws.roomId);
   });
@@ -2738,11 +2746,29 @@ wss.on('error', (error) => {
 });
 
 // Clean shutdown signals for container environments
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, closing gracefully');
-  server.close(() => process.exit(0));
-});
-process.on('SIGINT', () => {
-  console.log('Received SIGINT, closing gracefully');
-  server.close(() => process.exit(0));
-});
+function gracefulShutdown(signal) {
+  console.log(`Received ${signal}, closing gracefully`);
+  try {
+    wss.clients.forEach((client) => {
+      try { client.terminate(); } catch (e) {}
+    });
+    wss.close();
+  } catch (e) {}
+
+  if (typeof server.closeAllConnections === 'function') {
+    try { server.closeAllConnections(); } catch (e) {}
+  }
+
+  const forceTimer = setTimeout(() => {
+    process.exit(0);
+  }, 1000);
+  if (typeof forceTimer.unref === 'function') forceTimer.unref();
+
+  server.close(() => {
+    clearTimeout(forceTimer);
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -1048,6 +1048,16 @@
     }
   }
     
+  function hidePlayerReconnectUI() {
+    const banner = document.getElementById('reconnectBanner');
+    if (banner) banner.style.display = 'none';
+    const toast = document.getElementById('appPlayerNotificationToast');
+    if (toast && toast.textContent && (toast.textContent.includes('offline') || toast.textContent.includes('Connecting') || toast.textContent.includes('Disconnected') || toast.textContent.includes('Reconnecting'))) {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 200);
+    }
+  }
+
   function showNotification(message, isError = true) {
     let toast = document.getElementById('appPlayerNotificationToast');
     if (!toast) {
@@ -1065,7 +1075,7 @@
     toast._timeout = setTimeout(() => {
       toast.style.opacity = '0';
       setTimeout(() => { toast.style.display = 'none'; }, 300);
-    }, 4000);
+    }, isError ? 3500 : 2500);
   }
   window.alert = function(msg) { showNotification(msg); };
 
@@ -1640,26 +1650,22 @@
     let msg;
     try { msg = JSON.parse(ev.data); } catch (e) { return; }
 
-    if (msg.type === 'connection_status') updatePresenceIndicator(msg.payload || {});
+    if (msg.type === 'connection_status') {
+      updatePresenceIndicator(msg.payload || {});
+      if (msg.payload?.player) hidePlayerReconnectUI();
+    }
 
     if (msg.type === 'joined') {
       myId = msg.payload.playerId;
       savePlayerSession({ playerId: myId, playerName: myName, roomId: msg.payload.roomId });
+      hidePlayerReconnectUI();
       if (msg.payload.reconnected) {
-        if (playerWasOffline && !sessionStorage.getItem(RECONNECT_REFRESH_FLAG)) {
-          playerWasOffline = false;
-          captureAudioOfflineState();
-          try {
-            sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
-          } catch (e) {}
-          window.location.reload();
-          return;
-        }
         showNotification('✅ Reconnected! Game state restored.', false);
       }
     }
 
     if (msg.type === 'sync_state') {
+      hidePlayerReconnectUI();
       const s = msg.payload || {};
       if (Number.isFinite(s.cash)) {
         stats.score = s.cash;
@@ -2006,15 +2012,9 @@
   });
 
   window.addEventListener('online', () => {
-    console.log('[Player Network] Online event detected. Triggering auto-reconnect refresh.');
-    if (playerWasOffline || !ws || ws.readyState !== WebSocket.OPEN) {
-      playerWasOffline = false;
-      captureAudioOfflineState();
-      try {
-        sessionStorage.setItem(RECONNECT_REFRESH_FLAG, '1');
-      } catch (e) {}
-      window.location.reload();
-    }
+    console.log('[Player Network] Online event detected. Triggering auto-reconnect.');
+    playerWasOffline = false;
+    connectToGame(false);
   });
 
   function connectToGame(isManual = false) {
@@ -2069,14 +2069,14 @@
       clearTimeout(autoReconnectTimer);
       autoReconnectTimer = null;
       updatePresenceIndicator({ player: true });
+      hidePlayerReconnectUI();
 
       ws.send(JSON.stringify({ 
         type: 'join', 
         payload: { role: 'player', roomId: targetRoomId, name: myName, playerId: myId } 
       }));
 
-      const banner = document.getElementById('reconnectBanner');
-      if (banner) banner.style.display = 'none';
+      hidePlayerReconnectUI();
       document.getElementById('joinBox').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       document.getElementById('floatingTimer').style.display = 'flex';

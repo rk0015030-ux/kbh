@@ -66,8 +66,80 @@
     .presence-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; color: #d6dbe5; }
     .presence-item strong { color: #ff8585; font-weight: 600; }
     .presence-item[data-connected="true"] strong { color: #75e39a; }
+    .presence-item[data-connected="reconnecting"] strong { color: #f59e0b; }
     .presence-dot { width: 7px; height: 7px; border-radius: 50%; background: #e95c5c; }
     .presence-item[data-connected="true"] .presence-dot { background: #45d477; }
+    .presence-item[data-connected="reconnecting"] .presence-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+      animation: presenceBlink 1s infinite alternate;
+    }
+    @keyframes presenceBlink {
+      0% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+
+    /* Host Player Reconnecting Banner */
+    .host-reconnecting-banner {
+      background: linear-gradient(135deg, rgba(180, 83, 9, 0.95), rgba(120, 53, 15, 0.98));
+      border: 2px solid #fde047;
+      color: #fff;
+      border-radius: 12px;
+      padding: 12px 18px;
+      margin: 10px 0 16px 0;
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.65), inset 0 0 12px rgba(254, 240, 138, 0.2);
+      animation: hostPulseReconnecting 1.8s infinite ease-in-out;
+      display: none;
+    }
+    @keyframes hostPulseReconnecting {
+      0% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); border-color: #fde047; }
+      50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.9); border-color: #ffffff; }
+      100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); border-color: #fde047; }
+    }
+    .host-reconnecting-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+    .host-reconnecting-icon {
+      font-size: 26px;
+      line-height: 1;
+      animation: hostSpinWarn 2s infinite ease-in-out;
+    }
+    @keyframes hostSpinWarn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.22); }
+    }
+    .host-reconnecting-text {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+    }
+    .host-reconnecting-text strong {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      color: #fff;
+    }
+    .host-reconnecting-text span {
+      font-size: 13px;
+      color: #fef08a;
+      font-weight: 500;
+    }
+    .host-reconnecting-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #fde047;
+      border-radius: 50%;
+      animation: hostSpinRing 0.8s infinite linear;
+      flex-shrink: 0;
+    }
+    @keyframes hostSpinRing {
+      to { transform: rotate(360deg); }
+    }
 
     /* Host Tab Navigation Bar */
     .host-nav-tabs {
@@ -488,7 +560,19 @@
     <button id="hostTopRestoreFilesBtn" type="button" class="gold-btn" style="padding:6px 14px; font-size:12px; font-weight:800; border-radius:6px; cursor:pointer; background:linear-gradient(135deg, #d97706, #b45309); border:1px solid #fde047; box-shadow:0 0 10px rgba(251,191,36,0.5);" title="Aapke uploaded 11 Images, 11 Videos aur 24 Audios sahit sabhi media files turant wapas layein">♻️ Wapas Layein (Restore Files)</button>
     <button id="hostTopRefreshPlayersBtn" type="button" class="gold-btn" style="padding:4px 12px; font-size:12px; font-weight:800; border-radius:6px; cursor:pointer;" title="Refresh connected players list">🔄 Refresh Players</button>
   </div>
-</div><h1>Kaun Banega Hazarpata - Host Panel</h1>  <div class="top-container"><div class="card">
+</div>
+<!-- Host Player Reconnecting Banner -->
+<div id="hostPlayerReconnectingBanner" class="host-reconnecting-banner" role="alert" aria-live="assertive">
+  <div class="host-reconnecting-content">
+    <span class="host-reconnecting-icon">⚠️</span>
+    <div class="host-reconnecting-text">
+      <strong id="hostReconnectingTitle">Player Reconnecting...</strong>
+      <span id="hostReconnectingSub">Network fluctuation detected. Player connection reconnect ho raha hai... Kripya prateeksha karein (Please wait).</span>
+    </div>
+    <span class="host-reconnecting-spinner"></span>
+  </div>
+</div>
+<h1>Kaun Banega Hazarpata - Host Panel</h1>  <div class="top-container"><div class="card">
   <div class="host-connect-row">
     <div class="host-connect-field">
       <label>Room ID:</label>
@@ -1084,14 +1168,100 @@
   let hostAudioEndedNotificationTimer;
   let hostAudioEndedNotificationHideTimer;
 
+  let activePlayerKnownName = '';
+  let isPlayerCurrentlyReconnecting = false;
+
+  function showHostPlayerReconnecting(playerName = '') {
+    isPlayerCurrentlyReconnecting = true;
+    if (playerName) activePlayerKnownName = playerName;
+    const banner = document.getElementById('hostPlayerReconnectingBanner');
+    const title = document.getElementById('hostReconnectingTitle');
+    const sub = document.getElementById('hostReconnectingSub');
+    const displayName = playerName || activePlayerKnownName || 'Player';
+    if (banner) {
+      if (title) {
+        title.textContent = `⚠️ Player "${displayName}" Reconnecting...`;
+      }
+      if (sub) {
+        sub.textContent = 'Network fluctuation detected. Player connection reconnect ho raha hai... Kripya prateeksha karein (Please wait).';
+      }
+      banner.style.display = 'block';
+    }
+    const playerPresence = document.getElementById('playerPresence');
+    if (playerPresence) {
+      playerPresence.textContent = `Reconnecting (${displayName})...`;
+      playerPresence.style.color = '#f59e0b';
+    }
+    const playerPresenceItem = document.getElementById('playerPresenceItem');
+    if (playerPresenceItem) {
+      playerPresenceItem.dataset.connected = 'reconnecting';
+    }
+    const hostActiveStatusBadge = document.getElementById('hostActiveStatusBadge');
+    if (hostActiveStatusBadge) {
+      hostActiveStatusBadge.textContent = `⚠️ ${displayName} Reconnecting...`;
+      hostActiveStatusBadge.style.color = '#f59e0b';
+      hostActiveStatusBadge.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+      hostActiveStatusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+    }
+  }
+
+  function hideHostPlayerReconnecting(playerName = '') {
+    isPlayerCurrentlyReconnecting = false;
+    if (playerName) activePlayerKnownName = playerName;
+    const banner = document.getElementById('hostPlayerReconnectingBanner');
+    if (banner) {
+      banner.style.display = 'none';
+    }
+    const playerPresence = document.getElementById('playerPresence');
+    if (playerPresence) {
+      playerPresence.textContent = 'Connected';
+      playerPresence.style.color = '#75e39a';
+    }
+    const playerPresenceItem = document.getElementById('playerPresenceItem');
+    if (playerPresenceItem) {
+      playerPresenceItem.dataset.connected = 'true';
+    }
+    const hostActiveStatusBadge = document.getElementById('hostActiveStatusBadge');
+    if (hostActiveStatusBadge) {
+      const qSnippet = document.getElementById('hostLiveQuestionSnippet');
+      if (qSnippet && qSnippet.textContent && !qSnippet.textContent.includes('No active question')) {
+        hostActiveStatusBadge.textContent = 'Live on Hotseat';
+        hostActiveStatusBadge.style.color = '#39ff14';
+        hostActiveStatusBadge.style.borderColor = 'rgba(57, 255, 20, 0.4)';
+        hostActiveStatusBadge.style.background = 'rgba(57, 255, 20, 0.15)';
+      } else {
+        hostActiveStatusBadge.textContent = 'Ready';
+        hostActiveStatusBadge.style.color = '#2ecc71';
+        hostActiveStatusBadge.style.borderColor = 'rgba(46,204,113,0.3)';
+        hostActiveStatusBadge.style.background = 'rgba(46,204,113,0.12)';
+      }
+    }
+  }
+
   function updatePresenceIndicator(status = {}) {
     presenceState = { ...presenceState, ...status };
+    if (status.playerReconnecting) {
+      showHostPlayerReconnecting(status.reconnectingPlayerName || '');
+    } else if (status.player === true) {
+      hideHostPlayerReconnecting();
+    }
     ['host', 'player'].forEach(role => {
       const connected = Boolean(presenceState[role]);
       const el = document.getElementById(`${role}Presence`);
-      if (el) el.textContent = connected ? 'Connected' : 'Not connected';
       const item = document.getElementById(`${role}PresenceItem`);
-      if (item) item.dataset.connected = String(connected);
+      if (role === 'player' && isPlayerCurrentlyReconnecting) {
+        if (el) {
+          el.textContent = activePlayerKnownName ? `Reconnecting (${activePlayerKnownName})...` : 'Reconnecting...';
+          el.style.color = '#f59e0b';
+        }
+        if (item) item.dataset.connected = 'reconnecting';
+      } else {
+        if (el) {
+          el.textContent = connected ? 'Connected' : 'Not connected';
+          el.style.color = connected ? '#75e39a' : '#ff8585';
+        }
+        if (item) item.dataset.connected = String(connected);
+      }
     });
   }
 
@@ -1373,13 +1543,21 @@ if (window.pdfjsLib) {
         }
         log(`✅ Question sent successfully (format: ${msg.payload.format}, videoId: ${msg.payload.videoId || 'none'}, audioId: ${msg.payload.audioId || 'none'}).`);
       }
+      if (msg.type === 'player_reconnecting') {
+        showHostPlayerReconnecting(msg.payload?.name || '');
+        log(`⚠️ Player reconnecting: ${msg.payload?.name || msg.payload?.playerId || 'Player'}`);
+      }
       if (msg.type === 'player_joined' || msg.type === 'player_reconnected' || msg.type === 'player_left' || msg.type === 'joined' || msg.type === 'players') {
         if (msg.type === 'players') renderPlayers(msg.payload);
         else {
           if (msg.type === 'player_reconnected') {
+            hideHostPlayerReconnecting(msg.payload.name || '');
             log(`🔄 Player reconnected: ${msg.payload.name} (Cash: ₹${(msg.payload.cash || 0).toLocaleString('en-IN')})`);
             showNotification(`Player ${msg.payload.name} reconnected!`, false);
+          } else if (msg.type === 'player_joined') {
+            hideHostPlayerReconnecting(msg.payload?.name || '');
           } else if (msg.type === 'player_left') {
+            showHostPlayerReconnecting(msg.payload?.name || '');
             log(`⚠️ Player disconnected: ${msg.payload.name || msg.payload.playerId}`);
           }
           ws.send(JSON.stringify({ type: 'list_players' }));

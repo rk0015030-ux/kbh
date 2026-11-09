@@ -108,6 +108,11 @@ function waitFor(messages, predicateOrType, timeout = 2500) {
   player1.socket.close();
   await new Promise(r => setTimeout(r, 200));
 
+  // Verify host received player_reconnecting notification
+  const hostReconnectingMsg = await waitFor(host.messages, 'player_reconnecting');
+  assert.equal(hostReconnectingMsg.payload.playerId, player1.playerId, 'Host must receive player_reconnecting for disconnected player');
+  assert.equal(hostReconnectingMsg.payload.name, 'TestPlayer', 'Host must receive player name');
+
   // 6. Player clicks JOIN / RECONNECT with the same session / name
   const playerReconnect = await connect('player', 'TestPlayer', player1.playerId);
   assert.equal(playerReconnect.reconnected, true, 'Player should be recognized as reconnected');
