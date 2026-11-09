@@ -4104,65 +4104,105 @@ if (window.pdfjsLib) {
     if (!text) return [];
     const normalizedText = fixDevanagariMatras(text.replace(/\r/g, '').replace(/[ \t]+/g, ' ')).trim();
 
-    // Comprehensive question header regex covering English, Hindi, Devanagari numerals, and all common punctuation
-    // Matches: Q1-Q100, Question 1-100, Question No. 10, Q No 10, प्रश्न 1-10, प्रश्न संख्या 10, प्र. 10,
-    // 1., 1), 1:, 1-, (1), [1], 10., 10), 10:, 10-, (10), [10], 10 (at start of line), १०., १०), etc.
-    const questionRegex = /(?:^|\n)\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]+\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)\s*[:.)-]|(?:\(?[0-9०-९]+\s*[\).:\-]\s*)|(?:\([0-9०-९]+\)\s*)|(?:\[[0-9०-९]+\]\s*)|(?:\b[0-9०-९]+\s+))/gui;
+    // Helper: Checks whether a line is a dedicated answer statement (prevents false matches on words like 'उत्तर प्रदेश')
+    const isAnswerLine = (line) => {
+      const trimmed = (line || '').trim();
+      if (!trimmed) return false;
+      // 1. Keyword followed by delimiter : = - – — .
+      if (/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—.]\s*(.*)$/i.test(trimmed)) return true;
+      // 2. Keyword followed by option/is/विकल्प
+      if (/^(?:Answer|Ans|Correct|उत्तर|सही\s*उत्तर|जवाब)\s+(?:is|option|विकल्प|नंबर|संख्या)\s*[:=\-–—.]?\s*(.*)$/i.test(trimmed)) return true;
+      // 3. Keyword followed directly by option letter like "उत्तर (ख)" or "Answer B" or "उत्तर ख"
+      if (/^(?:Answer|Ans|Correct|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[\(\[]?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)[\)\]\.\-:]?(?:\s|$)/i.test(trimmed)) return true;
+      return false;
+    };
 
-    let questionMatches = [...normalizedText.matchAll(questionRegex)];
+    const explicitMarker = /(?:^|\n)\s*(?=(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)\s*[:.)-]))/i;
+
     let rawBlocks = [];
-
-    if (questionMatches.length > 0) {
-      questionMatches.forEach((match, index) => {
-        const start = match.index + match[0].length;
-        const end = index + 1 < questionMatches.length ? questionMatches[index + 1].index : normalizedText.length;
-        const content = normalizedText.slice(start, end).trim();
-        if (content) rawBlocks.push(content);
-      });
+    if (/(?:^|\n)\s*(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)\s*[:.)-])/i.test(normalizedText)) {
+      rawBlocks = normalizedText.split(explicitMarker).map(b => b.trim()).filter(Boolean);
+    } else {
+      const blankBlocks = normalizedText.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+      if (blankBlocks.length > 1) {
+        rawBlocks = blankBlocks;
+      } else {
+        const lines = normalizedText.split('\n');
+        let current = [];
+        let seenAns = false;
+        for (const line of lines) {
+          if (isAnswerLine(line)) {
+            seenAns = true;
+            current.push(line);
+            continue;
+          }
+          if (seenAns && /^(?:[0-9०-९]+)\s*[:.)-]/i.test(line.trim())) {
+            rawBlocks.push(current.join('\n'));
+            current = [line];
+            seenAns = false;
+          } else {
+            current.push(line);
+          }
+        }
+        if (current.length) rawBlocks.push(current.join('\n'));
+      }
     }
-
-    // Fallback: If no headers found, split by double newlines
-    if (rawBlocks.length === 0) {
-      normalizedText.split(/\n\s*\n+/).forEach(chunk => {
-        const trimmed = chunk.trim();
-        if (trimmed) rawBlocks.push(trimmed);
-      });
-    }
-
-    // Safety: If any block accidentally contains a missed question header, split it so no question is swallowed
-    const blocks = [];
-    const innerSplitRegex = /\n\s*(?=(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]+\s*[:.)-]?|(?:\(?[0-9०-९]+\s*[\).:\-]\s*)|(?:\b[0-9०-९]+\s+)))/gi;
-    rawBlocks.forEach(b => {
-      const parts = b.split(innerSplitRegex);
-      parts.forEach(p => { if (p.trim()) blocks.push(p.trim()); });
-    });
 
     const optionCharMap = {
       'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D',
       'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D',
       'क': 'A', 'ख': 'B', 'ग': 'C', 'घ': 'D',
       'अ': 'A', 'ब': 'B', 'स': 'C', 'द': 'D',
+      'आ': 'B', 'इ': 'C', 'ई': 'D',
       '1': 'A', '2': 'B', '3': 'C', '4': 'D',
       '१': 'A', '२': 'B', '३': 'C', '४': 'D',
       'I': 'A', 'II': 'B', 'III': 'C', 'IV': 'D',
-      'i': 'A', 'ii': 'B', 'iii': 'C', 'iv': 'D'
+      'i': 'A', 'ii': 'B', 'iii': 'C', 'iv': 'D',
+      'ए': 'A', 'बी': 'B', 'सी': 'C', 'डी': 'D'
     };
 
-    // Robust option regex: matches newline, tab, double-space, or inline options (A), A., A:, A-, [A], (क), (1), (i), etc.
-    const optionRegex = /(?:^|\n|[\t ]{2,}|\s(?=\(?\s*[ABCDabcdकखगघअबसद1234१२३४]|\[\s*[ABCDabcdकखगघअबसद1234१२३४]))\s*(?:\(?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*[\).\-:]|\(\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*\)|\[\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*\])\s*(.*?)(?=(?:\n|[\t ]{2,}|\s(?=\(?\s*[ABCDabcdकखगघअबसद1234१२३४]|\[))\s*(?:\(?\s*(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*[\).\-:]|\(\s*(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*\)|\[\s*(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*\])\s*|\n\s*(?:Answer|Ans|Correct|उत्तर|सही उत्तर|उ[.]?)\s*[:=\-.)]|\s*(?:Answer|Ans|Correct|उत्तर|सही उत्तर|उ[.]?)\s*[:=\-.)]|$)/gis;
-
-    // Matches correct answer indicators in English and Hindi
-    const answerRegex = /(?:Answer|Ans|Correct|उत्तर|सही उत्तर|उ[.]?)\s*(?:is|option|विकल्प)?\s*[:=\-.)]?\s*(?:\(?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV)\s*\)?|(.*))/i;
+    const optClass = '(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)';
+    const optionRegex = new RegExp('(?:^|\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[\\s*' + optClass + '))\\s*(?:\\(?\\s*(' + optClass + ')\\s*[\\).\\-:]|\\(\\s*(' + optClass + ')\\s*\\)|\\[\\s*(' + optClass + ')\\s*\\])\\s*(.*?)(?=(?:\\n|[\\t ]{2,}|\\s(?=\\(?\\s*' + optClass + '|\\[))\\s*(?:\\(?\\s*' + optClass + '\\s*[\\).\\-:]|\\(\\s*' + optClass + '\\s*\\)|\\[\\s*' + optClass + '\\s*\\])\\s*|$)', 'gis');
 
     const questions = [];
     let imageIndex = 0;
 
-    blocks.forEach(block => {
-      const optionMatches = [...block.matchAll(optionRegex)];
-      const answerMatch = block.match(answerRegex);
+    rawBlocks.forEach(block => {
+      let textWithoutAnswer = block;
+      let answerLine = '';
 
-      const firstOptionIndex = optionMatches.length ? optionMatches[0].index : block.length;
-      let cleanQuestionText = block.slice(0, firstOptionIndex).trim();
+      const lines = block.split(/\r?\n/);
+      let answerLineIndex = -1;
+      // Scan from bottom up to find dedicated answer line
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (isAnswerLine(lines[i])) {
+          answerLineIndex = i;
+          answerLine = lines[i].trim();
+          break;
+        }
+      }
+
+      if (answerLineIndex >= 0) {
+        // Strip answer line and any explanation lines below it so they never bleed into Option D
+        lines.splice(answerLineIndex, lines.length - answerLineIndex);
+        textWithoutAnswer = lines.join('\n');
+      } else {
+        // Check for inline answer at the end of text
+        const inlineMatch = block.match(/(?:[\t ]{2,}|\s+)(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*[:=\-–—.]?\s*(.*?)$/i);
+        if (inlineMatch && isAnswerLine(inlineMatch[0])) {
+          answerLine = inlineMatch[0].trim();
+          textWithoutAnswer = block.slice(0, inlineMatch.index).trim();
+        }
+      }
+
+      // Strip leading question numbering header before searching for options
+      textWithoutAnswer = textWithoutAnswer
+        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०|सवाल)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
+        .trim();
+
+      const optionMatches = [...textWithoutAnswer.matchAll(optionRegex)];
+      const firstOptionIndex = optionMatches.length ? optionMatches[0].index : textWithoutAnswer.length;
+      let cleanQuestionText = textWithoutAnswer.slice(0, firstOptionIndex).trim();
 
       const imageIdMatch = cleanQuestionText.match(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*((?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/i);
       const videoIdMatch = cleanQuestionText.match(/\bvideo\s*id\s*[:#=-]?\s*(video\s*[-_]\s*\d+)\b/i);
@@ -4172,7 +4212,6 @@ if (window.pdfjsLib) {
         .replace(/\[?\s*(?:image(?:\s*id)?|img)\s*[:#-]\s*(?:(?:image-\d+)|(?:[a-f0-9-]{8,}))\s*\]?/ig, '')
         .replace(/\bvideo\s*id\s*[:#=-]?\s*video\s*[-_]\s*\d+\b/ig, '')
         .replace(/\baudio\s*id\s*[:#=-]?\s*audio\s*[-_]\s*\d+\b/ig, '')
-        .replace(/^(?:(?:Q(?:uestion)?|प्रश्न|प्र[.]?|प्र०)(?:\s*(?:No[.]?|संख्या|सं[.]?|#))?\s*[:.)-]?\s*[0-9०-९]*\s*[:.)-]?|[0-9०-९]+\s*[:.)-])\s*/i, '')
         .replace(/\n\s*\n/g, '\n')
         .trim();
 
@@ -4180,18 +4219,50 @@ if (window.pdfjsLib) {
       const videoId = videoIdMatch ? videoIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
       const audioId = audioIdMatch ? audioIdMatch[1].toLowerCase().replace(/\s+/g, '').replace('_', '-') : '';
 
-      const options = optionMatches.map(m => fixDevanagariMatras((m[4] || '').replace(/\s+/g, ' ').trim())).filter(Boolean);
+      const optionsMap = { 'A': '', 'B': '', 'C': '', 'D': '' };
+      const rawOptionsList = [];
 
+      optionMatches.forEach(m => {
+        const rawChar = m[1] || m[2] || m[3];
+        const letter = optionCharMap[rawChar];
+        let optText = fixDevanagariMatras((m[4] || '').replace(/\s+/g, ' ').trim());
+        // Clean any redundant duplicate option marker at start of option text
+        optText = optText.replace(/^(?:[ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\).\-:]\s*/i, '').trim();
+        if (letter && !optionsMap[letter]) {
+          optionsMap[letter] = optText;
+        }
+        rawOptionsList.push(optText);
+      });
+
+      const options = ['A', 'B', 'C', 'D'].map((L, idx) => optionsMap[L] || rawOptionsList[idx] || '');
+
+      // Resolve correct answer option accurately matching text file
       let correct = 'A';
-      if (answerMatch) {
-        const rawAns = (answerMatch[1] || '').trim();
-        if (rawAns && optionCharMap[rawAns]) {
-          correct = optionCharMap[rawAns];
-        } else if (answerMatch[2]) {
-          const textAns = answerMatch[2].trim().toLowerCase();
-          const foundIdx = options.findIndex(opt => opt.toLowerCase() === textAns || opt.toLowerCase().includes(textAns));
-          if (foundIdx >= 0) {
-            correct = ['A', 'B', 'C', 'D'][foundIdx];
+      if (answerLine) {
+        let cleanAns = answerLine.replace(/^(?:Answer|Ans|Correct(?:\s*(?:Answer|Option))?|Right\s*Answer|Key|उत्तर|सही\s*उत्तर|उ०|उ[.]?|जवाब)\s*/i, '');
+        cleanAns = cleanAns.replace(/^[:=\-–—.]\s*/, '');
+        cleanAns = cleanAns.replace(/^(?:is|option|विकल्प|नंबर|संख्या)\s*[:=\-–—.]?\s*/i, '');
+        cleanAns = cleanAns.replace(/^(?:Option|विकल्प)\s*[:=\-–—.]?\s*/i, '').trim();
+
+        const letterMatch = cleanAns.match(/^[\(\[]?\s*([ABCDabcdकखगघअबसद1234१२३४]|i{1,3}|iv|I{1,3}|IV|ए|बी|सी|डी)\s*[\)\]\.\-:]?/i);
+        if (letterMatch && optionCharMap[letterMatch[1]]) {
+          correct = optionCharMap[letterMatch[1]];
+        } else {
+          const cleanText = cleanAns.replace(/^[:=\-–—.)\]\s]+/, '').replace(/[:=\-–—.)\]\s।.]+$/, '').trim().toLowerCase();
+          if (cleanText) {
+            const exactIdx = options.findIndex(o => o && o.trim().toLowerCase() === cleanText);
+            if (exactIdx >= 0) {
+              correct = ['A', 'B', 'C', 'D'][exactIdx];
+            } else {
+              const subIdx = options.findIndex(o => {
+                if (!o) return false;
+                const optLower = o.trim().toLowerCase();
+                return optLower.includes(cleanText) || cleanText.includes(optLower);
+              });
+              if (subIdx >= 0) {
+                correct = ['A', 'B', 'C', 'D'][subIdx];
+              }
+            }
           }
         }
       }
@@ -4199,14 +4270,14 @@ if (window.pdfjsLib) {
       cleanQuestionText = fixDevanagariMatras(cleanQuestionText);
 
       // If question text exists and at least 2 options detected, register the question
-      if (cleanQuestionText && options.length >= 2) {
+      if (cleanQuestionText && options.filter(Boolean).length >= 2) {
         while (options.length < 4) options.push('-');
         const questionObj = { 
           text: cleanQuestionText,
           videoId,
           audioId,
           options: options.slice(0, 4), 
-          correct,
+          correct: String(correct || 'A').toUpperCase().trim(),
           image: libraryImage ? libraryImage.url : (imageIndex < images.length ? images[imageIndex] : null),
           imageId: libraryImage ? libraryImage.imageId : null
         };
@@ -4259,7 +4330,9 @@ if (window.pdfjsLib) {
     ['A', 'B', 'C', 'D'].forEach((letter, index) => {
       document.getElementById(`opt${letter}`).value = fixDevanagariMatras(question.options[index] || '');
     });
-    document.getElementById('correctAns').value = question.correct;
+    const cleanCorrect = String(question.correct || 'A').toUpperCase().trim();
+    document.getElementById('correctAns').value = cleanCorrect;
+    currentCorrectAnswer = cleanCorrect;
     
     // Display image preview if available
     const prevContainer = document.getElementById('imagePreviewContainer');
