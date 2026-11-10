@@ -491,6 +491,109 @@ function loadMasterArchive() {
 
 loadMasterArchive();
 
+// --- PERMANENT IMMUTABLE MEDIA ID REGISTRY ---
+// Rule 1: A media ID once assigned to a file/name/URL NEVER changes under any circumstance.
+// Rule 2: Media IDs follow clean, predictable schemes: image-1, image-2... video-1, video-2... audio-1, audio-2...
+// Rule 3: Storage is permanent and append-only ("हमेशा वो स्टोर रहेगा, कभी हटेगा नहीं").
+
+const defaultKbcAudioMap = {
+  '30 sec timer.mp3': 'audio-30-sec-timer',
+  '45 sec audio.mp3': 'audio-45-sec-timer',
+  '60 sec timer.mp3': 'audio-60-sec-timer',
+  '50 50.mp3': 'audio-50-50',
+  'kbc timer real.mp3': 'audio-kbc-timer-real',
+  'question lock sound.mp3': 'audio-question-lock',
+  'wrong buzzer.mp3': 'audio-wrong-buzzer',
+  'correct answer.wav': 'audio-correct-answer'
+};
+
+function getNextPermanentMediaNumber(type) {
+  const prefix = `${type}-`;
+  const numbers = [];
+  
+  function scanMap(map) {
+    if (!map) return;
+    for (const [id, item] of map.entries()) {
+      if (typeof id === 'string' && id.startsWith(prefix)) {
+        const num = parseInt(id.replace(prefix, ''), 10);
+        if (!isNaN(num) && num > 0 && num < 1000000) numbers.push(num);
+      }
+      if (item && typeof item.id === 'string' && item.id.startsWith(prefix)) {
+        const num = parseInt(item.id.replace(prefix, ''), 10);
+        if (!isNaN(num) && num > 0 && num < 1000000) numbers.push(num);
+      }
+    }
+  }
+
+  scanMap(masterArchive);
+  if (type === 'image') scanMap(imageDatabase);
+  else if (type === 'video') scanMap(videoDatabase);
+  else if (type === 'audio') scanMap(audioDatabase);
+
+  const max = numbers.length ? Math.max(...numbers) : 0;
+  return max + 1;
+}
+
+function getPermanentMediaId(type, filename, fallbackName = '') {
+  if (!filename && !fallbackName) {
+    return `${type}-${getNextPermanentMediaNumber(type)}`;
+  }
+
+  const cleanFile = String(filename || '').trim();
+  const cleanFallback = String(fallbackName || '').trim();
+
+  // 1. Check known audio presets
+  if (type === 'audio' && defaultKbcAudioMap[cleanFile]) {
+    return defaultKbcAudioMap[cleanFile];
+  }
+
+  // 2. Search Master Archive (Highest Authority)
+  for (const [id, item] of masterArchive.entries()) {
+    if (!item) continue;
+    if (cleanFile && (item.filename === cleanFile || item.name === cleanFile)) {
+      return id;
+    }
+    if (cleanFallback && (item.name === cleanFallback || item.filename === cleanFallback)) {
+      return id;
+    }
+  }
+
+  // 3. Search Active Databases
+  const db = type === 'video' ? videoDatabase : (type === 'audio' ? audioDatabase : imageDatabase);
+  for (const [id, item] of db.entries()) {
+    if (!item) continue;
+    if (cleanFile && (item.filename === cleanFile || item.name === cleanFile)) {
+      return id;
+    }
+    if (cleanFallback && (item.name === cleanFallback || item.filename === cleanFallback)) {
+      return id;
+    }
+  }
+
+  // 4. Direct match if filename starts with image-N, video-N, audio-N
+  const directMatch = cleanFile.match(new RegExp(`^(${type}-\\d+)`, 'i'));
+  if (directMatch) {
+    return directMatch[1].toLowerCase();
+  }
+
+  // 5. Fresh assignment: Next sequential permanent number
+  const nextNum = getNextPermanentMediaNumber(type);
+  const newId = `${type}-${nextNum}`;
+  return newId;
+}
+
+function createImageId(filename = null) {
+  return filename ? getPermanentMediaId('image', filename) : `image-${getNextPermanentMediaNumber('image')}`;
+}
+
+function createVideoId(filename = null) {
+  return filename ? getPermanentMediaId('video', filename) : `video-${getNextPermanentMediaNumber('video')}`;
+}
+
+function createAudioId(filename = null) {
+  return filename ? getPermanentMediaId('audio', filename) : `audio-${getNextPermanentMediaNumber('audio')}`;
+}
+
 async function saveRemoteMedia(mediaId, item, localFilePath = null) {
   const type = item.type || inferMediaType(item.name, item.filename, item.url);
   const bucketName = getBucketForType(type);
@@ -802,7 +905,11 @@ async function loadRemoteIndexes(force = false) {
             const entries = JSON.parse(text);
             Object.entries(entries).forEach(([id, item]) => {
               if (item && (item.filename || item.url)) {
+                if (id.startsWith('image-1794') || id.startsWith('audio-1794') || id.startsWith('video-1794')) return;
+                const itType = inferMediaType(item.name, item.filename, item.url || '');
+                if (itType !== type) return;
                 db.set(id, item);
+                masterArchive.set(id, item);
                 totalLoaded++;
               }
             });
@@ -817,12 +924,12 @@ async function loadRemoteIndexes(force = false) {
         if (!listErr && Array.isArray(files)) {
           const existingFilenames = new Set(Array.from(db.values()).map(m => m.filename));
           files.forEach(file => {
-            if (!file.name || file.name === 'index.json' || file.name.startsWith('.')) return;
+            if (!file.name || file.name === 'index.json' || file.name === '_index.json' || file.name === 'master_archive.json' || file.name === 'scores.json' || file.name.startsWith('.')) return;
             if (existingFilenames.has(file.name)) return;
 
             const { data: pubData } = client.storage.from(bucket).getPublicUrl(file.name);
             const pubUrl = pubData?.publicUrl || `/${type === 'audio' ? 'audio' : type + 's'}/${encodeURIComponent(file.name)}`;
-            const mediaId = `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            const mediaId = getPermanentMediaId(type, file.name);
             const mediaItem = {
               id: mediaId,
               name: file.name,
@@ -833,6 +940,7 @@ async function loadRemoteIndexes(force = false) {
               size: file.metadata?.size || 0
             };
             db.set(mediaId, mediaItem);
+            masterArchive.set(mediaId, mediaItem);
             existingFilenames.add(file.name);
             totalLoaded++;
           });
@@ -847,10 +955,10 @@ async function loadRemoteIndexes(force = false) {
                 if (!masterArchive.has(id)) {
                   masterArchive.set(id, item);
                 }
-                const itType = item.type || type;
+                const itType = inferMediaType(item.name, item.filename, item.url || '');
                 if (itType === 'video' && !videoDatabase.has(id)) videoDatabase.set(id, item);
                 else if (itType === 'audio' && !audioDatabase.has(id)) audioDatabase.set(id, item);
-                else if (!imageDatabase.has(id)) imageDatabase.set(id, item);
+                else if (itType === 'image' && !imageDatabase.has(id)) imageDatabase.set(id, item);
                 totalLoaded++;
               }
             });
@@ -867,22 +975,22 @@ async function loadRemoteIndexes(force = false) {
       if (Array.isArray(rows)) {
         rows.forEach(row => {
           const id = String(row.id);
-          let type = String(row.type || '').toLowerCase();
-          if (!['image', 'video', 'audio'].includes(type)) {
-            type = inferMediaType(row.name, row.filename, row.url);
+          let rowType = String(row.type || '').toLowerCase();
+          if (!['image', 'video', 'audio'].includes(rowType)) {
+            rowType = inferMediaType(row.name, row.filename, row.url);
           }
           const item = {
             id,
             name: String(row.name || id),
             url: row.url || '',
-            filename: row.filename || `${id}.${type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'}`,
-            type,
+            filename: row.filename || `${id}.${rowType === 'video' ? 'mp4' : rowType === 'audio' ? 'mp3' : 'jpg'}`,
+            type: rowType,
             uploadedAt: row.uploaded_at || new Date().toISOString(),
             size: Number(row.size) || 0
           };
           if (!masterArchive.has(id)) masterArchive.set(id, item);
-          if (type === 'video') videoDatabase.set(id, item);
-          else if (type === 'audio') audioDatabase.set(id, item);
+          if (rowType === 'video') videoDatabase.set(id, item);
+          else if (rowType === 'audio') audioDatabase.set(id, item);
           else imageDatabase.set(id, item);
           totalLoaded++;
         });
@@ -892,14 +1000,15 @@ async function loadRemoteIndexes(force = false) {
     // E. Synchronize from local Master Archive so offline-persisted media is always active
     masterArchive.forEach((item, id) => {
       if (item && item.filename) {
-        const type = item.type || 'image';
-        if (type === 'video' && !videoDatabase.has(id)) videoDatabase.set(id, item);
-        else if (type === 'audio' && !audioDatabase.has(id)) audioDatabase.set(id, item);
-        else if (!imageDatabase.has(id)) imageDatabase.set(id, item);
+        const itType = inferMediaType(item.name, item.filename, item.url || '');
+        if (itType === 'video' && !videoDatabase.has(id)) videoDatabase.set(id, item);
+        else if (itType === 'audio' && !audioDatabase.has(id)) audioDatabase.set(id, item);
+        else if (itType === 'image' && !imageDatabase.has(id)) imageDatabase.set(id, item);
         totalLoaded++;
       }
     });
 
+    purgeStaleDynamicKeys();
     saveMasterArchive();
     saveImageIndex();
     saveVideoIndex();
@@ -943,7 +1052,10 @@ function loadImageIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(imageIndexPath, 'utf8'));
     Object.entries(entries).forEach(([imageId, image]) => {
-      if (image && image.filename) imageDatabase.set(imageId, image);
+      if (image && image.filename) {
+        const itType = inferMediaType(image.name, image.filename, image.url || '');
+        if (itType === 'image') imageDatabase.set(imageId, image);
+      }
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load image index:', error.message);
@@ -954,11 +1066,11 @@ function loadImageIndex() {
       const diskFiles = fs.readdirSync(imagesDir);
       const existingFilenames = new Set(Array.from(imageDatabase.values()).map(img => img.filename));
       diskFiles.forEach(file => {
-        if (file === 'index.json' || existingFilenames.has(file)) return;
+        if (file === 'index.json' || file === '_index.json' || file === 'master_archive.json' || file === 'scores.json' || file.startsWith('.') || existingFilenames.has(file)) return;
         const filePath = path.join(imagesDir, file);
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) return;
-        const imageId = createImageId();
+        const imageId = getPermanentMediaId('image', file);
         const item = {
           id: imageId,
           name: file,
@@ -969,6 +1081,7 @@ function loadImageIndex() {
           size: stats.size
         };
         imageDatabase.set(imageId, item);
+        masterArchive.set(imageId, item);
         existingFilenames.add(file);
       });
       saveImageIndex();
@@ -984,11 +1097,11 @@ function loadImageIndex() {
       const diskFiles = fs.readdirSync(assetsDir);
       const existingFilenames = new Set(Array.from(imageDatabase.values()).map(img => img.filename));
       diskFiles.forEach(file => {
-        if (existingFilenames.has(file)) return;
+        if (file.startsWith('.') || existingFilenames.has(file)) return;
         const filePath = path.join(assetsDir, file);
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) return;
-        const imageId = createImageId();
+        const imageId = getPermanentMediaId('image', file);
         const item = {
           id: imageId,
           name: file.replace(/_[a-f0-9]+\.jpg$/i, '').replace(/_/g, ' '),
@@ -999,6 +1112,7 @@ function loadImageIndex() {
           size: stats.size
         };
         imageDatabase.set(imageId, item);
+        masterArchive.set(imageId, item);
         existingFilenames.add(file);
       });
       saveImageIndex();
@@ -1016,7 +1130,10 @@ function loadVideoIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(videoIndexPath, 'utf8'));
     Object.entries(entries).forEach(([videoId, video]) => {
-      if (video && video.filename) videoDatabase.set(videoId, video);
+      if (video && video.filename) {
+        const itType = inferMediaType(video.name, video.filename, video.url || '');
+        if (itType === 'video') videoDatabase.set(videoId, video);
+      }
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load video index:', error.message);
@@ -1026,11 +1143,11 @@ function loadVideoIndex() {
       const diskFiles = fs.readdirSync(videosDir);
       const existingFilenames = new Set(Array.from(videoDatabase.values()).map(v => v.filename));
       diskFiles.forEach(file => {
-        if (file === 'index.json' || existingFilenames.has(file)) return;
+        if (file === 'index.json' || file === '_index.json' || file.startsWith('.') || existingFilenames.has(file)) return;
         const filePath = path.join(videosDir, file);
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) return;
-        const videoId = createVideoId();
+        const videoId = getPermanentMediaId('video', file);
         const item = {
           id: videoId,
           name: file,
@@ -1041,6 +1158,7 @@ function loadVideoIndex() {
           size: stats.size
         };
         videoDatabase.set(videoId, item);
+        masterArchive.set(videoId, item);
         existingFilenames.add(file);
       });
       saveVideoIndex();
@@ -1060,7 +1178,10 @@ function loadAudioIndex() {
   try {
     const entries = JSON.parse(fs.readFileSync(audioIndexPath, 'utf8'));
     Object.entries(entries).forEach(([audioId, audio]) => {
-      if (audio && audio.filename) audioDatabase.set(audioId, audio);
+      if (audio && audio.filename) {
+        const itType = inferMediaType(audio.name, audio.filename, audio.url || '');
+        if (itType === 'audio') audioDatabase.set(audioId, audio);
+      }
     });
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Could not load audio index:', error.message);
@@ -1070,11 +1191,11 @@ function loadAudioIndex() {
       const diskFiles = fs.readdirSync(audioDir);
       const existingFilenames = new Set(Array.from(audioDatabase.values()).map(a => a.filename));
       diskFiles.forEach(file => {
-        if (file === 'index.json' || existingFilenames.has(file)) return;
+        if (file === 'index.json' || file === '_index.json' || file.startsWith('.') || existingFilenames.has(file)) return;
         const filePath = path.join(audioDir, file);
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) return;
-        const audioId = createAudioId();
+        const audioId = getPermanentMediaId('audio', file);
         const item = {
           id: audioId,
           name: file,
@@ -1085,6 +1206,7 @@ function loadAudioIndex() {
           size: stats.size
         };
         audioDatabase.set(audioId, item);
+        masterArchive.set(audioId, item);
         existingFilenames.add(file);
       });
       saveAudioIndex();
@@ -1095,6 +1217,35 @@ function loadAudioIndex() {
 }
 
 loadAudioIndex();
+
+function purgeStaleDynamicKeys() {
+  for (const [id, item] of imageDatabase.entries()) {
+    if (id.startsWith('image-1794') || id.startsWith('audio-') || id.startsWith('video-') || (item && item.type && item.type !== 'image')) {
+      imageDatabase.delete(id);
+    }
+  }
+  for (const [id, item] of videoDatabase.entries()) {
+    if (id.startsWith('video-1794') || id.startsWith('image-') || id.startsWith('audio-') || (item && item.type && item.type !== 'video')) {
+      videoDatabase.delete(id);
+    }
+  }
+  for (const [id, item] of audioDatabase.entries()) {
+    if (id.startsWith('audio-1794') || id.startsWith('image-') || id.startsWith('video-') || (item && item.type && item.type !== 'audio')) {
+      audioDatabase.delete(id);
+    }
+  }
+  for (const [id, item] of masterArchive.entries()) {
+    if (id.startsWith('image-1794') || id.startsWith('audio-1794') || id.startsWith('video-1794')) {
+      masterArchive.delete(id);
+    }
+  }
+  saveImageIndex();
+  saveVideoIndex();
+  saveAudioIndex();
+  saveMasterArchive();
+}
+
+purgeStaleDynamicKeys();
 
 const defaultKbcAudioFiles = [
   { file: '30 sec timer.mp3', id: 'audio-30-sec-timer', name: '30 Sec Timer' },
@@ -1305,14 +1456,6 @@ function removeScoreSnapshot(playerId) {
 
 loadScoreDatabase();
 
-function createImageId() {
-  const usedNumbers = Array.from(imageDatabase.keys())
-    .map(id => /^image-(\d+)$/i.exec(id))
-    .filter(Boolean)
-    .map(match => Number(match[1]));
-  return `image-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
-}
-
 // Multer configuration for media uploads
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, imagesDir),
@@ -1439,8 +1582,8 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
   try {
     const uploadedImages = [];
     for (const file of req.files) {
-      const imageId = createImageId();
       const stored = storeUploadedMedia('/images', file);
+      const imageId = createImageId(stored.filename);
       const mediaItem = {
         id: imageId,
         name: file.originalname,
@@ -1451,6 +1594,7 @@ app.post('/api/images/upload', upload.array('images', 100), async (req, res, nex
         size: file.size
       };
       imageDatabase.set(imageId, mediaItem);
+      masterArchive.set(imageId, mediaItem);
       saveRemoteMedia(imageId, mediaItem, path.join(imagesDir, file.filename)).catch(err => {
         console.warn(`[Supabase] Image remote save notice for ${imageId}:`, err.message);
       });
@@ -1491,45 +1635,38 @@ app.get('/api/images/list', async (req, res) => {
 app.get('/api/images/:imageId', async (req, res) => {
   await ensureRemoteIndexesLoaded();
   const { imageId } = req.params;
-  const imageData = imageDatabase.get(imageId);
+  const imageData = imageDatabase.get(imageId) || masterArchive.get(imageId);
   if (!imageData) {
     return res.status(404).json({ error: 'Image not found' });
   }
   res.json({
-    imageId,
+    imageId: imageData.id || imageId,
     name: imageData.name,
     url: imageData.url,
     uploadedAt: imageData.uploadedAt
   });
 });
 
-// Delete image by ID
+// Delete image by ID: Never unlinks file; permanently preserved in storage and master archive
 app.delete('/api/images/:imageId', async (req, res) => {
   const { imageId } = req.params;
-  const imageData = imageDatabase.get(imageId);
+  const imageData = imageDatabase.get(imageId) || masterArchive.get(imageId);
   if (!imageData) {
     return res.status(404).json({ error: 'Image not found' });
   }
 
   try {
-    const filePath = path.join(imagesDir, imageData.filename);
-    await fs.promises.unlink(filePath).catch(error => {
-      if (error.code !== 'ENOENT') throw error;
-    });
+    imageData.archived = true;
+    masterArchive.set(imageId, imageData);
+    saveMasterArchive();
     imageDatabase.delete(imageId);
     saveImageIndex();
-    deleteRemoteMedia(imageId).catch(err => console.warn(`[Supabase] Image delete background notice:`, err.message));
-    res.json({ success: true, message: 'Image deleted' });
+    deleteRemoteMedia(imageId).catch(err => console.warn(`[Supabase] Image archive background notice:`, err.message));
+    res.json({ success: true, message: 'Image archived from active view; permanently stored.' });
   } catch (error) {
-    res.status(500).json({ error: 'Could not delete image file' });
+    res.status(500).json({ error: 'Could not archive image' });
   }
 });
-
-function createVideoId() {
-  const usedNumbers = Array.from(videoDatabase.keys())
-    .map(id => /^video-(\d+)$/i.exec(id)).filter(Boolean).map(match => Number(match[1]));
-  return `video-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
-}
 
 app.post('/api/videos/upload', (req, res, next) => {
   uploadVideos.array('videos', 50)(req, res, error => {
@@ -1544,8 +1681,8 @@ app.post('/api/videos/upload', (req, res, next) => {
   try {
     const videos = [];
     for (const file of req.files) {
-      const videoId = createVideoId();
       const stored = storeUploadedMedia('/videos', file);
+      const videoId = createVideoId(stored.filename);
       const mediaItem = {
         id: videoId,
         name: file.originalname,
@@ -1556,6 +1693,7 @@ app.post('/api/videos/upload', (req, res, next) => {
         size: file.size
       };
       videoDatabase.set(videoId, mediaItem);
+      masterArchive.set(videoId, mediaItem);
       // Persist to Supabase in background so large video chunks do not delay or time out the client HTTP upload
       saveRemoteMedia(videoId, mediaItem, path.join(videosDir, file.filename)).catch(remoteErr => {
         console.warn(`[Supabase] Video remote save notice for ${videoId}:`, remoteErr.message);
@@ -1625,27 +1763,38 @@ app.delete('/api/scores/:playerId', (req, res) => {
   res.json({ success: true, scores: getTopScores(20) });
 });
 
-app.delete('/api/videos/:videoId', async (req, res) => {
-  const video = videoDatabase.get(req.params.videoId);
-  if (!video) return res.status(404).json({ error: 'Video not found' });
-  try {
-    await fs.promises.unlink(path.join(videosDir, video.filename)).catch(error => {
-      if (error.code !== 'ENOENT') throw error;
-    });
-    videoDatabase.delete(req.params.videoId);
-    saveVideoIndex();
-    deleteRemoteMedia(req.params.videoId).catch(err => console.warn(`[Supabase] Video delete background notice:`, err.message));
-    res.json({ success: true, message: 'Video deleted' });
-  } catch (error) {
-    res.status(500).json({ error: 'Could not delete video file' });
+// Get video by ID
+app.get('/api/videos/:videoId', async (req, res) => {
+  await ensureRemoteIndexesLoaded();
+  const { videoId } = req.params;
+  const videoData = videoDatabase.get(videoId) || masterArchive.get(videoId);
+  if (!videoData) {
+    return res.status(404).json({ error: 'Video not found' });
   }
+  res.json({
+    videoId: videoData.id || videoId,
+    name: videoData.name,
+    url: videoData.url,
+    uploadedAt: videoData.uploadedAt
+  });
 });
 
-function createAudioId() {
-  const usedNumbers = Array.from(audioDatabase.keys())
-    .map(id => /^audio-(\d+)$/i.exec(id)).filter(Boolean).map(match => Number(match[1]));
-  return `audio-${usedNumbers.length ? Math.max(...usedNumbers) + 1 : 1}`;
-}
+// Delete video by ID: Never unlinks file; permanently preserved in storage and master archive
+app.delete('/api/videos/:videoId', async (req, res) => {
+  const video = videoDatabase.get(req.params.videoId) || masterArchive.get(req.params.videoId);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+  try {
+    video.archived = true;
+    masterArchive.set(req.params.videoId, video);
+    saveMasterArchive();
+    videoDatabase.delete(req.params.videoId);
+    saveVideoIndex();
+    deleteRemoteMedia(req.params.videoId).catch(err => console.warn(`[Supabase] Video archive background notice:`, err.message));
+    res.json({ success: true, message: 'Video archived from active view; permanently stored.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not archive video' });
+  }
+});
 
 app.post('/api/audio/upload', (req, res, next) => {
   uploadAudios.array('audios', 50)(req, res, error => {
@@ -1660,8 +1809,8 @@ app.post('/api/audio/upload', (req, res, next) => {
   try {
     const audios = [];
     for (const file of req.files) {
-      const audioId = createAudioId();
       const stored = storeUploadedMedia('/audio', file);
+      const audioId = createAudioId(stored.filename);
       const mediaItem = {
         id: audioId,
         name: file.originalname,
@@ -1672,6 +1821,7 @@ app.post('/api/audio/upload', (req, res, next) => {
         size: file.size
       };
       audioDatabase.set(audioId, mediaItem);
+      masterArchive.set(audioId, mediaItem);
       saveRemoteMedia(audioId, mediaItem, path.join(audioDir, file.filename)).catch(err => {
         console.warn(`[Supabase] Audio remote save notice for ${audioId}:`, err.message);
       });
@@ -1701,19 +1851,36 @@ app.get('/api/audio/list', async (req, res) => {
   });
 });
 
+// Get audio by ID
+app.get('/api/audio/:audioId', async (req, res) => {
+  await ensureRemoteIndexesLoaded();
+  const { audioId } = req.params;
+  const audioData = audioDatabase.get(audioId) || masterArchive.get(audioId);
+  if (!audioData) {
+    return res.status(404).json({ error: 'Audio not found' });
+  }
+  res.json({
+    audioId: audioData.id || audioId,
+    name: audioData.name,
+    url: audioData.url,
+    uploadedAt: audioData.uploadedAt
+  });
+});
+
+// Delete audio by ID: Never unlinks file; permanently preserved in storage and master archive
 app.delete('/api/audio/:audioId', async (req, res) => {
-  const audio = audioDatabase.get(req.params.audioId);
+  const audio = audioDatabase.get(req.params.audioId) || masterArchive.get(req.params.audioId);
   if (!audio) return res.status(404).json({ error: 'Audio not found' });
   try {
-    await fs.promises.unlink(path.join(audioDir, audio.filename)).catch(error => {
-      if (error.code !== 'ENOENT') throw error;
-    });
+    audio.archived = true;
+    masterArchive.set(req.params.audioId, audio);
+    saveMasterArchive();
     audioDatabase.delete(req.params.audioId);
     saveAudioIndex();
-    deleteRemoteMedia(req.params.audioId).catch(err => console.warn(`[Supabase] Audio delete background notice:`, err.message));
-    res.json({ success: true, message: 'Audio deleted' });
+    deleteRemoteMedia(req.params.audioId).catch(err => console.warn(`[Supabase] Audio archive background notice:`, err.message));
+    res.json({ success: true, message: 'Audio archived from active view; permanently stored.' });
   } catch (error) {
-    res.status(500).json({ error: 'Could not delete audio file' });
+    res.status(500).json({ error: 'Could not archive audio' });
   }
 });
 
@@ -1903,13 +2070,9 @@ app.post('/api/media/add-url', async (req, res) => {
     const cleanUrl = normalizeMediaUrl(url);
     const mediaType = ['image', 'video', 'audio'].includes(type) ? type : inferMediaType(name, '', cleanUrl);
     
-    let mediaId = '';
-    if (mediaType === 'video') mediaId = createVideoId();
-    else if (mediaType === 'audio') mediaId = createAudioId();
-    else mediaId = createImageId();
-
-    const displayName = (name && name.trim()) || path.basename(cleanUrl.split('?')[0]) || `${mediaType}-${Date.now()}`;
-    const filename = path.basename(cleanUrl.split('?')[0]) || `${mediaId}.${mediaType === 'video' ? 'mp4' : mediaType === 'audio' ? 'mp3' : 'jpg'}`;
+    const filename = path.basename(cleanUrl.split('?')[0]) || `${mediaType}-${Date.now()}`;
+    const displayName = (name && name.trim()) || path.basename(cleanUrl.split('?')[0]) || filename;
+    const mediaId = getPermanentMediaId(mediaType, filename, displayName);
 
     const mediaItem = {
       id: mediaId,
@@ -1932,6 +2095,71 @@ app.post('/api/media/add-url', async (req, res) => {
     else saveImageIndex();
 
     res.json({ success: true, message: `${mediaType} added successfully to library and Supabase`, media: mediaItem });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check Supabase connection status
+app.get('/api/supabase/status', (req, res) => {
+  const client = getOrCreateSupabase();
+  const configPath = path.join(__dirname, 'supabase-config.json');
+  let savedConfig = null;
+  if (fs.existsSync(configPath)) {
+    try {
+      savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (e) {}
+  }
+  const currentUrl = process.env.SUPABASE_URL || (savedConfig && (savedConfig.supabaseUrl || savedConfig.url));
+  res.json({
+    connected: Boolean(client),
+    url: currentUrl ? currentUrl : null,
+    totalMediaRecords: masterArchive.size,
+    totalImages: imageDatabase.size,
+    totalAudio: audioDatabase.size,
+    totalVideos: videoDatabase.size
+  });
+});
+
+// Connect Supabase and trigger instant migration of all local database and storage
+app.post('/api/supabase/connect', async (req, res) => {
+  try {
+    const { supabaseUrl, supabaseKey } = req.body || {};
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(400).json({ error: 'supabaseUrl and supabaseKey are required' });
+    }
+
+    const cleanUrl = supabaseUrl.trim().replace(/\/+$/, '');
+    const cleanKey = supabaseKey.trim();
+
+    // Verify credentials with a quick check
+    const testClient = createClient(cleanUrl, cleanKey, { auth: { persistSession: false } });
+    const { data: buckets, error: checkErr } = await testClient.storage.listBuckets();
+    if (checkErr) {
+      return res.status(400).json({ error: 'Failed to connect to Supabase: ' + checkErr.message });
+    }
+
+    // Save to supabase-config.json
+    const configPath = path.join(__dirname, 'supabase-config.json');
+    fs.writeFileSync(configPath, JSON.stringify({
+      supabaseUrl: cleanUrl,
+      supabaseKey: cleanKey,
+      connectedAt: new Date().toISOString()
+    }, null, 2));
+
+    // Reset current client in server memory
+    supabaseClient = testClient;
+    supabaseChecked = true;
+
+    // Run migration asynchronously
+    const { runMigration } = require('./migrate-to-supabase');
+    runMigration(cleanUrl, cleanKey).catch(e => console.error('[Migration Error]:', e));
+
+    res.json({
+      success: true,
+      message: 'Supabase connected successfully! Database and storage transfer started.',
+      url: cleanUrl
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
